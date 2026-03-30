@@ -8,7 +8,7 @@ AI coding tools produce working code fast. They also produce N+1 queries, swallo
 
 ## What it does
 
-The plugin loads rules during content generation that target documented AI failure patterns across three domains:
+The plugin loads rules during content generation that target documented AI failure patterns:
 
 - **Writing**: vocabulary tells, structural cliches, sycophantic openers, filler phrases
 - **Code**: security vulnerabilities, architectural over-engineering, comment slop, missing error handling, performance anti-patterns, backend mistakes
@@ -22,7 +22,7 @@ The plugin loads rules during content generation that target documented AI failu
 | **Skill** (`anti-slop`) | Core rules that activate on content-producing tasks |
 | **Agent** (`slop-detector`) | Deep review agent with 5-dimension scoring (50pt scale) |
 | **Command** (`/slop-check`) | Manual review of files, diffs, or recent output |
-| **8 reference files** | Banned words (~230), banned phrases (~170), writing patterns, code patterns, design patterns, frontend patterns, regression patterns, self-check checklists |
+| **8 reference files** | Banned words (~230), banned phrases (~210), writing patterns, code patterns, design patterns, frontend patterns, regression patterns, self-check checklists |
 
 ## Why this exists
 
@@ -39,7 +39,7 @@ This plugin targets those specific problems. It does not try to make AI output "
 
 ## Coverage
 
-**Writing:** ~230 banned AI-tell words with plain alternatives, ~170 banned phrases (sycophancy, throat-clearing, filler, meta-commentary, emphasis crutches), structural anti-patterns (rule of three, binary contrasts, hedging seesaws, dramatic fragmentation), formatting rules, rhythm checks.
+**Writing:** ~230 banned AI-tell words with plain alternatives, ~210 banned phrases (sycophancy, throat-clearing, filler, meta-commentary, emphasis crutches), structural anti-patterns (rule of three, binary contrasts, hedging seesaws, dramatic fragmentation), formatting rules, rhythm checks.
 
 **Code:** Comment slop (restating code, apologetic comments, banner dividers), over-engineering (factories for single implementations, premature abstractions), error handling (swallowing errors, defensive excess), security (SQL injection, XSS, path traversal, command injection, hardcoded credentials, eval, insecure randomness, sensitive data in logs), verification (hallucinated APIs, slopsquatting, deprecated methods), backend patterns (N+1 queries, missing timeouts, naive retries, unbounded queries), and "looks right but isn't" patterns (shallow copy bugs, floating-point money, date/time errors, async race conditions).
 
@@ -49,7 +49,7 @@ This plugin targets those specific problems. It does not try to make AI output "
 
 ## Context awareness
 
-The plugin includes domain exceptions for academic writing, legal writing, creative fiction, pedagogical/teaching contexts, marketing, ML/data science, and grant writing. Technical terms (validate, aggregate, benchmark, optimize, framework, ecosystem) are allowed in their domain contexts. British English and formal registers are acknowledged.
+The plugin includes domain exceptions for academic writing, legal writing, creative fiction, pedagogical/teaching contexts, marketing, ML/data science, and grant writing. The plugin allows technical terms (validate, aggregate, benchmark, optimize, framework, ecosystem) in their domain contexts. It also accounts for British English and formal registers.
 
 A "Scope and Limitations" section in SKILL.md states what the plugin covers (web-centric code, general English prose) and what it doesn't (Rust, Go, C/C++, mobile platforms, ML workflows in depth).
 

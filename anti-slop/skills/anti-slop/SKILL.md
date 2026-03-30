@@ -94,7 +94,7 @@ No SQL string concatenation; use parameterized queries. No eval() or exec() with
 
 When modifying existing code: change only what was asked. Read files and their dependents before editing. Use Edit (targeted diff), not Write (full file rewrite). Preserve error messages, status codes, default values, log formats, metric names, and conditional logic exactly. Never modify tests to make them pass instead of fixing the code. Never delete code that looks unused without verifying zero references across the entire codebase. Run tests after every change.
 
-For the full regression prevention guide, see `references/regression-patterns.md`.
+When modifying existing code, fixing bugs, or refactoring, load and follow `references/regression-patterns.md` for the full regression prevention guide.
 
 For code anti-patterns with examples, see `references/code-patterns.md`. For React, CSS, performance, HTML semantics, and UX patterns, see `references/frontend-patterns.md`.
 
@@ -119,6 +119,8 @@ Before finalizing any output, run through:
 - Code comments explain *why*, not *what*?
 - No unnecessary abstractions or premature patterns?
 - No unverified APIs or invented packages?
+- No SQL injection, XSS, hardcoded credentials, or eval with user input?
 - Design choices specific to the project, not AI defaults?
+- If modifying existing code: changed only what was asked? Tests fix the code, not weakened assertions?
 
 For full checklists by output type, see `references/self-check.md`.

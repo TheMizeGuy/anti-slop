@@ -1,6 +1,6 @@
 # Banned Phrases
 
-Phrases that identify text as AI-generated. Never use any of these in general prose. Categories are listed below.
+Phrases that identify text as AI-generated. Never use any of these in general prose.
 
 ## Sycophantic Openers
 
