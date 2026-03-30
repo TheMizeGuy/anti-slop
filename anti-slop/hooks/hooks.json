@@ -1,5 +1,5 @@
 {
-  "description": "Anti-slop enforcement hooks. Context-aware: skip vocabulary checks for academic, legal, creative, pedagogical, marketing, ML/data-science, and medical writing. Skip emoji checks if the project uses gitmoji. Always enforce security and accessibility.",
+  "description": "Anti-slop enforcement hooks. Context-aware: yields to domain conventions.",
   "hooks": {
     "PostToolUse": [
       {
@@ -14,7 +14,6 @@
     ],
     "Stop": [
       {
-        "matcher": "*",
         "hooks": [
           {
             "type": "prompt",
