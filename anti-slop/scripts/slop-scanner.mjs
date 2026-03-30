@@ -369,6 +369,7 @@ function startDashboard(port) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='none' stroke='%23ef4444' stroke-width='8'/><line x1='22' y1='22' x2='78' y2='78' stroke='%23ef4444' stroke-width='8' stroke-linecap='round'/></svg>">
 <title>anti-slop</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
