@@ -71,6 +71,31 @@ const CODE_PATTERNS = [
   { name: "useeffect-setstate", pattern: /useEffect\s*\(\s*\(\s*\)\s*=>\s*\{[^}]*set[A-Z]\w*\s*\(/g, desc: "useEffect setting state (likely derived state)" },
 ];
 
+// ── Context Exceptions ──
+// If any of these domain words appear in the file, the banned word is likely legitimate
+const CONTEXT_EXCEPTIONS = {
+  "realm": ["server", "wow", "warcraft", "mmo", "game", "character", "guild", "blizzard", "horde", "alliance", "dungeon", "raid", "player", "azeroth"],
+  "enchanting": ["enchant", "wow", "warcraft", "spell", "magic", "item", "gear", "weapon", "profession", "disenchant"],
+  "landscape": ["terrain", "geography", "map", "topograph", "satellite", "gis", "orientation", "portrait"],
+  "tapestry": ["fabric", "weave", "textile", "cloth", "thread", "loom"],
+  "luminous": ["light", "lumen", "brightness", "display", "hdr", "backlight", "nit", "candela", "shader"],
+  "ethereal": ["ethereum", "eth", "blockchain", "crypto", "network", "protocol", "web3"],
+  "ephemeral": ["container", "storage", "port", "cache", "session", "kubernetes", "docker", "k8s", "ttl", "expir"],
+  "paradigm": ["programming", "oop", "functional", "declarative", "design pattern", "methodology"],
+  "intersection": ["set", "array", "math", "geometry", "road", "traffic", "union", "typescript", "venn"],
+  "synergy": ["damage", "buff", "skill", "ability", "combo", "stat", "bonus", "perk"],
+  "vibrant": ["color", "saturation", "hue", "display", "gamut", "profile", "palette"],
+  "captivating": ["audience", "player", "viewer", "retention", "analytics"],
+  "testament": ["bible", "scripture", "religious", "church", "covenant"],
+  "gossamer": ["fabric", "silk", "textile", "material", "spider"],
+  "iridescent": ["material", "shader", "surface", "coating", "finish", "pearl", "holographic"],
+  "enigmatic": ["puzzle", "cipher", "mystery", "riddle", "cryptograph"],
+  "orchestrate": ["orchestra", "music", "conductor", "symphony", "instrument", "kubernetes", "k8s", "workflow engine"],
+  "bustling": ["city", "market", "port", "town", "npc", "merchant"],
+  "pivotal": ["pivot table", "pivot point", "agile", "sprint"],
+  "seamless": ["seam", "stitch", "texture", "tile", "tilemap"],
+};
+
 // ── Emoji detection ──
 const EMOJI_REGEX = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FAFF}]/gu;
 
@@ -157,8 +182,15 @@ const DATA_DIR = join(process.cwd(), ".anti-slop");
 const LOG_FILE = join(DATA_DIR, "scan-log.json");
 const SCORE_FILE = join(DATA_DIR, "scores.json");
 
+const CONFIG_FILE = join(DATA_DIR, "config.json");
+
 function ensureDataDir() {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
+}
+
+function loadProjectConfig() {
+  if (!existsSync(CONFIG_FILE)) return {};
+  try { return JSON.parse(readFileSync(CONFIG_FILE, "utf8")); } catch { return {}; }
 }
 
 function loadLog() {
@@ -198,7 +230,17 @@ function scanContent(content, filePath) {
 
   if (isProse || isCode) {
     const textToScan = isProse ? content : lines.filter(l => l.match(/^\s*\/\/|^\s*#|^\s*\*|^\s*\/\*/) || isProse).join("\n");
+    const config = loadProjectConfig();
+    const allowedWords = new Set((config.allowedWords || []).map(w => w.toLowerCase()));
+    const contentLower = content.toLowerCase();
+
     for (const word of BANNED_WORDS) {
+      if (allowedWords.has(word.toLowerCase())) continue;
+
+      // Context exceptions: skip if domain-specific words appear in the file
+      const exceptions = CONTEXT_EXCEPTIONS[word.toLowerCase()];
+      if (exceptions && exceptions.some(e => contentLower.includes(e))) continue;
+
       const regex = new RegExp(`\\b${word}\\b`, "gi");
       const matches = textToScan.match(regex);
       if (matches) {
