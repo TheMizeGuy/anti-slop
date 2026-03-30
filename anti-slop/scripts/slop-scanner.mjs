@@ -398,7 +398,6 @@ async function loadProjects() {
     var registry = await res.json();
     var projects = Object.entries(registry);
     var nav = document.getElementById('project-nav');
-    if (projects.length <= 1) { nav.style.display = 'none'; return; }
     nav.style.display = 'flex';
     nav.innerHTML = '';
     projects.forEach(function(entry) {
@@ -409,6 +408,7 @@ async function loadProjects() {
       a.textContent = info.name;
       nav.appendChild(a);
     });
+    if (projects.length === 0) { nav.style.display = 'none'; }
   } catch(e) {
     document.getElementById('project-nav').style.display = 'none';
   }
