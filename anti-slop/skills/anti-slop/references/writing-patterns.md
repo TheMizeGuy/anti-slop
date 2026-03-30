@@ -13,7 +13,7 @@ AI defaults to groups of three: three adjectives, three bullet points, three exa
 
 ### Binary Contrasts
 
-The "Not X. Y." reversal structure. AI uses this constantly for false drama.
+The "Not X. Y." reversal structure. AI uses this constantly for false drama. Includes the enumerated variant where the second half is a long list building to a punchline.
 
 **Slop:** "The problem isn't technical. It's cultural."
 **Fix:** "The problem is cultural." (Just state the point.)
@@ -21,12 +21,25 @@ The "Not X. Y." reversal structure. AI uses this constantly for false drama.
 **Slop:** "It's not about the code. It's about the people."
 **Fix:** "The people matter more than the code here."
 
+**Slop:** "Not the cosmetic problems — the security holes, the missing error handling, the N+1 queries, and the fact that every component looks identical."
+**Fix:** State what it does. "It catches security holes, missing error handling, and N+1 queries." The "Not X — Y" frame adds nothing.
+
 ### Negative Listing
 
 Listing what something *isn't* before revealing what it *is*. A dramatic buildup that wastes the reader's time.
 
 **Slop:** "It's not a framework. It's not a library. It's a paradigm shift."
 **Fix:** "It changes how you think about state management."
+
+### Dramatic Enumeration
+
+A long comma-separated list with parallel structure (often repeating "the" before each item) that builds to a longer, punchier final item. AI uses this to perform expertise — rattling off a list of specific things to seem knowledgeable, then landing on a snarky observation as the closer. The structure is: "[item], [item], [item], [item], and [longer snarky punchline item]."
+
+**Slop:** "It produces N+1 queries, swallowed errors, hardcoded secrets, inaccessible forms, 70KB lodash imports, and hero sections that all look identical."
+**Fix:** Break into categories or just pick the two or three that matter most for the point you're making. Not every sentence needs to prove you know the full list.
+
+**Slop:** "the security holes it introduces, the accessibility it ignores, the performance it tanks, the abstractions it invents for no reason, and the purple-gradient sameness it defaults to on every project."
+**Fix:** "It introduces security holes, ignores accessibility, and defaults to the same visual style on every project." Or better: just describe what the tool does about it instead of listing the problems.
 
 ### Hedging Seesaw
 
@@ -37,13 +50,16 @@ Presenting one side, then immediately hedging with the other, then hedging back.
 
 ### Dramatic Fragmentation
 
-Sentence fragments for fake emphasis. Performative simplicity.
+Sentence fragments for fake emphasis. Performative simplicity. Includes the two-sentence variant where a short declarative sentence is followed by a short contradicting or reinforcing one.
 
 **Slop:** "Speed. That's what this is about."
 **Fix:** "This is about speed." (Complete sentence.)
 
 **Slop:** "Faster builds. Fewer bugs. Better DX."
 **Fix:** "It produces faster builds with fewer bugs."
+
+**Slop:** "These aren't opinions. They're from published research."
+**Fix:** Just present the research. The reader can tell the difference between opinions and citations without being told.
 
 ### Rhetorical Questions Answered Immediately
 
@@ -110,6 +126,15 @@ Everything at the same emotional register. No humor, no surprise, no frustration
 Asserting facts with certainty when the answer is uncertain. AI rarely says "I don't know" or "I'm not sure." It just states things.
 
 **Fix:** When uncertain, say so plainly. "I'm not sure about this" is better than a wrong answer stated with confidence.
+
+### Performed Edginess
+
+AI trying to sound casual, opinionated, or irreverent while maintaining perfectly structured prose. The tell is the contrast: the sentence structure is methodical (parallel clauses, clean enumeration, balanced rhythm) but the vocabulary is informal or snarky. Real casual writing has irregular structure. AI "casual" is polished writing wearing a t-shirt.
+
+**Slop:** "Not the 'oh no you can tell AI wrote this' problems — the security holes, the inaccessible UIs, the eval() calls, and the fact that every landing page looks the same."
+**Fix:** "It scans for security vulnerabilities, accessibility failures, and performance problems in AI-generated output."
+
+The fix is boring. That's the point. A README intro should say what the tool does. The edgy framing adds personality that reads as manufactured because it is.
 
 ### Equivocation ("Both Sides")
 
