@@ -15,7 +15,7 @@ This plugin loads rules that prevent these patterns during content generation. I
 | **Skill** (`anti-slop`) | Core rules that activate on content-producing tasks |
 | **Agent** (`slop-detector`) | Deep review agent with 5-dimension scoring (50pt scale) |
 | **Command** (`/slop-check`) | Manual review of files, diffs, or recent output |
-| **6 reference files** | Banned words (~230), banned phrases (~170), writing patterns, code patterns, design patterns, self-check checklists |
+| **7 reference files** | Banned words (~230), banned phrases (~170), writing patterns, code patterns, design patterns, frontend patterns (React/CSS/perf/HTML/UX), self-check checklists |
 
 ## Coverage
 

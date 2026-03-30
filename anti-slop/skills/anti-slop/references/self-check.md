@@ -159,6 +159,9 @@ Run through the relevant checklist before finalizing output. These catch the mos
 - [ ] Interactive elements actually function (not just styled)?
 - [ ] Design tokens/CSS variables used instead of hardcoded values?
 - [ ] No styled-components created inside render functions?
+- [ ] No Tailwind dynamic class construction (`bg-${color}-500`)?
+- [ ] No hydration mismatches (Date, Math.random, typeof window in render)?
+- [ ] Search inputs debounced (not firing on every keystroke)?
 
 ## Design/UI Checklist
 

@@ -1,6 +1,6 @@
 # Frontend Anti-Patterns
 
-Patterns specific to frontend frameworks, CSS, performance, HTML semantics, and UX that AI generates incorrectly. Studies show 70-80% of AI-generated UI fails WCAG AA, AI code has 3-5x more accessibility violations per page than human code, and 86% of frontend repos have at least one missing cleanup pattern.
+Patterns specific to frontend frameworks, CSS, performance, HTML semantics, and UX that AI generates incorrectly. A 2025 University of Michigan study found 70-80% of AI-generated UI fails WCAG AA without explicit accessibility instructions. Deque Systems (2024) reported 3-5x more accessibility violations per page in AI code than hand-authored code. A 500-repository audit by StackInsight found 86% of frontend repos have at least one missing cleanup pattern.
 
 ## React Anti-Patterns
 
@@ -34,7 +34,7 @@ Also: fetch-in-useEffect without AbortController cleanup, missing error/loading 
 
 ### Wrong Dependency Arrays
 
-AI gets dependency arrays wrong ~40% of the time (developer estimates). Missing deps cause stale closures; over-specified deps (objects/arrays recreated each render) cause infinite loops. Empty arrays used when the effect depends on changing values.
+AI gets dependency arrays wrong frequently. Missing deps cause stale closures; over-specified deps (objects/arrays recreated each render) cause infinite loops. Empty arrays used when the effect depends on changing values.
 
 ```jsx
 // BAD (stale closure)
@@ -108,7 +108,16 @@ const colorClasses = { red: 'bg-red-500', blue: 'bg-blue-500' }
 <div className={colorClasses[color]}>
 ```
 
-Also: @apply abuse (increases bundle, loses co-location), arbitrary values `[347px]` bypassing the design system, conflicting classes without tailwind-merge.
+Also: @apply abuse (increases bundle, loses co-location; removed entirely in Tailwind v4), arbitrary values `[347px]` bypassing the design system, conflicting classes without tailwind-merge.
+
+### Missing Modern CSS
+
+AI defaults to older approaches when modern CSS handles the job natively:
+
+- **Container queries**: AI uses viewport media queries for component-level responsive behavior. Use `@container` when layout depends on the container's size, not the viewport.
+- **`:has()` selector**: AI reaches for JavaScript to style parents based on children. `:has()` handles this in CSS (e.g., `form:has(:invalid) { border-color: red }`).
+- **`@layer`**: AI fights specificity with `!important` or deeply nested selectors. Cascade layers (`@layer base, components, utilities`) give explicit control over ordering.
+- **Subgrid**: AI duplicates track definitions in nested grids. `grid-template-columns: subgrid` inherits the parent's tracks.
 
 ### Animation Performance
 
@@ -244,7 +253,7 @@ AI generates the populated, successful view. Production needs:
 - **Edge cases**: very long strings, empty strings, extreme values, missing optional data
 - **Onboarding**: first-use experience with contextual guidance
 
-Design empty and error states first.
+Design empty and error states first. For the full missing states checklist including responsive intermediates, see `design-patterns.md`.
 
 ### Demo-ware
 
@@ -287,7 +296,7 @@ Each AI session starts fresh. Session 1 picks #2563EB for links. Session 5 picks
 
 ### Component Library Defaults
 
-Unmodified shadcn/ui, Material UI, or Ant Design produces instantly recognizable interfaces. Customize border colors, radii, shadows, and transitions to match the project. The interface should not look like the library's documentation site.
+Unmodified shadcn/ui, Material UI, or Ant Design produces instantly recognizable interfaces. Customize border colors, radii, shadows, and transitions to match the project. See also `design-patterns.md` "Component Library Fingerprint" section.
 
 ### Deprecated API Usage
 

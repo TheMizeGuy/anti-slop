@@ -82,7 +82,9 @@ For **code**:
 6. Security issues (SQL injection, XSS, hardcoded secrets, eval, path traversal)
 7. Convention mismatches with the codebase
 8. N+1 queries, missing timeouts, missing pagination
-9. Debugging residue
+9. React: useEffect for derived state, missing cleanup, "use client" overuse
+10. Full library imports (lodash, moment), hydration mismatches
+11. Debugging residue
 
 For **design/UI**:
 1. Accessibility failures (contrast, keyboard nav, focus management, semantic HTML, alt text, aria-live)
