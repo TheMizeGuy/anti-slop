@@ -1,15 +1,16 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "anti-slop",
-  "description": "Claude Code plugin that catches and blocks detectable AI patterns in prose, code, and UI output",
+  "description": "Claude Code plugin that catches the documented shortcomings of agentic development: security holes, accessibility failures, performance problems, and generic defaults.",
   "owner": {
     "name": "TheMizeGuy"
   },
   "plugins": [
     {
       "name": "anti-slop",
-      "description": "Catches and blocks detectable AI patterns in prose, code, and UI output across all projects.",
+      "description": "Catches AI coding shortcomings in prose, code, and UI output. Includes hooks for active enforcement.",
       "source": "./anti-slop",
+      "version": "1.1.0",
       "category": "development",
       "homepage": "https://github.com/TheMizeGuy/anti-slop"
     }
