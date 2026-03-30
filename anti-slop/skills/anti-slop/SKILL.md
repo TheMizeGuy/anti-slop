@@ -90,7 +90,7 @@ Check every API method, package name, and config option exists before using it. 
 
 No SQL string concatenation; use parameterized queries. No eval() or exec() with user input. No hardcoded credentials. No innerHTML with unsanitized input (XSS). Check inputs at system boundaries.
 
-For code anti-patterns with examples, see `references/code-patterns.md`.
+For code anti-patterns with examples, see `references/code-patterns.md`. For React, CSS, performance, HTML semantics, and UX patterns, see `references/frontend-patterns.md`.
 
 ## Design and UI Rules
 

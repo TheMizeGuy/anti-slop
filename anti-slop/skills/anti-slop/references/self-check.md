@@ -142,6 +142,24 @@ Run through the relevant checklist before finalizing output. These catch the mos
 - [ ] Edge cases covered?
 - [ ] Mocks used only where necessary, not as a default?
 
+### Frontend (if writing React/Next.js/CSS)
+
+- [ ] No useEffect for derived state (compute during render or useMemo)?
+- [ ] useEffect has cleanup function for timers, listeners, subscriptions?
+- [ ] No "use client" on components that could be server components?
+- [ ] No full library imports (lodash, moment) when tree-shakeable imports exist?
+- [ ] Images have width/height attributes, loading="lazy", srcset?
+- [ ] No z-index escalation (use a defined scale)?
+- [ ] No animating layout properties (width, height, top, left)?
+- [ ] Font loading uses font-display: swap and preload?
+- [ ] Semantic HTML used (`<button>`, `<nav>`, `<dialog>`, `<details>`) not div soup?
+- [ ] Headings follow hierarchy (h1 > h2 > h3, no skipped levels)?
+- [ ] Link for navigation, button for actions (not reversed)?
+- [ ] Empty, error, and loading states designed (not just the populated view)?
+- [ ] Interactive elements actually function (not just styled)?
+- [ ] Design tokens/CSS variables used instead of hardcoded values?
+- [ ] No styled-components created inside render functions?
+
 ## Design/UI Checklist
 
 ### Visual Design
