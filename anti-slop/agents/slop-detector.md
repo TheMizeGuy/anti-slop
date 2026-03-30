@@ -64,7 +64,7 @@ Produce the report as rendered markdown (not inside a code block):
 
 For **prose/text**:
 1. Sycophantic openers
-2. Banned words (especially: delve, leverage, utilize, pivotal, landscape, multifaceted)
+2. Banned words (especially: delve, leverage, utilize, pivotal, landscape, multifaceted, ensure, crucial)
 3. Em dash density
 4. Lists forced to exactly three items
 5. Banned phrases

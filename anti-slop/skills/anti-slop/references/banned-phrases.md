@@ -255,7 +255,6 @@ Corporate-speak that adds nothing. Use plain words.
 - "moving forward"
 - "low-hanging fruit"
 - "deep dive" (as noun)
-- "at the end of the day"
 - "value proposition"
 - "core competency"
 - "thought leader"

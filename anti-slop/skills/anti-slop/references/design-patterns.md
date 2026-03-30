@@ -88,13 +88,15 @@ Hover effects, entrance animations, and transitions on everything. Looks like a 
 **Anti-patterns:**
 - Fade-in animations on every section scroll
 - Scale transforms on every hover
-- Transition durations over 300ms
+- Transition durations over 300ms for micro-interactions (hover, focus, toggle)
 - Loading animations that delay content display
 - Parallax effects without purpose
 
-**Instead:** Animate only to communicate state changes (hover, focus, loading). Keep durations short (150-200ms). Respect `prefers-reduced-motion`.
+**Instead:** Animate to communicate state changes. Micro-interactions: under 200ms. Medium transitions (panels, dropdowns): 200-300ms. Full-screen: up to 400ms. Over 500ms feels sluggish. Respect `prefers-reduced-motion`. For animation performance details (compositor vs layout properties), see `frontend-patterns.md`.
 
 ## CSS Anti-Patterns
+
+For z-index stacking, sticky/fixed positioning, Tailwind issues, font loading, dark mode implementation, and fluid typography, see `frontend-patterns.md`.
 
 ### Magic Numbers
 

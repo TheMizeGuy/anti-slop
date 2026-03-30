@@ -85,6 +85,8 @@ AI generates code that renders differently on server vs client: Date/time format
 
 ## CSS Anti-Patterns
 
+For magic numbers, !important, excessive nesting, duplicate styles, and over-engineered layouts, see `design-patterns.md`.
+
 ### Z-Index Stacking Context Blindness
 
 AI treats z-index as "higher number = on top" and escalates to z-index: 9999. It ignores that `transform`, `opacity < 1`, `filter`, `will-change`, and `isolation: isolate` create new stacking contexts. A child's z-index cannot escape its parent's stacking context regardless of value.
