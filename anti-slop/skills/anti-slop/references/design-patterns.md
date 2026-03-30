@@ -307,3 +307,114 @@ Unmodified shadcn/ui, Material UI, or Ant Design components produce instantly re
 AI disproportionately generates dark mode because dark screenshots look more "modern" and the purple-blue gradient aesthetic works better against dark backgrounds. The result: dark mode delivered without light mode, or light mode as a broken afterthought.
 
 **Rule:** If the project needs theming, design both modes intentionally. Neither is a derivative of the other.
+
+## AI Component Fingerprints
+
+These are the specific, repeatable component-level patterns AI produces identically every time. Each can be used when appropriate, but using ALL of them together on one page is what creates the "AI-generated" look. Unless the user requests these specific patterns, vary the approach.
+
+### Badge Pill Above Hero Headings
+
+A small colored pill (`rounded-full px-3 py-1 text-sm bg-primary/10`) above the main headline with "Introducing...", "New", "AI-Powered", or a sparkle icon. Present on nearly every AI hero section.
+
+**Instead:** Skip the badge unless there is a real announcement. If announcing something, use a less formulaic treatment (a colored underline, a sidebar callout, an inline label).
+
+### Gradient Text on Hero Headings
+
+`bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent` applied to one or two words in the headline ("Build **Better** Faster"). The gradient-text span is a v0/Claude signature.
+
+**Instead:** Use size contrast, weight contrast, a single flat accent color on one word, or serif/sans-serif mixing within the headline. The typography itself should be the design, not a CSS gradient trick.
+
+### Decorative Blur Blobs
+
+`absolute -z-10 w-72 h-72 bg-purple-300 rounded-full blur-3xl opacity-20` scattered behind sections. Purely decorative, adds no information.
+
+**Instead:** Solid color blocks between sections, subtle texture/grain at 2-5% opacity, real photography, or white space. If the background needs visual interest, use something related to the content.
+
+### The Frosted Glass Navigation Bar
+
+`bg-white/80 backdrop-blur-md border-b sticky top-0 z-50` with `h-16`, 4-6 nav links, and a CTA button in the top-right. This exact combination is the strongest single-component AI fingerprint.
+
+**Instead:** Vary the nav height, skip the blur effect when it doesn't serve the design, use dropdowns or mega-menus for complex sites, or try a sidebar navigation. Not every site needs a frosted sticky nav.
+
+### Two-Button CTA Group
+
+Always one filled primary button ("Get Started") + one ghost/outline secondary ("Learn More"), side by side, centered below the subtitle. AI never generates a single CTA, never three CTAs.
+
+**Instead:** Sometimes one CTA is enough. Sometimes none (let the content lead to action naturally). Vary button styles, sizes, and placement based on what the page needs.
+
+### Stats Row
+
+3-4 cards with a big number, a label, and a green/red percentage change ("$45,231.89", "+20.1% from last month"). The exact value "$45,231.89" originates from shadcn/ui's dashboard example.
+
+**Instead:** Use stats relevant to the actual product. Vary the visual treatment (sparklines, gauges, contextual benchmarks). Skip the percentage change if the number alone tells the story.
+
+### The "Alternating Left-Right" Feature Showcase
+
+Feature sections that alternate: text on left + image on right, then image on left + text on right, repeating down the page. Every section is the same structure, just flipped.
+
+**Instead:** Vary section layouts. Some features deserve a full-width demo. Some need only text. Some work as a grid. Let the content determine the layout, not a mechanical alternation pattern.
+
+### Wave/Curved Section Dividers
+
+SVG wave or curved shape between page sections, usually in a light gray or the primary color at low opacity.
+
+**Instead:** Use background color changes, horizontal rules, generous white space, or no divider at all. If sections are well-designed, they don't need decorative separators.
+
+### Identical Footer Structure
+
+4 columns: Brand + description + social icons, then "Product", "Company", "Legal" link groups. Dark background (`bg-gray-900`). Always "All rights reserved." Always the same 4 social icons (Twitter, GitHub, LinkedIn, Discord).
+
+**Instead:** Match footer tone to the overall design (light footers exist). Vary column count and grouping based on actual site structure. Include newsletter signup, office addresses, or trust badges when relevant. Skip "All rights reserved" (legally redundant).
+
+### Dashboard Layout Trinity
+
+`w-64` dark sidebar + `h-16` header with search + bell + avatar + 4 stats cards + Recharts chart + "Recent Orders" table. This exact layout appears across every AI dashboard generation.
+
+**Instead:** Custom sidebar width based on content. Collapsible sidebar with icon-only mode. Stats relevant to the actual domain. Custom chart library matching brand colors. Real empty states when data is absent.
+
+### Uniform Spacing Scale
+
+AI uses the same spacing values everywhere: `p-6` for card bodies, `gap-8` between cards, `py-20` for section padding, `mt-2`/`mt-4`/`mt-6`/`mt-8` between elements. The mechanical regularity is a tell.
+
+**Instead:** Base spacing on a deliberate scale (4px grid), but vary it by context. Dense data sections use tighter spacing. Spacious hero sections use more generous spacing. The spacing should serve the content, not follow a template.
+
+### Identical Testimonial Cards
+
+Always 3 cards. Always 5 yellow stars. Always 2-3 sentence hyperbolic quotes. Always circular `w-10 h-10` avatar. Names from a small pool ("Sarah Johnson", "Michael Chen"). Always "CEO at TechCorp."
+
+**Instead:** Mix star ratings (4.5, 4.8) for authenticity. Use real photos. Feature one large testimonial with supporting smaller ones. Embed real tweets or third-party reviews. Include specific metrics ("Saved 40 hours/month") rather than generic praise.
+
+### Pricing Table Convention
+
+Always 3 tiers. Middle one always highlighted with "Most Popular" floating badge (`absolute -top-3 rounded-full`). Always monthly/annual toggle saving "20%". Always checkmark feature lists.
+
+**Instead:** Vary tier count based on actual product (2 or 4 work too). Use a comparison table for detailed feature differences. Lead with the recommended plan rather than giving equal weight to all tiers. Use non-round pricing ($27, $147) based on pricing psychology.
+
+### Skeleton/Loading Defaults
+
+CSS border spinner (`animate-spin border-4 border-t-primary`) or `animate-pulse bg-gray-200` skeletons with fractional widths (`w-3/4`, `w-1/2`). The stepped-fraction pattern is a strong AI tell.
+
+**Instead:** Custom branded loading animations. Shimmer/gradient skeleton effects instead of pulse. Progressive loading where content appears as it loads. Context-specific skeleton shapes matching actual content layout.
+
+### 404/Error Page Formula
+
+Giant gray "404" text (`text-8xl text-gray-200`), "Page not found", "Sorry, we couldn't find..." description, "Go home" + "Go back" buttons. No illustration, no personality.
+
+**Instead:** Custom illustration or animation. Brand-consistent messaging with personality. Contextual suggestions (search, popular pages). Error reporting mechanism.
+
+## The 10 Strongest AI Design Fingerprints (Ranked)
+
+For reference, the patterns most reliably marking output as AI-generated:
+
+1. `rounded-xl shadow-sm border` on every card
+2. `bg-white/80 backdrop-blur-md border-b` frosted navigation
+3. `w-64` sidebar + `h-16` header in dashboards
+4. `text-xs uppercase tracking-wider` on table headers and overlines
+5. "Most Popular" badge floating above middle pricing tier
+6. `bg-primary/10` icon containers (`w-12 h-12 rounded-lg`) in feature grids
+7. `animate-pulse bg-gray-200` skeletons with fractional widths
+8. `bg-black/50` modal overlay with `max-w-md p-6 rounded-xl`
+9. `text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight` hero heading scale
+10. 4-column footer with "Product / Company / Legal" headers
+
+None of these are wrong individually. The tell is when they all appear together on the same project with no variation or customization.
