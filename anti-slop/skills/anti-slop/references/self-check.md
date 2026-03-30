@@ -192,6 +192,7 @@ Run through the relevant checklist before finalizing output. These catch the mos
 - [ ] Shadow values vary by elevation need?
 - [ ] Border radius is consistent and appropriate for the design?
 - [ ] No gratuitous animations?
+- [ ] No identical icon-in-colored-circle on every feature card (unless requested)?
 - [ ] Component library defaults customized to match the project?
 
 ### CSS

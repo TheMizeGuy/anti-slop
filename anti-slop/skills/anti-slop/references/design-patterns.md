@@ -81,6 +81,18 @@ Rounding every corner to the same generous radius. Everything looks like a lozen
 
 **Instead:** Match border radius to the design's personality. Sharp corners feel precise and technical. Gentle rounding (4-6px) works for most UI. Reserve larger radii for specific interactive elements.
 
+### Icon-in-Colored-Circle Pattern
+
+One of the strongest AI design tells. Every feature card gets a generic icon (Zap, Shield, Globe, Sparkles) placed inside a colored oval or circle background (`bg-indigo-100 rounded-full p-3`). The pattern repeats identically across every card in a grid, creating a uniform, template-driven look.
+
+**Anti-patterns:**
+- Every icon wrapped in a colored circle/oval background (`rounded-full` with a tinted `bg-*-100`)
+- Identical circle treatment across all feature cards (same size, same padding, same background tint)
+- Icons serving as decoration rather than aiding comprehension (a Rocket icon for a slow process, a Sparkles icon for anything AI-related)
+- Icon circles as the sole visual differentiator between cards that otherwise look identical
+
+**Instead:** Use icons without decorative backgrounds when the icon itself is clear. If backgrounds are needed, vary the treatment (different shapes, sizes, or styles per card based on content). Consider illustrations, screenshots, or no visual at all when icons add nothing. The icon should explain the feature, not decorate the card. If the user specifically requests icon circles, use them.
+
 ### Gratuitous Animations
 
 Hover effects, entrance animations, and transitions on everything. Looks like a demo, not a product.
