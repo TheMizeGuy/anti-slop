@@ -6,6 +6,8 @@ A Claude Code plugin that raises the quality bar for AI-assisted development. It
 
 AI coding tools produce working code fast. They also produce N+1 queries, swallowed errors, hardcoded secrets, inaccessible forms, 70KB lodash imports, `useEffect` for derived state, and hero sections that all look identical. This plugin catches those problems before they ship.
 
+![anti-slop dashboard](anti-slop-dashboard-overview.png)
+
 ## What it does
 
 The plugin loads rules during content generation that target documented AI failure patterns:
