@@ -1,16 +1,16 @@
 # anti-slop
 
-A Claude Code plugin that catches the actual problems with AI-generated code and text. Not the "oh no you can tell AI wrote this" problems — the security holes, the inaccessible UIs, the N+1 queries, the `eval()` calls, the 70KB lodash imports, and the fact that every AI-built landing page looks like the same purple gradient with Inter font and a three-column icon grid.
+A Claude Code plugin that scans for security vulnerabilities, accessibility failures, performance problems, and generic design defaults in AI-generated output.
 
 ![anti-slop dashboard](anti-slop-dashboard-overview.png)
 
 ## What it does
 
-Loads pattern-matching rules during content generation. The rules target failure modes that have been measured and documented across multiple studies — not vibes.
+Loads pattern-matching rules during content generation. The rules target failure modes documented in published research.
 
 On the **writing** side: vocabulary tells (words like "delve" show up 25-48x more often in AI text than human text per a 2024 Max Planck/Stanford study), sycophantic openers, structural cliches, filler phrases.
 
-On the **code** side: SQL injection, XSS, path traversal, command injection, hardcoded credentials, `eval()`, swallowed errors, premature abstractions, comment slop, N+1 queries, missing timeouts, full library imports, `useEffect` misuse, and a category I call "looks right but isn't" — shallow copy bugs, floating-point money, date/time footguns, async race conditions.
+On the **code** side: SQL injection, XSS, path traversal, command injection, hardcoded credentials, `eval()`, swallowed errors, premature abstractions, comment slop, N+1 queries, missing timeouts, full library imports, `useEffect` misuse, shallow copy bugs, floating-point money, date/time errors, async race conditions.
 
 On the **frontend** side: WCAG failures (AI code has 3-5x more accessibility violations per page than hand-written code — Deque 2024), missing states (empty, error, loading), the generic AI aesthetic, CSS z-index escalation, `!important` abuse, missing `prefers-reduced-motion`, hydration mismatches, and demo-ware that only handles the happy path.
 
@@ -33,13 +33,11 @@ The MCP scanner and the agent serve different purposes. The scanner is fast — 
 
 ## The numbers
 
-These aren't opinions. They're from published research:
-
 - AI-generated code has **2.74x more security vulnerabilities** than human-written code (CodeRabbit 2025). 100% of tested vibe-coded apps lacked CSRF protection (Escape.tech).
 - **70-80% of AI-generated UI fails WCAG AA** without explicit instructions (University of Michigan 2025).
 - AI-generated PRs contain **1.7x more issues**, 75% more logic errors, and 3x worse readability (CodeRabbit 2025).
-- Refactoring dropped from 25% of changed lines to **under 10%** in AI-assisted codebases (GitClear 2024). The models add code but don't clean up after themselves.
-- Adam Wathan (Tailwind creator) publicly apologized for making `bg-indigo-500` the demo default that trained every model on the internet.
+- Refactoring dropped from 25% of changed lines to **under 10%** in AI-assisted codebases (GitClear 2024).
+- Adam Wathan (Tailwind creator) apologized for `bg-indigo-500` being the demo default that trained every model.
 
 ## Installation
 
@@ -59,7 +57,7 @@ claude --plugin-dir /path/to/anti-slop
 
 ## Usage
 
-The skill activates on its own when you're writing, building, or editing. For manual review:
+The skill activates whenever you write, build, or edit code. For manual review:
 
 ```
 /slop-check                              # review last output
@@ -82,7 +80,7 @@ Drop a `.anti-slop/config.json` in your project if you need to allow specific wo
 
 ## Scope
 
-This targets web-centric code (Python, TypeScript, JavaScript, CSS) and general English prose. Coverage for Rust, Go, C/C++, mobile (SwiftUI, Jetpack Compose), and ML pipelines is limited. The principles still apply — specificity, economy, correctness — but the specific word lists and pattern matchers are tuned for web.
+Tuned for web-centric code (Python, TypeScript, JavaScript, CSS) and English prose. Limited coverage for Rust, Go, C/C++, mobile (SwiftUI, Jetpack Compose), and ML pipelines. The word lists and pattern matchers are web-focused; the underlying principles (specificity, economy, correctness) apply anywhere.
 
 ## License
 
