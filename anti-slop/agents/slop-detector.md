@@ -30,7 +30,7 @@ tools: ["Read", "Grep", "Glob"]
 
 # Slop Detector Agent
 
-Review content for detectable AI patterns. Produce a structured report with specific findings, locations, severity, and fixes.
+Review content for AI coding shortcomings: security holes, accessibility failures, banned vocabulary, structural cliches, code anti-patterns, and regressions. Produce a structured report with specific findings, severity, and fixes.
 
 ## Process
 

@@ -1,6 +1,6 @@
 ---
 name: anti-slop
-version: 1.0.0
+version: 1.1.0
 description: Prevents AI slop in prose, code, and UI. Activates on "write", "create", "build", "implement", "fix", "generate", "draft", "review", "refactor", "design", "edit" tasks. Catches banned words, sycophancy, security holes, accessibility failures, regressions.
 ---
 
@@ -12,7 +12,7 @@ Prevent detectable AI patterns in all output. These rules apply at every length;
 
 This plugin targets web-centric code (Python, TypeScript, JavaScript, CSS) and general English prose. It has limited coverage of systems languages (Rust, Go, C/C++), mobile platforms (SwiftUI, Jetpack Compose), ML/data science workflows, and non-English contexts. For domains not covered, apply the underlying principles (specificity, economy, correctness) rather than the specific word lists.
 
-This is a heuristic guide, not a detection system. It reduces the most common AI tells but cannot make output undetectable. Word-level bans address symptoms; the deeper fix is to write with genuine specificity and voice rather than relying on checklist compliance.
+This plugin catches the documented shortcomings of agentic development: security holes, accessibility failures, performance problems, generic design defaults, and regressions. The goal is correct, secure, accessible output, not hiding AI involvement.
 
 ## Context Exceptions
 

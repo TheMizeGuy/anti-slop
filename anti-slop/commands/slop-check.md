@@ -7,7 +7,7 @@ allowed-tools: Read, Grep, Glob, Agent, Bash(git diff:*), Bash(gh pr:*)
 
 # Slop Check
 
-Review content for detectable AI patterns and produce a scored report.
+Review content for AI coding shortcomings and produce a scored report.
 
 ## Context
 
