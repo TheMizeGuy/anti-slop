@@ -61,7 +61,7 @@ Run through the relevant checklist before finalizing output. These catch the mos
 
 - [ ] No unnecessary markdown headers? (Short responses don't need them)
 - [ ] No bold used for emphasis in running prose?
-- [ ] No emoji unless the user uses them?
+- [ ] No emoji anywhere (prose, code, commits, logs, UI strings, headings)?
 - [ ] Bullet points only for list-like content?
 - [ ] Formatting is minimal and functional?
 
@@ -75,6 +75,7 @@ Run through the relevant checklist before finalizing output. These catch the mos
 - [ ] Comments only explain *why*, not *what*?
 - [ ] No TODO comments without real plans (linked issues, specific dates)?
 - [ ] No apologetic comments ("simplified implementation, may need enhancement")?
+- [ ] No emoji in comments, variable names, or log output?
 - [ ] No banner/divider comments (ASCII-art section separators)?
 - [ ] No language-feature explanations ("Use a dict comprehension to...")?
 
@@ -229,3 +230,4 @@ If pressed for time, check at minimum:
 - [ ] In code: unnecessary abstractions for single-use cases?
 - [ ] In code: SQL injection, XSS, hardcoded secrets?
 - [ ] In UI: missing focus states, missing alt text, poor contrast?
+- [ ] Any emoji in output (prose, code, commits, logs)?

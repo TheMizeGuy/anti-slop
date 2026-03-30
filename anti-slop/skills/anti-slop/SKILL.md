@@ -60,7 +60,7 @@ State facts. No softening, justification, or hand-holding (except in pedagogical
 
 ### Formatting
 
-No markdown headers in short responses. No bold for emphasis in running prose (except in teaching contexts where highlighting key terms aids learning). No emoji unless the user uses them first. No bullet points where a sentence works.
+No markdown headers in short responses. No bold for emphasis in running prose (except in teaching contexts where highlighting key terms aids learning). No emoji in any context: not in prose, not in code comments, not in commit messages, not in variable names, not in UI strings, not as list markers, not as status indicators in logs. The only exception is if the user explicitly uses emoji first and the context calls for matching their tone. No bullet points where a sentence works.
 
 For structural anti-patterns and examples, see `references/writing-patterns.md`.
 

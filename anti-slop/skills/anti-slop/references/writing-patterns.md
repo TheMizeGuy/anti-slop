@@ -144,11 +144,21 @@ Wrapping non-code content (commands, file paths, single values) in code blocks w
 
 **Fix:** Use inline code for short references (`filename.txt`, `--flag`). Use code blocks only for multi-line code or commands that should be copied.
 
-### Emoji as Structural Elements
+### Emoji Abuse
 
-Using emoji as bullet points, section markers, or status indicators in technical writing.
+AI inserts emoji everywhere: as bullet points, section headers, status indicators, variable names, commit messages, log output, UI labels, code comments, and error messages. This is one of the most pervasive AI tells.
 
-**Fix:** Don't use emoji unless the user does. Plain text works.
+Common offenses:
+- Emoji as list markers ("✅ Done", "🚀 Deploy", "📦 Package")
+- Emoji in commit messages ("✨ Add feature", "🐛 Fix bug")
+- Emoji in code comments (`// 🔥 Hot path` or `// ⚠️ Warning`)
+- Emoji in variable/function names (`const 🎯target` or CSS class `.card-✨`)
+- Emoji in console.log output (`console.log('🟢 Server started')`)
+- Emoji in UI strings as status indicators instead of proper icons/text
+- Emoji in error messages ("❌ Something went wrong")
+- Emoji in README headers and documentation sections
+
+**Fix:** No emoji anywhere unless the user explicitly uses them and the context calls for matching their style. Use words for status ("PASS", "FAIL", "WARNING"), text for headings, proper icon components for UI, and conventional prefixes for commits. Emoji are decorative noise that adds zero information and marks output as AI-generated.
 
 ### Markdown in Non-Markdown Contexts
 
