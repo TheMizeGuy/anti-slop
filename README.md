@@ -84,14 +84,6 @@ The skill activates automatically on content-producing tasks (writing, coding, d
 /slop-check pr                           # review current PR
 ```
 
-## How it was built
-
-1. Research across 100+ sources (Wikipedia's "Signs of AI writing" catalog, GitHub anti-slop projects, GitClear/CodeRabbit/CMU/METR code quality studies, academic sycophancy research, OWASP guidelines, WCAG 2.2, developer community discussions, AI web builder failure analyses)
-2. 10 parallel research agents covering CSS/layout, React/components, accessibility, visual design, UX/interaction, performance, HTML semantics, Claude-specific patterns, AI builder failures, and design systems
-3. Plugin built with progressive disclosure (lean SKILL.md, detailed reference files)
-4. 50+ adversarial review perspectives across 4 review cycles, including specialists in Python, TypeScript, CSS, accessibility, security, backend architecture, information architecture, prompt engineering, game theory, sociolinguistics, epistemology, and adversarial ML
-5. CodeRabbit code review on the final plugin
-
 ## Philosophy
 
 This plugin does not try to make AI output undetectable. It tries to make it good.
