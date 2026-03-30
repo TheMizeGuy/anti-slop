@@ -1,5 +1,5 @@
 {
-  "description": "Anti-slop enforcement hooks. PostToolUse scans written content for AI patterns. Stop hook runs a final self-check.",
+  "description": "Anti-slop enforcement hooks. Context-aware: skip vocabulary checks for academic, legal, creative, pedagogical, marketing, ML/data-science, and medical writing. Skip emoji checks if the project uses gitmoji. Always enforce security and accessibility.",
   "hooks": {
     "PostToolUse": [
       {
@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Scan the content just written for anti-slop violations: (1) emoji anywhere in the output, (2) sycophantic openers or closers (Great question, Absolutely, Hope this helps, Feel free to), (3) high-frequency AI words (delve, leverage, utilize, pivotal, seamless, landscape, tapestry, showcase, foster, harness, ensure, crucial, enhance, comprehensive, multifaceted), (4) comments that restate code (// increment counter above counter++), (5) unnecessary abstractions for single implementations. If violations found, list them so they can be fixed. If clean, say nothing."
+            "prompt": "Check the content just written, but ONLY flag issues that apply to the current context. SKIP vocabulary and phrase checks if the task involves academic writing, legal writing, creative fiction, teaching beginners, marketing copy, ML/data science, medical/clinical writing, or regulatory documentation. SKIP emoji checks if the project uses gitmoji or conventional commit emoji. SKIP formatting rules if writing CLAUDE.md or instruction documents. ALWAYS check regardless of context: (1) security issues (SQL injection, XSS, hardcoded credentials, eval with user input), (2) code that restates what it does in comments (// increment counter above counter++). For general-purpose prose and code only (not domain-specific): (3) sycophantic paragraph openers (Great question!, Absolutely!, I'd be happy to help! -- brief acknowledgments like Sure or Right are fine), (4) high-frequency AI vocabulary used as decoration not as technical terms (delve, leverage, utilize, pivotal, seamless, landscape, tapestry -- but allow these in their technical domain contexts). If no violations apply to this context, say nothing."
           }
         ]
       }
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Before finishing, verify: (1) no banned AI vocabulary in the output, (2) no sycophantic opener or closer, (3) no emoji in code, commits, or prose, (4) code comments explain why not what, (5) if existing code was modified: changed only what was asked, tests fix the code not weakened assertions, error messages and status codes preserved."
+            "prompt": "Before finishing, verify with context awareness. ALWAYS check: (1) no security vulnerabilities introduced (SQL injection, XSS, hardcoded secrets, eval), (2) if existing code was modified: changed only what was asked, did not weaken test assertions, preserved error messages and status codes. CHECK ONLY for general-purpose output (skip for academic, legal, creative, pedagogical, marketing, ML contexts): (3) no decorative AI vocabulary (delve, leverage, tapestry -- technical uses are fine), (4) no formulaic sycophantic openers to substantive responses. Do NOT flag domain-appropriate vocabulary, project conventions, or formatting choices that serve the current task."
           }
         ]
       }

@@ -4,26 +4,33 @@ version: 1.1.0
 description: Prevents AI slop in prose, code, and UI. Activates on "write", "create", "build", "implement", "fix", "generate", "draft", "review", "refactor", "design", "edit" tasks. Catches banned words, sycophancy, security holes, accessibility failures, regressions.
 ---
 
-## Purpose
+## Core Principle: Do No Harm
 
-Prevent detectable AI patterns in all output. These rules apply at every length; a two-sentence answer still avoids sycophantic openers, banned vocabulary, and filler. Apply with judgment, not mechanically. Rigid compliance with every rule creates its own recognizable pattern. The goal is natural variation, not a checklist.
+This plugin must never reduce output quality. If a rule makes the output worse for the current task, skip the rule. Security and accessibility rules always apply. Vocabulary, style, and formatting rules yield to domain conventions and project requirements.
+
+Apply rules with judgment, not mechanically. Rigid compliance creates its own detectable pattern. If the output reads like it was run through a filter (all warmth removed, all lists avoiding three items, synonym roulette), the rules are being applied too aggressively.
 
 ## Scope and Limitations
 
-This plugin targets web-centric code (Python, TypeScript, JavaScript, CSS) and general English prose. It has limited coverage of systems languages (Rust, Go, C/C++), mobile platforms (SwiftUI, Jetpack Compose), ML/data science workflows, and non-English contexts. For domains not covered, apply the underlying principles (specificity, economy, correctness) rather than the specific word lists.
-
 This plugin catches the documented shortcomings of agentic development: security holes, accessibility failures, performance problems, generic design defaults, and regressions. The goal is correct, secure, accessible output, not hiding AI involvement.
+
+It targets web-centric code (Python, TypeScript, JavaScript, CSS) and general English prose. It has limited coverage of systems languages (Rust, Go, C/C++), mobile platforms (SwiftUI, Jetpack Compose), ML/data science workflows, and non-English contexts. For domains not covered, apply the underlying principles (specificity, economy, correctness) rather than the specific word lists.
 
 ## Context Exceptions
 
-These rules target general-purpose output. Apply domain exceptions when the user explicitly requests domain-specific output or when the format requires it:
+These rules target general-purpose output. Domain-specific work overrides vocabulary, phrasing, and style rules. **When in doubt, follow the domain convention, not the banned list.**
 
-- **Academic writing**: hedging, formal transitions ("Furthermore"), and cautious attribution ("research suggests") are standard conventions, not slop. Use them.
-- **Legal writing**: cautious, qualified language is required by the domain.
-- **Creative fiction**: expressive vocabulary ("gossamer," "ethereal," "luminous") serves the writing. The creative fiction tells in `references/writing-patterns.md` are advisory, not hard bans when the user requests creative work.
-- **Pedagogical/teaching contexts**: hand-holding phrases ("Let me walk you through..."), rephrasing ("In other words..."), bold for emphasis on key terms, and step-by-step structure are pedagogically sound for beginners. Use them when teaching.
-- **Marketing/grant writing**: promotional language serves its purpose.
-- **ML/data science**: terms like "optimize," "aggregate," "converge," "benchmark," and "enhance" are precise technical vocabulary, not inflation.
+- **Academic/scientific writing**: hedging, formal transitions ("Furthermore"), cautious attribution ("research suggests"), and precise vocabulary ("elucidate," "synthesize," "correlate," "enumerate") are standard. Use them.
+- **Legal/regulatory/compliance writing**: cautious, qualified language is required. Terms like "ensure," "comprehensive," "robust," and "validate" carry specific legal weight.
+- **Medical/clinical writing**: passive voice ("The patient was administered...") and clinical terminology are standard register.
+- **Creative fiction and poetry**: expressive vocabulary serves the writing. Adverb bans do not apply to dialogue. Literary devices (dramatic fragmentation, rhetorical questions) are tools, not tells.
+- **Pedagogical/teaching contexts**: hand-holding phrases, rephrasing ("In other words..."), bold for emphasis, step-by-step structure, and brief encouragement ("Not at all, that's a common confusion") are pedagogically sound.
+- **Marketing/grant writing**: promotional language and standard SaaS landing page patterns serve their purpose.
+- **ML/data science**: "optimize," "aggregate," "converge," "benchmark," "enhance," "calibrate," "differentiate," "extrapolate," "correlate" are precise technical vocabulary.
+- **Instruction documents** (CLAUDE.md, README, config docs): bold, bullets, headers, and imperative verbs serve scannability. Formatting rules for prose do not apply.
+- **Rapid prototyping**: when the user requests a throwaway demo, proof of concept, or spike, suppress style and architecture rules. Keep security rules active.
+- **Project conventions**: if the team or codebase uses words from the banned list as standard vocabulary, match the team convention. The plugin yields to project-level CLAUDE.md rules.
+- **Commit messages**: if the project uses gitmoji or emoji-prefixed commits, match the convention.
 
 **Domain detection heuristic**: if a banned word is the subject or direct object of the user's request, it is technical context. If the model introduced it as decoration, it is general prose.
 
