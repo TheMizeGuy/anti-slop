@@ -1,6 +1,6 @@
 {
   "name": "anti-slop",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "description": "Catches and blocks detectable AI patterns in prose, code, and UI output across all projects.",
   "author": {
     "name": "TheMizeGuy"
