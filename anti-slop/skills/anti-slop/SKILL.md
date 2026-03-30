@@ -1,6 +1,7 @@
 ---
 name: anti-slop
-description: This skill should be used whenever the assistant produces content. It prevents detectable AI patterns in prose, code, and UI output. This skill should be used when the user asks to "write", "create", "build", "implement", "fix", "add", "generate", "draft", "explain", "document", "review", "refactor", "rewrite", "improve", "update", "summarize", "describe", "design", or "edit" anything. Less relevant for one-word answers, pure math, or file operations that produce no prose.
+version: 1.0.0
+description: Prevents AI slop in prose, code, and UI. Activates on "write", "create", "build", "implement", "fix", "generate", "draft", "review", "refactor", "design", "edit" tasks. Catches banned words, sycophancy, security holes, accessibility failures, regressions.
 ---
 
 ## Purpose

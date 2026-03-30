@@ -1,0 +1,27 @@
+{
+  "description": "Anti-slop enforcement hooks. PostToolUse scans written content for AI patterns. Stop hook runs a final self-check.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Scan the content just written for anti-slop violations: (1) emoji anywhere in the output, (2) sycophantic openers or closers (Great question, Absolutely, Hope this helps, Feel free to), (3) high-frequency AI words (delve, leverage, utilize, pivotal, seamless, landscape, tapestry, showcase, foster, harness, ensure, crucial, enhance, comprehensive, multifaceted), (4) comments that restate code (// increment counter above counter++), (5) unnecessary abstractions for single implementations. If violations found, list them so they can be fixed. If clean, say nothing."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Before finishing, verify: (1) no banned AI vocabulary in the output, (2) no sycophantic opener or closer, (3) no emoji in code, commits, or prose, (4) code comments explain why not what, (5) if existing code was modified: changed only what was asked, tests fix the code not weakened assertions, error messages and status codes preserved."
+          }
+        ]
+      }
+    ]
+  }
+}

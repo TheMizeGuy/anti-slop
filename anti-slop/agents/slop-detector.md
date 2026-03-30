@@ -1,8 +1,31 @@
 ---
 name: slop-detector
-description: Deep analysis agent that reviews text, code, or design output for AI slop patterns. Use when thorough slop detection is needed on existing content, pull requests, or large outputs. Reviews against the full anti-slop reference catalog.
+description: |
+  Deep analysis agent for reviewing text, code, or design output against AI slop patterns. Use when thorough detection is needed on existing content, pull requests, or large outputs.
+
+  <example>
+  Context: User has generated code or prose and wants a quality review.
+  user: "Check this for AI patterns"
+  assistant: "I'll dispatch the slop-detector agent to review against the full anti-slop reference catalog."
+  <commentary>Deep scored review needed for existing output.</commentary>
+  </example>
+
+  <example>
+  Context: User wants to review a pull request before merging.
+  user: "/slop-check pr"
+  assistant: "Running the slop-detector agent against the current PR diff."
+  <commentary>PR review is a key use case for the deep analysis agent.</commentary>
+  </example>
+
+  <example>
+  Context: User wants to review a specific file for quality.
+  user: "/slop-check src/components/Header.tsx"
+  assistant: "Dispatching slop-detector to review Header.tsx for AI patterns."
+  <commentary>File-level review with full scoring.</commentary>
+  </example>
 model: inherit
 color: red
+tools: ["Read", "Grep", "Glob"]
 ---
 
 # Slop Detector Agent

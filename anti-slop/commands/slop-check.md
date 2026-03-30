@@ -1,16 +1,21 @@
 ---
 name: slop-check
-description: Review recent output or specified files for AI slop patterns. Produces a scored report with specific violations and fixes.
-args: "[target]"
+description: Review output or files for AI slop patterns with scored report.
+argument-hint: "[target]"
+allowed-tools: Read, Grep, Glob, Agent, Bash(git diff:*), Bash(gh pr:*)
 ---
 
 # Slop Check
 
 Review content for detectable AI patterns and produce a scored report.
 
+## Context
+
+- Current branch: !`git branch --show-current 2>/dev/null || echo "not a git repo"`
+
 ## What to Review
 
-Determine the target based on the user's input:
+Determine the target from $ARGUMENTS:
 - If a file path is provided, review that file
 - If "last response" or similar, review the most recent output
 - If "diff" or "changes", run `git diff` and review unstaged changes

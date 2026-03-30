@@ -1,11 +1,12 @@
 {
   "name": "anti-slop",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Catches and blocks detectable AI patterns in prose, code, and UI output across all projects.",
   "author": {
     "name": "TheMizeGuy"
   },
+  "homepage": "https://github.com/TheMizeGuy/anti-slop",
   "repository": "https://github.com/TheMizeGuy/anti-slop",
   "license": "MIT",
-  "keywords": ["quality", "writing", "code-quality", "anti-slop", "clarity", "style", "frontend", "design", "ui"]
+  "keywords": ["quality", "writing", "code-quality", "anti-slop", "clarity", "style", "frontend", "design", "ui", "accessibility", "security", "regression"]
 }
