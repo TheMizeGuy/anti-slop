@@ -5,9 +5,13 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { createServer } from "http";
+import { createConnection } from "net";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { join, dirname, extname } from "path";
+import { join, dirname, extname, basename } from "path";
 import { fileURLToPath } from "url";
+import { createHash } from "crypto";
+import { execFile } from "child_process";
+import { homedir } from "os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -75,7 +79,79 @@ const PROSE_EXTENSIONS = new Set([".md", ".mdx", ".txt", ".rst"]);
 const CODE_EXTENSIONS = new Set([".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py", ".rb", ".go", ".rs", ".java", ".cs", ".php"]);
 const STYLE_EXTENSIONS = new Set([".css", ".scss", ".less", ".html", ".htm", ".jsx", ".tsx", ".vue", ".svelte"]);
 
-// ── Data storage ──
+// ── Multi-project support ──
+const PROJECT_PATH = process.cwd();
+const PROJECT_NAME = basename(PROJECT_PATH);
+const REGISTRY_DIR = join(homedir(), ".anti-slop");
+const REGISTRY_FILE = join(REGISTRY_DIR, "registry.json");
+let DASHBOARD_PORT = null;
+
+function getPreferredPort() {
+  const hash = createHash("md5").update(PROJECT_PATH).digest("hex");
+  return 7847 + (parseInt(hash.substring(0, 8), 16) % 1000);
+}
+
+function checkPort(port) {
+  return new Promise((resolve) => {
+    let resolved = false;
+    const done = (result) => { if (!resolved) { resolved = true; clearTimeout(timer); resolve(result); } };
+    const socket = createConnection({ port, host: "127.0.0.1" });
+    socket.on("connect", () => { socket.destroy(); done(true); });
+    socket.on("error", () => done(false));
+    const timer = setTimeout(() => { socket.destroy(); done(false); }, 500);
+  });
+}
+
+function loadRegistry() {
+  if (!existsSync(REGISTRY_DIR)) mkdirSync(REGISTRY_DIR, { recursive: true });
+  if (!existsSync(REGISTRY_FILE)) return {};
+  try { return JSON.parse(readFileSync(REGISTRY_FILE, "utf8")); } catch { return {}; }
+}
+
+function saveRegistry(registry) {
+  if (!existsSync(REGISTRY_DIR)) mkdirSync(REGISTRY_DIR, { recursive: true });
+  writeFileSync(REGISTRY_FILE, JSON.stringify(registry, null, 2));
+}
+
+function registerProject(port) {
+  const registry = loadRegistry();
+  registry[PROJECT_PATH] = { port, name: PROJECT_NAME, started: new Date().toISOString() };
+  saveRegistry(registry);
+}
+
+function unregisterProject() {
+  try {
+    const registry = loadRegistry();
+    delete registry[PROJECT_PATH];
+    saveRegistry(registry);
+  } catch {
+    // Best-effort cleanup on exit
+  }
+}
+
+async function cleanStaleEntries() {
+  const registry = loadRegistry();
+  const entries = Object.entries(registry);
+  if (entries.length === 0) return;
+
+  const results = await Promise.all(
+    entries.map(async ([path, info]) => {
+      const alive = await checkPort(info.port);
+      return [path, alive];
+    })
+  );
+
+  let changed = false;
+  for (const [path, alive] of results) {
+    if (!alive) {
+      delete registry[path];
+      changed = true;
+    }
+  }
+  if (changed) saveRegistry(registry);
+}
+
+// ── Per-project data storage ──
 const DATA_DIR = join(process.cwd(), ".anti-slop");
 const LOG_FILE = join(DATA_DIR, "scan-log.json");
 const SCORE_FILE = join(DATA_DIR, "scores.json");
@@ -92,7 +168,7 @@ function loadLog() {
 
 function saveLog(log) {
   ensureDataDir();
-  const trimmed = log.slice(-500); // keep last 500 entries
+  const trimmed = log.slice(-500);
   writeFileSync(LOG_FILE, JSON.stringify(trimmed, null, 2));
 }
 
@@ -106,7 +182,7 @@ function saveScore(score) {
   ensureDataDir();
   const scores = loadScores();
   scores.push({ ...score, timestamp: new Date().toISOString() });
-  const trimmed = scores.slice(-100); // keep last 100 scores
+  const trimmed = scores.slice(-100);
   writeFileSync(SCORE_FILE, JSON.stringify(trimmed, null, 2));
 }
 
@@ -119,7 +195,6 @@ function scanContent(content, filePath) {
   const isStyle = STYLE_EXTENSIONS.has(ext) || isCode;
   const lines = content.split("\n");
 
-  // Banned words (prose and comments, not inside code strings/variable names)
   if (isProse || isCode) {
     const textToScan = isProse ? content : lines.filter(l => l.match(/^\s*\/\/|^\s*#|^\s*\*|^\s*\/\*/) || isProse).join("\n");
     for (const word of BANNED_WORDS) {
@@ -137,7 +212,6 @@ function scanContent(content, filePath) {
     }
   }
 
-  // Banned phrases
   if (isProse || isCode) {
     const lower = content.toLowerCase();
     for (const phrase of BANNED_PHRASES) {
@@ -155,7 +229,6 @@ function scanContent(content, filePath) {
     }
   }
 
-  // Emoji detection (all file types)
   const emojiMatches = content.match(EMOJI_REGEX);
   if (emojiMatches) {
     violations.push({
@@ -166,7 +239,6 @@ function scanContent(content, filePath) {
     });
   }
 
-  // Design patterns (style files and JSX/TSX)
   if (isStyle) {
     for (const pat of DESIGN_PATTERNS) {
       const matches = content.match(pat.pattern);
@@ -183,7 +255,6 @@ function scanContent(content, filePath) {
     }
   }
 
-  // Code patterns
   if (isCode) {
     for (const pat of CODE_PATTERNS) {
       const matches = content.match(pat.pattern);
@@ -215,7 +286,7 @@ function calculateScore(violations) {
 }
 
 // ── Web Dashboard ──
-function startDashboard(port = 7847) {
+function startDashboard(port) {
   const server = createServer((req, res) => {
     if (req.url === "/api/log") {
       res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
@@ -227,6 +298,16 @@ function startDashboard(port = 7847) {
       res.end(JSON.stringify(loadScores()));
       return;
     }
+    if (req.url === "/api/registry") {
+      res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+      res.end(JSON.stringify(loadRegistry()));
+      return;
+    }
+    if (req.url === "/api/project") {
+      res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+      res.end(JSON.stringify({ path: PROJECT_PATH, name: PROJECT_NAME, port }));
+      return;
+    }
 
     res.writeHead(200, { "Content-Type": "text/html" });
     res.end(`<!DOCTYPE html>
@@ -234,11 +315,11 @@ function startDashboard(port = 7847) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>anti-slop dashboard</title>
+<title>anti-slop</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace; background: #0a0a0a; color: #e0e0e0; padding: 24px; }
-  h1 { font-size: 20px; font-weight: 600; margin-bottom: 24px; color: #fff; }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 8px; color: #fff; }
   h2 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
   .card { background: #141414; border: 1px solid #222; border-radius: 8px; padding: 20px; }
@@ -265,10 +346,22 @@ function startDashboard(port = 7847) {
   .stat { text-align: center; }
   .stat-value { font-size: 28px; font-weight: 700; color: #fff; }
   .stat-label { font-size: 11px; color: #666; }
+  .project-nav { display: flex; gap: 4px; margin-bottom: 20px; padding: 4px; background: #111; border-radius: 6px; border: 1px solid #1a1a1a; overflow-x: auto; }
+  .project-tab { padding: 6px 14px; border-radius: 4px; font-size: 12px; color: #666; cursor: pointer; white-space: nowrap; text-decoration: none; transition: color 0.15s, background 0.15s; }
+  .project-tab:hover { color: #aaa; background: #1a1a1a; }
+  .project-tab.active { color: #e0e0e0; background: #222; }
+  .header-row { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
+  .project-name { color: #555; font-size: 14px; font-weight: 400; }
 </style>
 </head>
 <body>
-<h1>anti-slop <span style="color:#555">dashboard</span> <span class="refresh" onclick="load()">refresh</span></h1>
+<div class="header-row">
+  <h1>anti-slop <span style="color:#555">dashboard</span></h1>
+  <span class="project-name" id="project-name-label"></span>
+  <span class="refresh" onclick="load()">refresh</span>
+</div>
+
+<div id="project-nav" class="project-nav" style="display:none"></div>
 
 <div class="stats" id="stats"></div>
 
@@ -290,64 +383,107 @@ function startDashboard(port = 7847) {
     <thead><tr><th>Time</th><th>File</th><th>Type</th><th>Description</th><th>Severity</th></tr></thead>
     <tbody id="log-body"></tbody>
   </table>
-  <div id="empty-log" class="empty" style="display:none">No violations recorded yet. Write some code and the scanner will catch issues automatically.</div>
+  <div id="empty-log" class="empty" style="display:none">No violations recorded yet. Run a scan and results will appear here.</div>
 </div>
 
 <script>
+var CURRENT_PORT = ${port};
+
+function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+async function loadProjects() {
+  try {
+    var res = await fetch('/api/registry');
+    var registry = await res.json();
+    var projects = Object.entries(registry);
+    var nav = document.getElementById('project-nav');
+    if (projects.length <= 1) { nav.style.display = 'none'; return; }
+    nav.style.display = 'flex';
+    nav.innerHTML = '';
+    projects.forEach(function(entry) {
+      var info = entry[1];
+      var a = document.createElement('a');
+      a.className = 'project-tab' + (info.port === CURRENT_PORT ? ' active' : '');
+      a.href = 'http://127.0.0.1:' + parseInt(info.port, 10);
+      a.textContent = info.name;
+      nav.appendChild(a);
+    });
+  } catch(e) {
+    document.getElementById('project-nav').style.display = 'none';
+  }
+}
+
 async function load() {
-  const [logRes, scoresRes] = await Promise.all([
-    fetch('/api/log').then(r => r.json()).catch(() => []),
-    fetch('/api/scores').then(r => r.json()).catch(() => [])
-  ]);
+  var logRes = [], scoresRes = [];
+  try {
+    var responses = await Promise.all([
+      fetch('/api/log').then(function(r) { return r.json(); }),
+      fetch('/api/scores').then(function(r) { return r.json(); })
+    ]);
+    logRes = responses[0] || [];
+    scoresRes = responses[1] || [];
+  } catch(e) { }
 
   // Stats
-  const statsEl = document.getElementById('stats');
-  const totalScans = scoresRes.length;
-  const totalViolations = logRes.length;
-  const avgScore = totalScans ? Math.round(scoresRes.reduce((s, e) => s + e.score, 0) / totalScans) : 0;
-  const highSev = logRes.filter(v => v.severity === 'high').length;
+  var statsEl = document.getElementById('stats');
+  var totalScans = scoresRes.length;
+  var totalViolations = logRes.length;
+  var avgScore = totalScans ? Math.round(scoresRes.reduce(function(s, e) { return s + e.score; }, 0) / totalScans) : 0;
+  var highSev = logRes.filter(function(v) { return v.severity === 'high'; }).length;
   statsEl.innerHTML = [
     { v: totalScans, l: 'Total Scans' },
     { v: totalViolations, l: 'Violations Found' },
     { v: highSev, l: 'High Severity' },
     { v: avgScore + '/50', l: 'Avg Score' },
-  ].map(s => '<div class="stat"><div class="stat-value">' + s.v + '</div><div class="stat-label">' + s.l + '</div></div>').join('');
+  ].map(function(s) { return '<div class="stat"><div class="stat-value">' + s.v + '</div><div class="stat-label">' + s.l + '</div></div>'; }).join('');
 
   // Current score
-  const scoreEl = document.getElementById('current-score');
-  const timeEl = document.getElementById('score-time');
+  var scoreEl = document.getElementById('current-score');
+  var timeEl = document.getElementById('score-time');
   if (scoresRes.length) {
-    const last = scoresRes[scoresRes.length - 1];
+    var last = scoresRes[scoresRes.length - 1];
     scoreEl.innerHTML = last.score + '<span class="total">/50</span>';
     scoreEl.style.color = last.score >= 42 ? '#22c55e' : last.score >= 30 ? '#eab308' : '#ef4444';
     timeEl.textContent = new Date(last.timestamp).toLocaleString() + ' - ' + (last.file || 'scan');
   }
 
   // Chart
-  const chartEl = document.getElementById('chart');
-  const recent = scoresRes.slice(-50);
-  chartEl.innerHTML = recent.map(s => {
-    const h = Math.max(4, (s.score / 50) * 120);
-    const cls = s.score >= 42 ? 'good' : s.score >= 30 ? 'ok' : 'bad';
+  var chartEl = document.getElementById('chart');
+  var recent = scoresRes.slice(-50);
+  chartEl.innerHTML = recent.map(function(s) {
+    var h = Math.max(4, (s.score / 50) * 120);
+    var cls = s.score >= 42 ? 'good' : s.score >= 30 ? 'ok' : 'bad';
     return '<div class="bar ' + cls + '" style="height:' + h + 'px" title="' + s.score + '/50 - ' + new Date(s.timestamp).toLocaleTimeString() + '"></div>';
   }).join('');
 
   // Log
-  const tbody = document.getElementById('log-body');
-  const emptyEl = document.getElementById('empty-log');
+  var tbody = document.getElementById('log-body');
+  var emptyEl = document.getElementById('empty-log');
   if (!logRes.length) {
     tbody.innerHTML = '';
     emptyEl.style.display = 'block';
   } else {
     emptyEl.style.display = 'none';
-    tbody.innerHTML = logRes.slice(-50).reverse().map(v =>
-      '<tr><td>' + new Date(v.timestamp).toLocaleTimeString() + '</td>' +
-      '<td>' + (v.file || '-').split('/').pop().split('\\\\').pop() + '</td>' +
-      '<td><span class="type-badge">' + v.type + '</span></td>' +
-      '<td>' + v.desc + '</td>' +
-      '<td class="sev-' + v.severity + '">' + v.severity + '</td></tr>'
-    ).join('');
+    tbody.innerHTML = logRes.slice(-50).reverse().map(function(v) {
+      var fname = esc((v.file || '-').split('/').pop().split('\\\\').pop());
+      var sev = esc(v.severity);
+      return '<tr><td>' + esc(new Date(v.timestamp).toLocaleTimeString()) + '</td>' +
+        '<td>' + fname + '</td>' +
+        '<td><span class="type-badge">' + esc(v.type) + '</span></td>' +
+        '<td>' + esc(v.desc) + '</td>' +
+        '<td class="sev-' + sev + '">' + sev + '</td></tr>';
+    }).join('');
   }
+
+  loadProjects();
+
+  // Populate project name from API (avoids server-side HTML interpolation)
+  try {
+    var projRes = await fetch('/api/project');
+    var projData = await projRes.json();
+    document.getElementById('project-name-label').textContent = projData.name;
+    document.title = 'anti-slop | ' + projData.name;
+  } catch(e) {}
 }
 load();
 setInterval(load, 5000);
@@ -356,16 +492,74 @@ setInterval(load, 5000);
 </html>`);
   });
 
-  server.listen(port, "127.0.0.1", () => {
-    // Silent start - no console output to avoid polluting MCP stdio
+  return new Promise((resolve, reject) => {
+    server.on("error", (err) => reject(err));
+    server.listen(port, "127.0.0.1", () => {
+      server.unref();
+      resolve(server);
+    });
   });
+}
 
-  return server;
+// ── Dashboard lifecycle ──
+async function startDashboardIfNeeded() {
+  await cleanStaleEntries();
+
+  const registry = loadRegistry();
+
+  // Already running for this project?
+  if (registry[PROJECT_PATH]) {
+    const alive = await checkPort(registry[PROJECT_PATH].port);
+    if (alive) {
+      DASHBOARD_PORT = registry[PROJECT_PATH].port;
+      return; // Another session already serves the dashboard
+    }
+  }
+
+  // Find available port and start dashboard (retry on EADDRINUSE)
+  const preferred = getPreferredPort();
+  let port = null;
+  for (let i = 0; i < 100; i++) {
+    const candidate = preferred + i;
+    const inUse = await checkPort(candidate);
+    if (inUse) continue;
+    try {
+      await startDashboard(candidate);
+      port = candidate;
+      break;
+    } catch (err) {
+      if (err.code !== "EADDRINUSE") break; // unexpected error, stop trying
+    }
+  }
+
+  if (port === null) return; // no port available, skip dashboard
+
+  DASHBOARD_PORT = port;
+  registerProject(port);
+
+  // Open browser - port is a validated integer from internal hash, not user input
+  const dashboardUrl = "http://127.0.0.1:" + String(port);
+  if (process.platform === "win32") {
+    execFile("cmd", ["/c", "start", "", dashboardUrl], () => {});
+  } else if (process.platform === "darwin") {
+    execFile("open", [dashboardUrl], () => {});
+  } else {
+    execFile("xdg-open", [dashboardUrl], () => {});
+  }
+
+  // Cleanup on exit
+  const cleanup = () => unregisterProject();
+  process.on("exit", cleanup);
+  process.on("SIGINT", () => { cleanup(); process.exit(0); });
+  process.on("SIGTERM", () => { cleanup(); process.exit(0); });
+
+  // Periodically clean stale entries so the nav stays accurate
+  setInterval(() => cleanStaleEntries().catch(() => {}), 30000).unref();
 }
 
 // ── MCP Server ──
 const mcpServer = new Server(
-  { name: "anti-slop-scanner", version: "1.0.0" },
+  { name: "anti-slop-scanner", version: "1.1.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -415,7 +609,6 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
     const violations = scanContent(content, filePath);
     const score = calculateScore(violations);
 
-    // Log violations
     if (violations.length > 0) {
       const log = loadLog();
       for (const v of violations) {
@@ -424,11 +617,10 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
       saveLog(log);
     }
 
-    // Save score
     saveScore({ score, file: filePath, violations: violations.length });
 
     if (violations.length === 0) {
-      return { content: [{ type: "text", text: "" }] }; // Silent when clean
+      return { content: [{ type: "text", text: "" }] };
     }
 
     const report = violations.map(v => `[${v.severity.toUpperCase()}] ${v.desc}`).join("\n");
@@ -441,9 +633,9 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   if (name === "get_dashboard_url") {
-    return {
-      content: [{ type: "text", text: "Dashboard: http://127.0.0.1:7847" }],
-    };
+    const port = DASHBOARD_PORT || loadRegistry()[PROJECT_PATH]?.port;
+    if (!port) return { content: [{ type: "text", text: "Dashboard not started." }] };
+    return { content: [{ type: "text", text: `Dashboard: http://127.0.0.1:${port}` }] };
   }
 
   if (name === "get_score_history") {
@@ -460,7 +652,10 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 // ── Start ──
-startDashboard(7847);
+async function main() {
+  await startDashboardIfNeeded();
+  const transport = new StdioServerTransport();
+  await mcpServer.connect(transport);
+}
 
-const transport = new StdioServerTransport();
-await mcpServer.connect(transport);
+main();
