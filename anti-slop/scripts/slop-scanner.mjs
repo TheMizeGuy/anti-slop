@@ -92,6 +92,7 @@ function getPreferredPort() {
 }
 
 function checkPort(port) {
+  if (!port || typeof port !== "number") return Promise.resolve(false);
   return new Promise((resolve) => {
     let resolved = false;
     const done = (result) => { if (!resolved) { resolved = true; clearTimeout(timer); resolve(result); } };
