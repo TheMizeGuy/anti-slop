@@ -1,0 +1,12 @@
+{
+  "name": "local-plugins",
+  "owner": {
+    "name": "TheMizeGuy"
+  },
+  "plugins": [
+    {
+      "name": "anti-slop",
+      "source": "."
+    }
+  ]
+}
