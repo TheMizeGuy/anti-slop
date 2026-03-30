@@ -1,12 +1,17 @@
 {
-  "name": "local-plugins",
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "anti-slop",
+  "description": "Claude Code plugin that catches and blocks detectable AI patterns in prose, code, and UI output",
   "owner": {
     "name": "TheMizeGuy"
   },
   "plugins": [
     {
       "name": "anti-slop",
-      "source": "."
+      "description": "Catches and blocks detectable AI patterns in prose, code, and UI output across all projects.",
+      "source": "./anti-slop",
+      "category": "development",
+      "homepage": "https://github.com/TheMizeGuy/anti-slop"
     }
   ]
 }
