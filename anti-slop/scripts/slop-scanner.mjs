@@ -387,6 +387,14 @@ function startDashboard(port) {
   <div id="empty-log" class="empty" style="display:none">No violations recorded yet. Run a scan and results will appear here.</div>
 </div>
 
+<div class="card" id="overview-card" style="display:none;margin-top:24px">
+  <h2>All Projects</h2>
+  <table>
+    <thead><tr><th>Project</th><th>Score</th><th>Scans</th><th>Violations</th><th>Last Scan</th><th></th></tr></thead>
+    <tbody id="overview-body"></tbody>
+  </table>
+</div>
+
 <script>
 var CURRENT_PORT = ${port};
 
@@ -411,6 +419,44 @@ async function loadProjects() {
     if (projects.length === 0) { nav.style.display = 'none'; }
   } catch(e) {
     document.getElementById('project-nav').style.display = 'none';
+  }
+}
+
+async function loadOverview() {
+  try {
+    var res = await fetch('/api/registry');
+    var registry = await res.json();
+    var projects = Object.entries(registry);
+    var card = document.getElementById('overview-card');
+    if (projects.length <= 1) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+
+    var results = await Promise.all(projects.map(function(entry) {
+      var info = entry[1];
+      return fetch('http://127.0.0.1:' + parseInt(info.port, 10) + '/api/scores')
+        .then(function(r) { return r.json(); })
+        .then(function(scores) { return { name: info.name, port: info.port, scores: scores }; })
+        .catch(function() { return { name: info.name, port: info.port, scores: [] }; });
+    }));
+
+    var tbody = document.getElementById('overview-body');
+    tbody.innerHTML = '';
+    results.forEach(function(proj) {
+      var lastScore = proj.scores.length ? proj.scores[proj.scores.length - 1] : null;
+      var score = lastScore ? lastScore.score : '-';
+      var scoreColor = !lastScore ? '#666' : lastScore.score >= 42 ? '#22c55e' : lastScore.score >= 30 ? '#eab308' : '#ef4444';
+      var totalViolations = proj.scores.reduce(function(sum, s) { return sum + (s.violations || 0); }, 0);
+      var lastTime = lastScore ? new Date(lastScore.timestamp).toLocaleString() : '-';
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td><a href="http://127.0.0.1:' + parseInt(proj.port, 10) + '" style="color:#88f;text-decoration:none">' + esc(proj.name) + '</a></td>' +
+        '<td style="color:' + scoreColor + ';font-weight:600">' + score + '<span style="color:#555">/50</span></td>' +
+        '<td>' + proj.scores.length + '</td>' +
+        '<td>' + totalViolations + '</td>' +
+        '<td style="color:#888">' + esc(lastTime) + '</td>';
+      tbody.appendChild(tr);
+    });
+  } catch(e) {
+    document.getElementById('overview-card').style.display = 'none';
   }
 }
 
@@ -477,6 +523,7 @@ async function load() {
   }
 
   loadProjects();
+  loadOverview();
 
   // Populate project name from API (avoids server-side HTML interpolation)
   try {
@@ -507,6 +554,7 @@ async function startDashboardIfNeeded() {
   await cleanStaleEntries();
 
   const registry = loadRegistry();
+  const otherDashboardsExist = Object.keys(registry).length > 0;
 
   // Already running for this project?
   if (registry[PROJECT_PATH]) {
@@ -538,14 +586,16 @@ async function startDashboardIfNeeded() {
   DASHBOARD_PORT = port;
   registerProject(port);
 
-  // Open browser - port is a validated integer from internal hash, not user input
-  const dashboardUrl = "http://127.0.0.1:" + String(port);
-  if (process.platform === "win32") {
-    execFile("cmd", ["/c", "start", "", dashboardUrl], () => {});
-  } else if (process.platform === "darwin") {
-    execFile("open", [dashboardUrl], () => {});
-  } else {
-    execFile("xdg-open", [dashboardUrl], () => {});
+  // Only open browser if no other dashboard is already open
+  if (!otherDashboardsExist) {
+    const dashboardUrl = "http://127.0.0.1:" + String(port);
+    if (process.platform === "win32") {
+      execFile("cmd", ["/c", "start", "", dashboardUrl], () => {});
+    } else if (process.platform === "darwin") {
+      execFile("open", [dashboardUrl], () => {});
+    } else {
+      execFile("xdg-open", [dashboardUrl], () => {});
+    }
   }
 
   // Cleanup on exit
