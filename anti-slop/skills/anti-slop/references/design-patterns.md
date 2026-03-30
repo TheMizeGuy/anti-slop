@@ -418,3 +418,28 @@ For reference, the patterns most reliably marking output as AI-generated:
 10. 4-column footer with "Product / Company / Legal" headers
 
 None of these are wrong individually. The tell is when they all appear together on the same project with no variation or customization.
+
+## Additional AI Design Tells
+
+### Social Proof Notification Toasts
+"John from NYC just signed up 2 minutes ago" popups in the bottom-left corner. Auto-dismissing after 3-5 seconds. Small card with avatar, name, action, timestamp. A dark pattern borrowed from Fomo/UseProof SaaS tools and reproduced by AI as a default "engagement" element.
+
+**Instead:** Skip these entirely unless the product genuinely benefits from real-time activity signals. If used, show real data, not fabricated names.
+
+### Chat Widget Bubble
+A circular button (`fixed bottom-4 right-4 rounded-full w-14 h-14 bg-indigo-600 shadow-lg`) with a chat icon, always in the bottom-right corner, always with a subtle bounce animation on load. AI adds this by default even when no chat system exists.
+
+**Instead:** Only add a chat widget if there is an actual chat system behind it. A non-functional chat bubble is demo-ware.
+
+### Dot/Grid Background Patterns
+CSS `radial-gradient(circle, #e5e7eb 1px, transparent 1px)` with `background-size: 20px 20px` behind hero sections. A decorative pattern that adds no information.
+
+**Instead:** Use a solid background, a photograph, a subtle texture, or white space. If a grid pattern serves a specific purpose (graph paper aesthetic for a data tool), use it intentionally.
+
+### The SaaS Landing Page Sequence
+AI produces pages in this exact order regardless of project type: nav, hero, logo bar, stats row, feature grid, alternating L-R features, testimonials, pricing, FAQ accordion, CTA repeat, footer. A restaurant, portfolio, e-commerce store, and SaaS product all get this same structure.
+
+**Instead:** Let the content determine the page structure. A portfolio leads with work samples. A restaurant leads with the menu or a reservation CTA. An e-commerce site leads with products. The page structure should match what the user came to do.
+
+### The "Logo Swap Test"
+The fastest diagnostic for AI-generated design: if you can swap any SaaS logo onto the page and it still makes sense, the design lacks identity. Good design is inseparable from its content and brand.
