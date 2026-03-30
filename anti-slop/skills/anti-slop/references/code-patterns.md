@@ -388,11 +388,66 @@ subprocess.run(["convert", filename, "output.png"])
 # BAD (user_filename could be "../../etc/passwd")
 path = os.path.join(base_dir, user_filename)
 
-# GOOD
-path = os.path.join(base_dir, user_filename)
-if not os.path.realpath(path).startswith(os.path.realpath(base_dir)):
+# GOOD (append os.sep to prevent prefix collision: /srv/data vs /srv/dataexfil)
+from pathlib import Path
+if not Path(base_dir, user_filename).resolve().is_relative_to(Path(base_dir).resolve()):
     raise ValueError("Path traversal detected")
 ```
+
+### SSRF (Server-Side Request Forgery)
+
+```python
+# BAD (user controls URL, can hit internal services/cloud metadata)
+response = requests.get(user_provided_url, timeout=10)
+
+# GOOD (validate scheme, resolve hostname, block internal ranges)
+from urllib.parse import urlparse
+import ipaddress, socket
+parsed = urlparse(user_provided_url)
+if parsed.scheme not in ('http', 'https'):
+    raise ValueError("Invalid scheme")
+ip = ipaddress.ip_address(socket.gethostbyname(parsed.hostname))
+if ip.is_private or ip.is_loopback or ip.is_link_local:
+    raise ValueError("Internal addresses not allowed")
+```
+
+AI generates URL-fetching code (webhooks, image imports, link previews) without checking the destination. Attackers probe internal networks and cloud metadata endpoints (169.254.169.254).
+
+### Insecure Deserialization
+
+```python
+# BAD (arbitrary code execution)
+import pickle
+data = pickle.loads(user_input)
+
+# BAD (RCE with default loader)
+import yaml
+config = yaml.load(user_input)
+
+# GOOD
+config = yaml.safe_load(user_input)
+```
+
+Never deserialize untrusted data with pickle, marshal, or yaml.load (default loader). Use JSON or safe_load for untrusted input.
+
+### Broken Access Control (IDOR)
+
+```python
+# BAD (any authenticated user can access any order)
+@app.get("/orders/{order_id}")
+def get_order(order_id: int, current_user: User):
+    return db.query(Order).get(order_id)
+
+# GOOD (verify ownership)
+@app.get("/orders/{order_id}")
+def get_order(order_id: int, current_user: User):
+    order = db.query(Order).get(order_id)
+    if order.user_id != current_user.id:
+        raise HTTPException(403)
+    return order
+```
+
+AI generates auth middleware but not authorization logic. Checking if a user is authenticated is not the same as checking if they own the resource.
 
 ### Hardcoded Credentials
 

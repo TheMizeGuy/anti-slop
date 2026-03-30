@@ -28,12 +28,12 @@ The plugin loads rules during content generation that target documented AI failu
 
 Agentic coding tools have specific, documented failure modes:
 
-- **Security**: AI-generated code has 2.74x more security vulnerabilities than human-written code (CodeRabbit 2024). 100% of tested vibe-coded apps lacked CSRF protection (Escape.tech).
+- **Security**: AI-generated code has 2.74x more security vulnerabilities than human-written code (CodeRabbit 2025). 100% of tested vibe-coded apps lacked CSRF protection (Escape.tech).
 - **Accessibility**: 70-80% of AI-generated UI fails WCAG AA without explicit instructions (University of Michigan 2025). AI code has 3-5x more accessibility violations per page than hand-authored code (Deque 2024).
 - **Performance**: 86% of frontend repos have at least one missing cleanup pattern. AI imports full libraries (lodash at 70KB) when 2KB cherry-picked imports exist. Barrel file re-exports bloated one project from 200KB to 1.5MB.
 - **Architecture**: AI generates premature abstractions, factories for single implementations, and monolithic 500-line components. Refactoring dropped from 25% of changed lines to under 10% in AI-assisted codebases (GitClear 2024).
 - **Design**: Every AI tool defaults to the same purple gradient, Inter font, three-column icon grid aesthetic. Adam Wathan (Tailwind creator) apologized for making `bg-indigo-500` the demo default that trained every AI on the internet.
-- **Code quality**: AI-generated PRs contain 1.7x more issues, 75% more logic errors, and 3x worse readability than human-written PRs (CodeRabbit 2024).
+- **Code quality**: AI-generated PRs contain 1.7x more issues, 75% more logic errors, and 3x worse readability than human-written PRs (CodeRabbit 2025).
 
 This plugin targets those specific problems. It does not try to make AI output "sound human" or hide its origin. It tries to make AI output correct, secure, accessible, and distinct.
 

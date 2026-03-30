@@ -264,7 +264,7 @@ Tabular data needs `<table>`, not CSS Grid divs. Include `<th scope="col">` for 
 
 ### Native Elements AI Ignores
 
-`<time datetime>` for dates, `<dialog>` for modals (built-in focus trap, ESC, backdrop), `<details>/<summary>` for accordions (no JS needed), `<progress>` for progress bars, `<meter>` for gauges, `<output>` for calculation results, `<abbr title>` for abbreviations, `<dl>/<dt>/<dd>` for definition lists.
+`<time datetime>` for dates, `<dialog>` for modals (modal mode makes background inert, ESC to close, `::backdrop`; still requires returning focus to trigger on close), `<details>/<summary>` for accordions (no JS needed), `<progress>` for progress bars, `<meter>` for gauges, `<output>` for calculation results, `<abbr title>` for abbreviations, `<dl>/<dt>/<dd>` for definition lists.
 
 ## UX Anti-Patterns
 
