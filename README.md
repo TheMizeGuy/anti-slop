@@ -1,73 +1,57 @@
 # anti-slop
 
-A Claude Code plugin that raises the quality bar for AI-assisted development. It catches the shortcuts, defaults, and blind spots that agentic coding tools produce when left unchecked.
-
-**This is not about hiding that AI wrote something.** It's about fixing the real shortcomings of agentic development: the security holes AI introduces, the accessibility it ignores, the performance it tanks, the abstractions it invents for no reason, and the purple-gradient-Inter-font sameness it defaults to on every project.
-
-AI coding tools produce working code fast. They also produce N+1 queries, swallowed errors, hardcoded secrets, inaccessible forms, 70KB lodash imports, `useEffect` for derived state, and hero sections that all look identical. This plugin catches those problems before they ship.
+A Claude Code plugin that catches the actual problems with AI-generated code and text. Not the "oh no you can tell AI wrote this" problems — the security holes, the inaccessible UIs, the N+1 queries, the `eval()` calls, the 70KB lodash imports, and the fact that every AI-built landing page looks like the same purple gradient with Inter font and a three-column icon grid.
 
 ![anti-slop dashboard](anti-slop-dashboard-overview.png)
 
 ## What it does
 
-The plugin loads rules during content generation that target documented AI failure patterns:
+Loads pattern-matching rules during content generation. The rules target failure modes that have been measured and documented across multiple studies — not vibes.
 
-- **Writing**: vocabulary tells, structural cliches, sycophantic openers, filler phrases
-- **Code**: security vulnerabilities, architectural over-engineering, comment slop, missing error handling, performance anti-patterns, backend mistakes
-- **Frontend/Design**: the generic AI aesthetic, CSS bugs, React anti-patterns, accessibility failures, missing states, demo-ware
-- **Regression prevention**: fix-one-break-another, test manipulation, silent behavioral changes, context loss, destructive operations
+On the **writing** side: vocabulary tells (words like "delve" show up 25-48x more often in AI text than human text per a 2024 Max Planck/Stanford study), sycophantic openers, structural cliches, filler phrases.
+
+On the **code** side: SQL injection, XSS, path traversal, command injection, hardcoded credentials, `eval()`, swallowed errors, premature abstractions, comment slop, N+1 queries, missing timeouts, full library imports, `useEffect` misuse, and a category I call "looks right but isn't" — shallow copy bugs, floating-point money, date/time footguns, async race conditions.
+
+On the **frontend** side: WCAG failures (AI code has 3-5x more accessibility violations per page than hand-written code — Deque 2024), missing states (empty, error, loading), the generic AI aesthetic, CSS z-index escalation, `!important` abuse, missing `prefers-reduced-motion`, hydration mismatches, and demo-ware that only handles the happy path.
+
+On **regressions**: the fix-one-break-another pattern, test manipulation (weakening assertions to make tests pass), silent behavioral changes, and destructive operations.
+
+Rules yield to domain context. Academic writing gets its hedging language. Legal writing keeps "ensure" and "comprehensive." ML code keeps "optimize" and "converge." If a banned word is the precise technical term for what you're doing, use it.
 
 ## What's included
 
 | Component | Description |
 |-----------|-------------|
-| **Skill** (`anti-slop`) | Core rules that activate on content-producing tasks |
-| **Agent** (`slop-detector`) | Deep review agent with 5-dimension scoring (50pt scale) |
-| **Command** (`/slop-check`) | Manual review of files, diffs, or recent output |
-| **8 reference files** | Banned words (~230), banned phrases (~210), writing patterns, code patterns, design patterns, frontend patterns, regression patterns, self-check checklists |
+| **Skill** (`anti-slop`) | Core rules, activates automatically on writes/edits/builds |
+| **Agent** (`slop-detector`) | Deep semantic review, scores on 5 dimensions (50pt scale) |
+| **Command** (`/slop-check`) | Manual review — point it at a file, diff, or PR |
+| **MCP Server** (`anti-slop-scanner`) | Fast deterministic scanner — regex-based pattern matching for banned words, phrases, design tells, code smells, security issues. Three tools: `scan_file`, `get_dashboard_url`, `get_score_history` |
+| **Web Dashboard** | Per-project score history, violation log, severity breakdown, multi-project navigation. Starts automatically, each project gets a deterministic port |
+| **8 reference files** | ~230 banned words, ~210 banned phrases, plus pattern catalogs for writing, code, design, frontend, regressions, and self-check checklists |
 
-## Why this exists
+The MCP scanner and the agent serve different purposes. The scanner is fast — it runs regex patterns against file content and returns in milliseconds. The agent is thorough — it reads reference files, understands context, and produces a scored report with specific fixes. The `/slop-check` command runs both: scanner first for a quick pass, then the agent for semantic analysis.
 
-Agentic coding tools have specific, documented failure modes:
+## The numbers
 
-- **Security**: AI-generated code has 2.74x more security vulnerabilities than human-written code (CodeRabbit 2025). 100% of tested vibe-coded apps lacked CSRF protection (Escape.tech).
-- **Accessibility**: 70-80% of AI-generated UI fails WCAG AA without explicit instructions (University of Michigan 2025). AI code has 3-5x more accessibility violations per page than hand-authored code (Deque 2024).
-- **Performance**: 86% of frontend repos have at least one missing cleanup pattern. AI imports full libraries (lodash at 70KB) when 2KB cherry-picked imports exist. Barrel file re-exports bloated one project from 200KB to 1.5MB.
-- **Architecture**: AI generates premature abstractions, factories for single implementations, and monolithic 500-line components. Refactoring dropped from 25% of changed lines to under 10% in AI-assisted codebases (GitClear 2024).
-- **Design**: Every AI tool defaults to the same purple gradient, Inter font, three-column icon grid aesthetic. Adam Wathan (Tailwind creator) apologized for making `bg-indigo-500` the demo default that trained every AI on the internet.
-- **Code quality**: AI-generated PRs contain 1.7x more issues, 75% more logic errors, and 3x worse readability than human-written PRs (CodeRabbit 2025).
+These aren't opinions. They're from published research:
 
-This plugin targets those specific problems. It does not try to make AI output "sound human" or hide its origin. It tries to make AI output correct, secure, accessible, and distinct.
-
-## Coverage
-
-**Writing:** ~230 banned AI-tell words with plain alternatives, ~210 banned phrases (sycophancy, throat-clearing, filler, meta-commentary, emphasis crutches), structural anti-patterns (rule of three, binary contrasts, hedging seesaws, dramatic fragmentation), formatting rules, rhythm checks.
-
-**Code:** Comment slop (restating code, apologetic comments, banner dividers), over-engineering (factories for single implementations, premature abstractions), error handling (swallowing errors, defensive excess), security (SQL injection, XSS, path traversal, command injection, hardcoded credentials, eval, insecure randomness, sensitive data in logs), verification (hallucinated APIs, slopsquatting, deprecated methods), backend patterns (N+1 queries, missing timeouts, naive retries, unbounded queries), and "looks right but isn't" patterns (shallow copy bugs, floating-point money, date/time errors, async race conditions).
-
-**Frontend:** React anti-patterns (useEffect misuse, missing cleanup, "use client" overuse, hydration mismatches, stale closures), CSS pitfalls (z-index stacking contexts, sticky/fixed positioning, Tailwind dynamic classes, animation performance, font loading, dark mode, modern CSS features), performance (full library imports, image optimization, code splitting, render-blocking resources), HTML semantics (div soup, link vs button, heading hierarchy, native elements), and UX (happy path only, demo-ware, modal overuse, search debouncing, form state, toast accessibility).
-
-**Design/UI:** The generic AI aesthetic (purple gradients, Inter/Roboto defaults, three-column icon grids, glassmorphism abuse), CSS anti-patterns (magic numbers, !important, excessive nesting), accessibility (WCAG contrast ratios, focus management, aria-live, semantic HTML, heading hierarchy, prefers-reduced-motion, forced-colors, skip navigation, form accessibility), missing states (empty, error, loading), and generic microcopy.
-
-## Context awareness
-
-The plugin includes domain exceptions for academic writing, legal writing, creative fiction, pedagogical/teaching contexts, marketing, ML/data science, and grant writing. The plugin allows technical terms (validate, aggregate, benchmark, optimize, framework, ecosystem) in their domain contexts. It also accounts for British English and formal registers.
-
-A "Scope and Limitations" section in SKILL.md states what the plugin covers (web-centric code, general English prose) and what it doesn't (Rust, Go, C/C++, mobile platforms, ML workflows in depth).
+- AI-generated code has **2.74x more security vulnerabilities** than human-written code (CodeRabbit 2025). 100% of tested vibe-coded apps lacked CSRF protection (Escape.tech).
+- **70-80% of AI-generated UI fails WCAG AA** without explicit instructions (University of Michigan 2025).
+- AI-generated PRs contain **1.7x more issues**, 75% more logic errors, and 3x worse readability (CodeRabbit 2025).
+- Refactoring dropped from 25% of changed lines to **under 10%** in AI-assisted codebases (GitClear 2024). The models add code but don't clean up after themselves.
+- Adam Wathan (Tailwind creator) publicly apologized for making `bg-indigo-500` the demo default that trained every model on the internet.
 
 ## Installation
 
-### From GitHub
-
 ```bash
-# In Claude Code, run:
+# Add the marketplace:
 /plugin marketplace add https://github.com/TheMizeGuy/anti-slop
 
-# Then install:
+# Install:
 /plugin install anti-slop@anti-slop
 ```
 
-### For development/testing
+For development:
 
 ```bash
 claude --plugin-dir /path/to/anti-slop
@@ -75,7 +59,7 @@ claude --plugin-dir /path/to/anti-slop
 
 ## Usage
 
-The skill activates automatically on content-producing tasks (writing, coding, design). For manual review:
+The skill activates on its own when you're writing, building, or editing. For manual review:
 
 ```
 /slop-check                              # review last output
@@ -84,13 +68,21 @@ The skill activates automatically on content-producing tasks (writing, coding, d
 /slop-check pr                           # review current PR
 ```
 
-## Philosophy
+The dashboard starts automatically when the MCP scanner runs its first scan. Score history and violation log persist in `.anti-slop/` in your project directory. If you're working across multiple projects, the dashboard shows tabs for all active projects.
 
-This plugin does not try to make AI output undetectable. It tries to make it good.
+### Configuration
 
-AI coding tools have real, measurable shortcomings. They produce insecure code, inaccessible interfaces, bloated bundles, and generic designs. The goal of this plugin is to catch those failures during generation, not to disguise their origin.
+Drop a `.anti-slop/config.json` in your project if you need to allow specific words the scanner flags:
 
-Rigid compliance with every rule creates its own detectable pattern. The plugin tells Claude to apply rules with judgment, not mechanically. Domain exceptions exist for academic, legal, creative, and pedagogical contexts. The goal is quality output, not checklist compliance.
+```json
+{
+  "allowedWords": ["leverage", "ecosystem"]
+}
+```
+
+## Scope
+
+This targets web-centric code (Python, TypeScript, JavaScript, CSS) and general English prose. Coverage for Rust, Go, C/C++, mobile (SwiftUI, Jetpack Compose), and ML pipelines is limited. The principles still apply — specificity, economy, correctness — but the specific word lists and pattern matchers are tuned for web.
 
 ## License
 
