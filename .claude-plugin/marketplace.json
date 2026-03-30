@@ -10,7 +10,7 @@
       "name": "anti-slop",
       "description": "Catches AI coding shortcomings in prose, code, and UI output. Includes hooks for active enforcement.",
       "source": "./anti-slop",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "category": "development",
       "homepage": "https://github.com/TheMizeGuy/anti-slop"
     }

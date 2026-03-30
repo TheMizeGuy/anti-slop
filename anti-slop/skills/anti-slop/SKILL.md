@@ -1,6 +1,6 @@
 ---
 name: anti-slop
-version: 1.1.0
+version: 1.2.0
 description: Prevents AI slop in prose, code, and UI. Activates on "write", "create", "build", "implement", "fix", "generate", "draft", "review", "refactor", "design", "edit" tasks. Catches banned words, sycophancy, security holes, accessibility failures, regressions.
 ---
 

@@ -1,7 +1,7 @@
 {
   "name": "anti-slop",
-  "version": "1.1.0",
-  "description": "Catches and blocks detectable AI patterns in prose, code, and UI output across all projects.",
+  "version": "1.2.0",
+  "description": "Catches agentic development shortcomings: security holes, accessibility failures, regressions, and generic defaults. Context-aware: yields to domain conventions.",
   "author": {
     "name": "TheMizeGuy"
   },
