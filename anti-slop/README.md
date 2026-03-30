@@ -29,7 +29,7 @@ This plugin loads rules that prevent these patterns during content generation. I
 
 The plugin includes domain exceptions for academic writing, legal writing, creative fiction, pedagogical/teaching contexts, marketing, ML/data science, and grant writing. Technical terms (validate, aggregate, benchmark, optimize, framework, ecosystem) are allowed in their domain contexts. British English and formal registers are acknowledged.
 
-A "Scope and Limitations" section in SKILL.md honestly states what the plugin covers (web-centric code, general English prose) and what it doesn't (Rust, Go, C/C++, mobile platforms, ML workflows in depth).
+A "Scope and Limitations" section in SKILL.md states what the plugin covers (web-centric code, general English prose) and what it doesn't (Rust, Go, C/C++, mobile platforms, ML workflows in depth).
 
 ## Installation
 

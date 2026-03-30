@@ -93,8 +93,8 @@ Use a z-index scale with CSS custom properties: `--z-dropdown: 100`, `--z-modal:
 
 ### Sticky/Fixed Positioning Bugs
 
-- `position: sticky` without `top: 0` does nothing
-- `position: sticky` fails silently inside `overflow: hidden` or `overflow: auto` parents
+- `position: sticky` without at least one inset property (`top`, `bottom`, `left`, `right`) does nothing
+- `position: sticky` fails silently inside any ancestor with `overflow: hidden`, `scroll`, or `auto`
 - `position: fixed` breaks when an ancestor has `transform` (creates a new containing block)
 
 ### Tailwind Dynamic Class Construction
@@ -121,7 +121,7 @@ AI defaults to older approaches when modern CSS handles the job natively:
 
 ### Animation Performance
 
-Animate only `transform` and `opacity` (GPU-composited). All other properties trigger layout recalculation on every frame:
+Prefer animating `transform` and `opacity` (GPU-composited, cheapest). Properties like `filter` and `clip-path` are also compositor-friendly in modern browsers. Avoid animating layout-triggering properties (`width`, `height`, `top`, `left`, `margin`, `padding`) on every frame. For simple state changes, `background-color` and `color` (paint-only, no layout) are acceptable.
 
 ```css
 /* BAD (triggers layout every frame) */
@@ -131,7 +131,7 @@ Animate only `transform` and `opacity` (GPU-composited). All other properties tr
 @keyframes slideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
 ```
 
-Keep functional transitions under 200ms. Wrap all animations in `@media (prefers-reduced-motion: reduce)`.
+Micro-interactions (hover, focus, toggle): under 200ms. Medium transitions (panels, dropdowns): 200-300ms. Full-screen transitions: up to 400ms. Over 500ms feels sluggish. Wrap all animations in `@media (prefers-reduced-motion: reduce)`.
 
 ### Font Loading
 
@@ -158,7 +158,7 @@ h1 { font-size: 24px; }
 h1 { font-size: clamp(1.5rem, 1rem + 2vw, 3rem); }
 ```
 
-Also: no `max-width: 65ch` for readable line length, no vertical rhythm, px font sizes instead of rem (breaks browser zoom).
+Also: no `max-width: 65ch` for readable line length, no vertical rhythm, px font sizes instead of rem (ignores user's browser font-size preference, an accessibility issue).
 
 ## Performance Anti-Patterns
 
@@ -172,13 +172,14 @@ import _ from 'lodash'
 import debounce from 'lodash/debounce'
 ```
 
-Also: barrel file re-exports prevent tree shaking (one project: 1.5MB to 200KB after removal), moment.js (150KB) instead of date-fns, importing entire icon libraries.
+Also: barrel file re-exports often prevent tree shaking, especially without `sideEffects: false` in package.json (one project: 1.5MB to 200KB after removal). moment.js (~72KB minified, up to 350KB with all locales, not tree-shakeable) instead of dayjs (~2KB) or date-fns (tree-shakeable). Importing entire icon libraries.
 
 ### Missing Image Optimization
 
 - No `width`/`height` attributes (causes CLS)
 - No `loading="lazy"` for below-fold images
-- No `srcset`/`sizes` for responsive images
+- Never `loading="lazy"` on above-the-fold images, especially the LCP element (delays LCP by deferring the fetch)
+- No `srcset`/`sizes` for responsive images; no `<picture>` for art-directed crops at different breakpoints
 - No WebP/AVIF modern formats
 - No `fetchpriority="high"` on LCP image
 - In Next.js: raw `<img>` instead of `<Image>` component
@@ -199,13 +200,35 @@ AI ships everything in one bundle. Use `React.lazy()` + `Suspense` for routes, d
 // BAD (new references every render, defeats React.memo)
 <Child style={{ color: 'red' }} onClick={() => handleClick(id)} />
 
-// GOOD
-const style = useMemo(() => ({ color: 'red' }), [])
-const handleClick = useCallback(() => onClick(id), [id, onClick])
-<Child style={style} onClick={handleClick} />
+// GOOD (hoist constants outside the component)
+const style = { color: 'red' }  // defined once, outside component
+function Parent({ id, onClick }) {
+  const handleClick = useCallback(() => onClick(id), [id, onClick])
+  return <Child style={style} onClick={handleClick} />
+}
 ```
 
+Use `useMemo` only for values that depend on props or state. For constant objects, hoist them outside the component body.
+
 Only memoize when the child uses React.memo or when the computation is expensive. Don't memoize string literals or primitive props.
+
+### Styled Components Inside Render
+
+Defining styled-components or emotion `styled()` calls inside a React component body creates a new component type on every render. React unmounts and remounts the subtree, destroying state and DOM.
+
+```jsx
+// BAD (new component type every render)
+function Card() {
+  const Title = styled.h2`color: red;`
+  return <Title>Hello</Title>
+}
+
+// GOOD (defined outside component)
+const Title = styled.h2`color: red;`
+function Card() {
+  return <Title>Hello</Title>
+}
+```
 
 ## HTML Semantic Anti-Patterns
 
