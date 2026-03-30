@@ -328,12 +328,23 @@ function calculateScore(violations) {
   return Math.max(0, Math.min(50, score));
 }
 
+// ── Filter stale violations that are now context-allowed ──
+function filterAllowedViolations(log) {
+  const config = loadProjectConfig();
+  const allowedWords = new Set((config.allowedWords || []).map(w => w.toLowerCase()));
+  return log.filter(v => {
+    if (v.type !== "banned-word") return true;
+    if (allowedWords.has((v.word || "").toLowerCase())) return false;
+    return true;
+  });
+}
+
 // ── Web Dashboard ──
 function startDashboard(port) {
   const server = createServer((req, res) => {
     if (req.url === "/api/log") {
       res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
-      res.end(JSON.stringify(loadLog()));
+      res.end(JSON.stringify(filterAllowedViolations(loadLog())));
       return;
     }
     if (req.url === "/api/scores") {
