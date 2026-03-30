@@ -28,9 +28,12 @@ If the diff or PR is empty, inform the user that no changes were found.
 ## Process
 
 1. Identify the content to review
-2. Use the Agent tool to dispatch to the `slop-detector` agent defined in this plugin. If the Agent tool returns an error or produces no output, inform the user that the full agent review was unavailable and perform the review directly using the rules in the anti-slop skill.
-3. Present the scored report to the user
-4. Offer to fix the identified issues if the user wants
+2. If a file path is provided, first run the `scan_file` MCP tool from the anti-slop-scanner for a fast deterministic check (banned words, design patterns, security issues). Then dispatch to the `slop-detector` agent for the full semantic review.
+3. If the MCP scanner is unavailable, or for non-file targets, dispatch directly to the `slop-detector` agent.
+4. If the Agent tool also fails, perform the review directly using the rules in the anti-slop skill.
+5. Present the scored report to the user (include both MCP scan results and agent analysis)
+6. Offer to fix the identified issues if the user wants
+7. Mention the dashboard is available at http://127.0.0.1:7847 for score history
 
 ## Usage Examples
 
