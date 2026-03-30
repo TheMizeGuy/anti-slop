@@ -12,7 +12,7 @@ The worst offenders. These open a response by praising the user instead of answe
 - "That's an excellent point!"
 - "Absolutely!"
 - "Certainly!"
-- "Of course!"
+- "Of course!" (as a formulaic opener to a paragraph; fine as a brief standalone acknowledgment)
 - "I'd be happy to help!"
 - "I'd be happy to assist!"
 - "I'd love to help with that!"

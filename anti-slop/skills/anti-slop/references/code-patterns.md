@@ -243,7 +243,7 @@ A 2024 study by Lanyado et al. found:
 ### Deprecated API Usage
 
 AI training data includes outdated code. Common issues:
-- `datetime.utcnow()` (deprecated Python 3.12+, use `datetime.now(datetime.UTC)` or `from datetime import timezone; datetime.now(timezone.utc)`)
+- `datetime.utcnow()` (deprecated Python 3.12+, use `from datetime import timezone; datetime.now(timezone.utc)`)
 - React class components instead of function components
 - `componentWillMount` and other removed lifecycle methods
 - Old-style string formatting in languages that have template literals
