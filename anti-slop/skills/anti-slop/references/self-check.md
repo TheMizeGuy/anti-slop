@@ -143,6 +143,21 @@ Run through the relevant checklist before finalizing output. These catch the mos
 - [ ] Edge cases covered?
 - [ ] Mocks used only where necessary, not as a default?
 
+### Regression Prevention (if modifying existing code)
+
+- [ ] Changed only what was asked? No unrelated refactoring or cleanup?
+- [ ] Read modified files AND their dependents before editing?
+- [ ] Used Edit (targeted diff) not Write (full file rewrite)?
+- [ ] All callers updated if function signature changed?
+- [ ] All consumers updated if type definition changed?
+- [ ] Error messages, status codes, response shapes preserved exactly?
+- [ ] Default values, timeouts, rate limits, cache TTLs preserved?
+- [ ] Log levels, metric names, log field names preserved?
+- [ ] Feature flags and conditional logic not removed?
+- [ ] Tests fixed the code, not weakened the assertions?
+- [ ] No `--no-verify`, `@ts-ignore`, `eslint-disable` to suppress real errors?
+- [ ] No destructive git commands without user approval?
+
 ### Frontend (if writing React/Next.js/CSS)
 
 - [ ] No useEffect for derived state (compute during render or useMemo)?

@@ -19,6 +19,7 @@ Review content for detectable AI patterns. Produce a structured report with spec
    - `skills/anti-slop/references/code-patterns.md` (code anti-patterns, if reviewing code)
    - `skills/anti-slop/references/design-patterns.md` (design anti-patterns, if reviewing UI)
    - `skills/anti-slop/references/frontend-patterns.md` (React, CSS, performance, HTML, UX patterns)
+   - `skills/anti-slop/references/regression-patterns.md` (regression prevention, if reviewing code changes)
    - `skills/anti-slop/references/self-check.md` (checklists)
 3. Score the content on five dimensions (1-10 each):
    - **Directness** (3/10: opens with "Great question! Let me walk you through..." and recaps the user's question. 8/10: opens with the answer, no preamble.)

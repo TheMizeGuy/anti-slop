@@ -13,6 +13,7 @@ The plugin loads rules during content generation that target documented AI failu
 - **Writing**: vocabulary tells, structural cliches, sycophantic openers, filler phrases
 - **Code**: security vulnerabilities, architectural over-engineering, comment slop, missing error handling, performance anti-patterns, backend mistakes
 - **Frontend/Design**: the generic AI aesthetic, CSS bugs, React anti-patterns, accessibility failures, missing states, demo-ware
+- **Regression prevention**: fix-one-break-another, test manipulation, silent behavioral changes, context loss, destructive operations
 
 ## What's included
 
@@ -21,7 +22,7 @@ The plugin loads rules during content generation that target documented AI failu
 | **Skill** (`anti-slop`) | Core rules that activate on content-producing tasks |
 | **Agent** (`slop-detector`) | Deep review agent with 5-dimension scoring (50pt scale) |
 | **Command** (`/slop-check`) | Manual review of files, diffs, or recent output |
-| **7 reference files** | Banned words (~230), banned phrases (~170), writing patterns, code patterns, design patterns, frontend patterns (React/CSS/perf/HTML/UX), self-check checklists |
+| **8 reference files** | Banned words (~230), banned phrases (~170), writing patterns, code patterns, design patterns, frontend patterns, regression patterns, self-check checklists |
 
 ## Why this exists
 

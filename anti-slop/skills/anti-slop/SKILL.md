@@ -90,6 +90,12 @@ Check every API method, package name, and config option exists before using it. 
 
 No SQL string concatenation; use parameterized queries. No eval() or exec() with user input. No hardcoded credentials. No innerHTML with unsanitized input (XSS). Check inputs at system boundaries.
 
+### Regression Prevention
+
+When modifying existing code: change only what was asked. Read files and their dependents before editing. Use Edit (targeted diff), not Write (full file rewrite). Preserve error messages, status codes, default values, log formats, metric names, and conditional logic exactly. Never modify tests to make them pass instead of fixing the code. Never delete code that looks unused without verifying zero references across the entire codebase. Run tests after every change.
+
+For the full regression prevention guide, see `references/regression-patterns.md`.
+
 For code anti-patterns with examples, see `references/code-patterns.md`. For React, CSS, performance, HTML semantics, and UX patterns, see `references/frontend-patterns.md`.
 
 ## Design and UI Rules
