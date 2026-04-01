@@ -10,7 +10,6 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join, dirname, extname, basename } from "path";
 import { fileURLToPath } from "url";
 import { createHash } from "crypto";
-import { execFile } from "child_process";
 import { homedir } from "os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -640,17 +639,7 @@ async function startDashboardIfNeeded() {
   DASHBOARD_PORT = port;
   registerProject(port);
 
-  // Only open browser if no other dashboard is already open
-  if (!otherDashboardsExist) {
-    const dashboardUrl = "http://127.0.0.1:" + String(port);
-    if (process.platform === "win32") {
-      execFile("cmd", ["/c", "start", "", dashboardUrl], () => {});
-    } else if (process.platform === "darwin") {
-      execFile("open", [dashboardUrl], () => {});
-    } else {
-      execFile("xdg-open", [dashboardUrl], () => {});
-    }
-  }
+  // Dashboard is available via get_dashboard_url tool -- don't auto-open browser
 
   // Cleanup on exit
   const cleanup = () => unregisterProject();
