@@ -2,6 +2,8 @@
 
 Run through the relevant checklist before finalizing output. These catch the most common AI tells. The Quick Pass at the bottom covers the minimum; use the full checklist for thorough review. Not every item applies to every output. Applying all rules mechanically creates its own detectable pattern.
 
+Two framing rules. Judge most word and phrase tells by **concentration** — a lone hit is usually clean (see `empirical-rankings.md`) — and honor the **escape hatch**: a deliberate choice marked `anti-slop-allow:` / `unslop-ignore` is not a tell. The highest-signal tells (sentence rhythm, sycophancy, empty fluency, hallucinated APIs and citations, codebase-fit) are invisible to a word scan; read for them rather than relying on the lists.
+
 ## Text/Prose Checklist
 
 ### Vocabulary
@@ -27,12 +29,14 @@ Run through the relevant checklist before finalizing output. These catch the mos
 
 - [ ] Not forcing lists to exactly three items? (If every list has three items, something is wrong.)
 - [ ] No binary contrasts? (Not X. Y. / The problem isn't X. It's Y.)
+- [ ] No "It's not just X, it's Y" / "not only X but also Y" antithesis? (the #1 sentence tell)
 - [ ] No hedging seesaw? (Presenting both sides, then hedging, then hedging again)
 - [ ] No dramatic fragmentation? (One. Word. Sentences. For. Drama.)
 - [ ] No rhetorical questions answered immediately?
 - [ ] No topic-explanation-example-transition template in every paragraph?
 - [ ] No summary/recap at the end that restates what was just said?
 - [ ] No recapping the user's question before answering?
+- [ ] No over-corrected "anti-AI" register? (staccato fragments everywhere, forced lowercase, em-dash-dodging contortions, fake typos)
 
 ### Rhythm
 
@@ -62,7 +66,8 @@ Run through the relevant checklist before finalizing output. These catch the mos
 - [ ] No unnecessary markdown headers? (Short responses don't need them)
 - [ ] No bold used for emphasis in running prose?
 - [ ] No emoji anywhere (prose, code, commits, logs, UI strings, headings)?
-- [ ] Bullet points only for list-like content?
+- [ ] Bullet points only for list-like content (no "5 ways to..." listicle scaffolding)?
+- [ ] No horizontal-rule dividers (---) between every section?
 - [ ] Formatting is minimal and functional?
 
 ## Code Checklist
@@ -78,6 +83,8 @@ Run through the relevant checklist before finalizing output. These catch the mos
 - [ ] No emoji in comments, variable names, or log output?
 - [ ] No banner/divider comments (ASCII-art section separators)?
 - [ ] No language-feature explanations ("Use a dict comprehension to...")?
+- [ ] No leftover chat artifacts ("Here's the updated code", "As an AI", ``` fences, "Good catch!")?
+- [ ] No placeholder-comment stubs ("// rest of your code", "// your logic here")? (the file is unfinished -- a bug, not a nit)
 
 ### Architecture
 
@@ -106,6 +113,7 @@ Run through the relevant checklist before finalizing output. These catch the mos
 
 ### Verification
 
+- [ ] Built / type-checked / ran it to catch hallucinated APIs? (the loudest code bug, invisible to any scanner -- verify before scanning)
 - [ ] All API methods verified to exist?
 - [ ] All packages verified to exist in the registry?
 - [ ] No deprecated APIs used unknowingly?
@@ -184,6 +192,7 @@ Run through the relevant checklist before finalizing output. These catch the mos
 ### Visual Design
 
 - [ ] No purple-to-blue gradient as default?
+- [ ] No cream-background + serif-display + sage-green "tasteful default" combination? (the current top emerging tell)
 - [ ] Font choice is intentional, not default Inter/Roboto?
 - [ ] Color palette matches the project's brand/purpose?
 - [ ] Layout responds to content, not a template?
@@ -238,7 +247,8 @@ Run through the relevant checklist before finalizing output. These catch the mos
 If pressed for time, check at minimum:
 
 - [ ] First word of the response: is it sycophantic? ("Great", "Absolutely", "Certainly")
-- [ ] Count em dashes: more than two in the response?
+- [ ] Count em dashes: more than two in the response? (the #1 tell)
+- [ ] Any "It's not just X, it's Y" antithesis? (the #1 sentence tell)
 - [ ] Scan for "delve", "leverage", "utilize", "pivotal", "landscape", "ensure", "crucial"
 - [ ] Any lists forced to exactly three items?
 - [ ] Summary at the end that restates the content?

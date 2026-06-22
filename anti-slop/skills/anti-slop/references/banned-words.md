@@ -6,6 +6,8 @@ Words statistically overrepresented in AI-generated text. Corpus analyses ("delv
 
 **Register note:** Frequency data is based primarily on American English corpora. In British English formal prose, some words on this list (renowned, featuring) may be standard. Apply judgment for non-American registers. In academic and formal writing contexts, consult the Context Exceptions in SKILL.md before applying these bans.
 
+**Concentration caveat (important):** A lone instance of most words here is *not* a tell. The signal is density. A hand-audited Reddit corpus (see `empirical-rankings.md`) found several high-frequency "AI words" are almost never what readers actually flag: `however` / `thus` / `hence` match ~6% of posts but are cited as a tell 0% of the time; the same holds for `nuanced`, `when it comes to`, `utilize`, `navigate`, `comprehensive`, and `robust`. These stay on the list as "prefer the plain word" guidance, but treat a single occurrence as clean. A word counts only when it clusters: one `delve` is the writer's prose; six fancy verbs in one paragraph is slop. The plugin's scanner reflects this — low-confidence words do not lower the score on a single hit.
+
 ## Abstract Verbs
 
 These verbs sound impressive but add nothing in general prose. Replace with their plain equivalents. The principle to internalize: when you reach for an impressive-sounding verb, ask whether a plainer word says the same thing. This principle extends beyond this list.

@@ -2,6 +2,8 @@
 
 Phrases that identify text as AI-generated. Never use any of these in general prose.
 
+One thing reads as AI on a single occurrence, even inside a quote: the leftover assistant-voice lines ("As an AI language model," "I cannot assist with..."). The em dash is the top-cited writing tell but is judged by density, not a single instance; a lone correct dash is clean. Everything else here is judged in context and by clustering: one stray phrase in otherwise-natural prose is weaker evidence than several together (see `empirical-rankings.md`). The strongest *construction* tell is not a fixed phrase but a shape: **"It's not just X, it's Y" / "not only X, but also Y"** — the negate-then-assert antithesis. Cut it; state Y plainly. See `writing-patterns.md`.
+
 ## Sycophantic Openers
 
 The worst offenders. These open a response by praising the user instead of answering them.
@@ -28,8 +30,11 @@ The worst offenders. These open a response by praising the user instead of answe
 - "I'd be happy to elaborate!"
 - "Does that make sense?"
 - "Happy to help further!"
+- "Would you like me to...?" (the trailing offer to do more — a turn-ending move pasted into a final draft)
+- "Is there anything else I can help with?"
+- "I hope this email finds you well"
 
-**Instead:** Start with the answer or the action. Skip the preamble. Brief acknowledgment ("Sure." "Right.") is fine when the conversational tone calls for it. The ban targets performative flattery, not all social warmth.
+**Instead:** Start with the answer or the action. Skip the preamble. Brief acknowledgment ("Sure." "Right.") is fine when the conversational tone calls for it. The ban targets performative flattery, not all social warmth. End on the last real sentence; a person finishing a thought does not ask whether you want a revision.
 
 ## Throat-Clearing Openers
 
@@ -50,10 +55,12 @@ Phrases that delay getting to the point. They pad the opening without adding inf
 - "Here's the problem though"
 - "So, here's the deal"
 - "Look,"
+- "Honestly," (as a sentence opener — singled out by writers as "zombified by AI")
 - "Let's be real"
 - "Let's face it"
+- "Real talk,"
 
-**Instead:** State the point directly. No runway needed.
+**Instead:** State the point directly. No runway needed. ("Honestly" is fine mid-sentence where it carries real meaning; the tell is the reflexive throat-clearing opener.)
 
 ## Emphasis Crutches
 
@@ -186,8 +193,13 @@ Phrases that make ordinary things sound historically important.
 - "a tapestry of"
 - "a symphony of"
 - "a mosaic of"
+- "buckle up"
+- "say goodbye to [X]"
+- "look no further"
+- "take it to the next level"
+- "supercharge your [X]"
 
-**Instead:** State what happened and why it matters, without inflating it. If it's historic, the facts speak for themselves.
+**Instead:** State what happened and why it matters, without inflating it. If it's historic, the facts speak for themselves. For the marketing-CTA variants ("say goodbye to," "supercharge"), say what the thing literally does with a specific.
 
 ## Vague Declaratives
 

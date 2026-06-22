@@ -2,6 +2,22 @@
 
 Patterns that mark code as AI-generated. Avoid all of these. Studies measuring AI code quality (GitClear 2024, OX Security 2025) consistently find higher defect rates, more logic errors, and more security vulnerabilities in AI-generated code than in human-written code.
 
+## Two axes: how loud, and whether it's actually wrong
+
+A corpus study of ~23,000 Reddit posts and comments (see `empirical-rankings.md`) found the loudest AI-code tells are not cosmetic. The memes (emoji, robotic names, a comment on every line) rank far below the real giveaways, which are about shape and substance. Keep two things separate:
+
+- **Severity**: how loudly the code reads as AI-generated.
+- **Class**: whether the code is actually wrong, independent of severity:
+  - **bug** — broken: eats a failure, ships unfinished, calls something that doesn't exist. Fix it like any bug, regardless of how "AI" it looks.
+  - **substance** — not locally broken but wrong-for-the-job: tutorial-shaped, over-engineered, ignores the repo. A compiler passes it; a human reading the diff against its neighbors catches it.
+  - **cosmetic** — the model's chat voice leaking into the file. Worth removing, but nothing breaks if one survives.
+
+The rule the whole catalog enforces: **never polish cosmetics while a swallowed error or a hallucinated call ships.** A swallowed error is medium-severity but a bug; an emoji is the highest-precision cosmetic tell but harmless.
+
+Verified ranking (precision-adjusted share of developers who name each tell): boilerplate/tutorial-shaped code (18.6%), hallucinated APIs (11.2%), over-commenting (8.5%), over-engineering (7.8%), emoji (3.9%), style-ignores-the-codebase (3.5%), swallowed errors (3.1%). The top four are structural and **a regex cannot see them.**
+
+**Audit order, because code runs:** build/type-check first (catches hallucinated APIs, the loudest bug, invisible to any scanner), scan for surface tells second, read the diff against neighboring code third. The scanner is the cheap second pass, never the first. What does not survive verification and should **not** be flagged: left-in debug logging (the cited complaints were workflow opinions, not real cases), and over-defensive validation *when reviewing* (half the complaints are the opposite problem). See `empirical-rankings.md`.
+
 ## Comment Slop
 
 ### Restating the Code
@@ -64,6 +80,30 @@ def validate_user_input(data):
 # TODO(#1234): Rate limit this endpoint before launch
 ```
 
+### Placeholder Comments Left In (a bug, not a style nit)
+
+```python
+# BAD
+def process_order(order):
+    subtotal = sum(i.price * i.qty for i in order.items)
+    # ... rest of your logic here
+    # TODO: implement the rest
+```
+
+A comment standing in for code the model never wrote: `// rest of your code`, `// your logic here`, `// implementation goes here`, `# existing code unchanged`, `// ... (keep the rest)`, `// TODO: implement`. This is **class: bug** — the file is unfinished, not merely untidy, and it ships a function that does not do its job. Verified at ~100% precision in the corpus: when one of these survives into committed code, it is unmistakable. Write the actual code the comment stands in for.
+
+### Leftover Chat Artifacts
+
+```javascript
+// BAD -- the assistant's voice pasted into the file:
+// Here's the complete, updated implementation you requested!
+// As an AI language model, I should note that...
+function calculateTotal(items) { /* ... */ }
+// Good catch! Let me know if you'd like me to add tax handling.
+```
+
+The model's chat voice leaking into source: a stray ` ``` ` fence, "Here's the updated/complete/fixed code," "As an AI language model," "Good catch!", "You're absolutely right," a comment-leading "Note:" / "Remember:" / "Important:", "I hope this helps," "Let me know if you'd like me to..." Delete every line that is the assistant talking — both the preamble and the closing offer. High precision, cosmetic class; harmless to execution but an immediate giveaway.
+
 ## Over-Engineering
 
 ### Abstraction Layers for Single Implementations
@@ -116,6 +156,12 @@ A function earns its existence by being called more than once, or by being compl
 ### Premature Design Patterns
 
 Do not introduce Strategy, Observer, Builder, Factory, or Adapter patterns unless the code has multiple concrete cases right now. "Might need it later" is not a reason.
+
+### The Over-Correction Trap (Performed Seniority)
+
+Telling a model "write clean code" or "make it not look AI-generated" backfires into its own tell: performed seniority. Defensive checks for impossible states, a type annotation on every local, a comment above every block, an abstraction layer for a thing with one caller, a docstring on every trivial helper. The corpus data names this over-correction as a distinct, detectable pattern — and notes that over-defensive validation is the *opposite* of what reviewers complain about half the time (the other half is no validation at all).
+
+The cure is not "less" or "more" in the abstract; it is the anchor. Match the level the surrounding code operates at and add nothing the neighboring code would not have. Detection and generation differ here: do not flag over-validation when reviewing existing code (it is often correct at a boundary), but do not produce it when generating. See `choosing-with-intent.md`.
 
 ## Error Handling Slop
 
@@ -286,6 +332,8 @@ Ignoring the codebase's existing patterns:
 - Using different import styles
 
 **Rule:** Read the codebase first. Match its conventions. When unsure, look at adjacent files.
+
+"Make the model follow the existing code instead of guessing the average" is the single most-repeated fix in the entire code corpus. The tell it prevents is concrete: a change that follows existing patterns is small and nearly invisible; one that ignores them is the 2000-line PR that should have been 50. Feed the model the module it extends and the nearest sibling before generating. See `choosing-with-intent.md`.
 
 ### Redundant Type Annotations
 

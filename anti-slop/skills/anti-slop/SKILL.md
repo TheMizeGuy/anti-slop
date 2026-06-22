@@ -1,6 +1,6 @@
 ---
 name: anti-slop
-version: 1.3.0
+version: 1.4.0
 description: Catches agentic dev shortcomings in prose, code, UI. Activates on "write", "create", "build", "implement", "fix", "generate", "review", "refactor", "design", "edit". Security, accessibility, regressions, banned words, design tells.
 ---
 
@@ -9,6 +9,12 @@ description: Catches agentic dev shortcomings in prose, code, UI. Activates on "
 This plugin must never reduce output quality. If a rule makes the output worse for the current task, skip the rule. Security and accessibility rules always apply. Vocabulary, style, and formatting rules yield to domain conventions and project requirements.
 
 Apply rules with judgment, not mechanically. Rigid compliance creates its own detectable pattern. If the output reads like it was run through a filter (all warmth removed, all lists avoiding three items, synonym roulette), the rules are being applied too aggressively.
+
+Three principles from the corpus data (`references/empirical-rankings.md`) sharpen this:
+
+- **Flag the unspecified default, not the value.** A tell is an unchosen default, not a banned token. Purple, a serif font, an em dash, or a broad `try/except` is a tell when the model reached for it by default and a legitimate choice when it was chosen for a reason. A line marked `anti-slop-allow: <reason>` (or `unslop-ignore`) is a deliberate choice; leave it alone.
+- **Concentration, not lone hits.** One "delve," one "however," one em dash is not a tell; several in a short span is. Some high-frequency words ("however," "nuanced," "comprehensive," "utilize") match often but are rarely the real signal. Weight by density.
+- **Banning the old tells creates the new one.** Mechanical over-correction is itself detectable: staccato prose dodging every em dash, or cream-and-serif replacing purple. The fix is a deliberate choice with a reason (`references/choosing-with-intent.md`), not avoidance. The highest-signal tells (sentence rhythm, sycophancy, empty fluency, hallucinated APIs) are invisible to any word scan; read for them.
 
 ## Scope and Limitations
 
@@ -74,6 +80,8 @@ For structural anti-patterns and examples, see `references/writing-patterns.md`.
 
 ## Code Rules
 
+The loudest code tells are structural, not cosmetic: tutorial-shaped boilerplate, hallucinated APIs, over-engineering, and ignoring the surrounding codebase (`references/empirical-rankings.md`). A regex cannot see them. Separate how *AI-looking* a finding is from whether it is a *bug*: fix bug-class findings (swallowed errors, hallucinated calls, unfinished `// rest of your code` stubs) regardless of how they look, and never polish cosmetics while one ships. Because code runs, verify first — build and type-check to catch hallucinated APIs before scanning for surface tells. Telling a model to "write clean code" over-corrects into performed seniority (defensive checks for impossible states, a type on every local, a layer for one caller); match the level of the surrounding code instead (`references/choosing-with-intent.md`).
+
 ### Comments
 
 Never comment what code already says. No `// increment counter` above `counter++`. No JSDoc on a function whose name and signature explain it. Comment only non-obvious *why*: business reasons, workarounds, surprising behavior. Exception: in multilingual teams where code comments serve as documentation for non-English-primary developers, descriptive comments have value.
@@ -110,6 +118,8 @@ For code anti-patterns with examples, see `references/code-patterns.md`. For Rea
 
 No purple-to-blue gradients (Tailwind's default). No Inter/Roboto as the unquestioned font. No cookie-cutter hero sections. No three-column icon grids. These patterns primarily apply to web frontend; adjust for native mobile, desktop, and terminal UI.
 
+The strongest *emerging* design tell is the cream-background + serif-display + sage-green "tasteful default" that the previous wave of anti-AI advice converged on; it now reads as AI faster than purple. Empirically the loudest complaints are generic sameness, the un-themed shadcn/Tailwind default kit, and purple — not the memes (bento grids, mesh gradients), which the data clears as low-signal or rejected. See `references/design-patterns.md`.
+
 Every element must serve the design. Forms need error states, validation, and accessible labels. Navigation needs keyboard support. Check color contrast (4.5:1 for normal text, 3:1 for large text and UI components). Design the empty state and error state, not just the populated view. Write specific microcopy. Use design tokens, not magic numbers.
 
 For the full list of design anti-patterns, see `references/design-patterns.md`.
@@ -122,7 +132,8 @@ Before finalizing any output, run through:
 - No sycophantic or throat-clearing openers?
 - Sentence lengths vary?
 - Not forcing lists to exactly three items?
-- Em dashes used for correct purpose, not as general connector?
+- Em dashes used for correct purpose, not as general connector (density is the #1 writing tell)?
+- No "It's not just X, it's Y" antithesis (the strongest sentence tell)?
 - Active voice with concrete subjects (passive fine when appropriate)?
 - Code comments explain *why*, not *what*?
 - No unnecessary abstractions or premature patterns?
@@ -131,4 +142,4 @@ Before finalizing any output, run through:
 - Design choices specific to the project, not AI defaults?
 - If modifying existing code: changed only what was asked? Tests fix the code, not weakened assertions?
 
-For full checklists by output type, see `references/self-check.md`.
+For full checklists by output type, see `references/self-check.md`. For the data behind which tells matter most and which to apply with restraint, see `references/empirical-rankings.md`. For the positive direction (what to choose instead of a default), see `references/choosing-with-intent.md`.

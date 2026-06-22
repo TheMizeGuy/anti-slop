@@ -2,6 +2,29 @@
 
 Patterns that mark frontend output as AI-generated. These primarily apply to web frontend (HTML/CSS/JS). Adjust for other platforms (native mobile, desktop, terminal UI). The "generic AI website" problem comes from LLMs reproducing the median aesthetic from their training corpus, predominantly Tailwind CSS tutorials and SaaS landing pages.
 
+## What the evidence actually ranks highest
+
+A corpus study of 3M+ Reddit posts and 3,033 comments (see `empirical-rankings.md`) found the strongest real complaints are, in order: **generic sameness ("all looks the same"), the un-themed shadcn/Tailwind default kit, AI purple, and gradients.** Two surprises worth internalizing:
+
+- **The memes are near the bottom.** Bento grids (0.1%, people defend them) and mesh/aurora gradients (rejected outright as a keyword artifact) are not real tells. Do not lead with them.
+- **The single largest *emerging* tell is not in most anti-AI lists at all**: the cream-and-serif "tasteful default" below. It now reads as AI faster than purple does.
+
+Trust comment share over post share when they disagree (comments are 100% on-topic; post bodies inflate generic words). The deepest cause is upstream of any pattern: an unspecified prompt returns the median of the training data, and everyone's median is identical. The fix is a deliberate choice with a reason; see `choosing-with-intent.md`. The diagnostic that captures it: the **logo-swap test** (below).
+
+## The Tasteful Default (Cream + Serif + Sage)
+
+The current top emerging tell, and the one most lists miss. A warm cream/beige page background + a serif display font (Instrument Serif, Fraunces, Playfair Display) + a sage or forest-green accent, often with a generated product-screenshot card to the right. This is the look the *previous* wave of anti-AI advice converged on, so it now signals "AI tried to be tasteful." It reacts harder than purple ever did, precisely because it looks like a choice: being told it is a default lands worse than being told purple is.
+
+**Anti-patterns:**
+- Cream/beige page background: hexes like `#faf8f5`, `#f5f1e8`, `#f3eee3`, `#fdfbf7`, or Tailwind `bg-stone-50` / `bg-amber-50` / `bg-orange-50` used as the page surface
+- Serif display face for headings: Instrument Serif, Fraunces, Playfair Display, Cormorant, Spectral, DM Serif
+- Sage / forest-green as the brand color (`#15573a`, emerald/green 700-900)
+- The screenshot-card-on-the-right hero that ships with it
+
+**The signal is the combination.** Any two of {cream background, serif display, sage green} together is the strong tell. One alone may be a real decision.
+
+**Instead:** this is not "pick a different nice palette" (that just resets the clock). Anchor color and type to the real brand or a reference. If none exists, choose a direction that is specific and uncommon rather than the current tasteful average. If warm-editorial cream-and-serif is a genuine, stated decision, keep it and mark the line `anti-slop-allow: <reason>`. See `choosing-with-intent.md`.
+
 ## The Generic AI Aesthetic
 
 ### The Default Color Problem
@@ -44,6 +67,12 @@ Three-column grids with icon boxes. Hero section with centered text and CTA. Fea
 
 **Instead:** Let the content determine the layout. An article page has different needs than a product page. Use asymmetry. Let important content take more space. Break the grid when it serves the design.
 
+### No Real Images
+
+One of the most-cited specific complaints: every section is icon-cards and abstract shapes, with no actual images. "Most good websites are like 50% images if not more." AI defaults to icon-in-a-box because an icon needs no asset pipeline, so a generated page often has zero screenshots, photos, or product shots.
+
+**Instead:** Show the real product. A true screenshot, real data, a short demo clip, or real photography carries more than a grid of Lucide icons. If the product is visual, the page should be too.
+
 ## Visual Design Anti-Patterns
 
 ### Glassmorphism Without Purpose
@@ -57,6 +86,8 @@ Frosted glass effects applied everywhere because they look "modern." Background 
 - Glass effect on text containers (hurts readability)
 
 **Instead:** Use glassmorphism sparingly and only when the layered transparency serves the information hierarchy -- for example, an overlay that should feel temporary.
+
+**Weight this lightly.** In the corpus data glassmorphism is a low-signal, contested complaint (0.2% of comments). Flag it only when frosted glass is applied *everywhere without purpose* or hurts readability; its mere presence is not a strong tell, and a single intentional glass overlay is fine.
 
 ### Shadow and Depth Excess
 

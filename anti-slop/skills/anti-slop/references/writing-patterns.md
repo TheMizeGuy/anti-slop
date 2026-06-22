@@ -2,6 +2,21 @@
 
 Structural, tonal, and formatting patterns that mark text as AI-generated. Avoid all of these.
 
+## What the data ranks highest
+
+A study that hand-audited 604 high-engagement Reddit posts (see `empirical-rankings.md`) found the two most reliable, hardest-to-argue tells are a **punctuation tell** (the em dash) and a **construction tell** ("It's not just X, it's Y"). Both are surface-detectable and repeatedly named. Below the head, the most-cited tells are structural and invisible to any keyword search: **uniform sentence rhythm** (the 2nd most-cited tell overall), **sycophancy**, **fluent-but-empty paragraphs**, and **hallucinated citations**. These rank above almost every lexical tell, which is why a clean word-scan does not mean human-reading prose.
+
+Two principles govern how hard to push any of this:
+
+- **Concentration, not lone hits.** One "delve," one "however," one em dash is not a tell. The data shows `however/thus/hence` matches 6.3% of posts but is cited as a tell by 0%. Weight by density. The one tell that fires on a single instance is leftover assistant boilerplate ("as an AI language model"); the em dash, though the top-cited tell, is judged by density too, so a lone correct dash is clean.
+- **Banning the old tells creates a new one.** As writers learned the 2024 markers, an over-corrected register appeared and reads as AI just as fast. It has its own section below. Apply these rules with judgment; mechanical avoidance is itself a pattern.
+
+### The Em Dash
+
+The single most-cited AI writing tell. Essentially absent from on-topic posts before 2024, then 6.7% in 2025 — "the ChatGPT era in one punctuation mark." Use em dashes for their correct grammatical purpose (a parenthetical insertion, an abrupt break). The tell is **density**: several per short passage, or the em dash standing in for every comma, colon, and semicolon.
+
+**Fix:** cut it — use a comma, a period, or parentheses. Two cautions the data is explicit about: do not just swap in a colon (people now flag that too), and do not contort the sentence to dodge the dash (the contortion is the newer tell). If you genuinely write with em dashes, that is a choice; keep it and mark the line `anti-slop-allow: <reason>`.
+
 ## Structural Anti-Patterns
 
 ### Rule of Three
@@ -23,6 +38,18 @@ The "Not X. Y." reversal structure. AI uses this constantly for false drama. Inc
 
 **Slop:** "Not the cosmetic problems — the security holes, the missing error handling, the N+1 queries, and the fact that every component looks identical."
 **Fix:** State what it does. "It catches security holes, missing error handling, and N+1 queries." The "Not X — Y" frame adds nothing.
+
+### The "Not Just X, It's Y" Antithesis
+
+The single-sentence negate-then-assert, and the #1 sentence-level tell in the corpus data. "It's not just X, it's Y." "Not only X, but also Y." "That's not X; that's Y." "More than just X." The negation manufactures profundity for free: it adds no information, but the rhythm performs depth. It is the clearest single marker of the "AI accent" — people name it constantly ("It's not just a problem, it's a full-blown disaster").
+
+**Slop:** "This isn't just a feature, it's a whole new way of working."
+**Fix:** "It changes how the team works." If Y is the point, just say Y.
+
+**Slop:** "It's not only faster, but also more reliable."
+**Fix:** "It's faster and more reliable."
+
+This is distinct from the two-sentence Binary Contrast above ("Not X. Y."). Both perform a drama the content should carry on its own.
 
 ### Negative Listing
 
@@ -159,9 +186,9 @@ Bolding key words in running prose to highlight "important" parts. Reads like a 
 
 ### Bullet Point Lists for Everything
 
-Converting prose into bullet points. Bullets are for reference material (steps, lists of items). Explanations, arguments, and analysis belong in paragraphs.
+Converting prose into bullet points. Bullets are for reference material (steps, lists of items). Explanations, arguments, and analysis belong in paragraphs. The listicle scaffold is the loud version: "5 ways to...", "7 signs you...", "3 reasons...". A numbered-listicle headline over what should be prose is a named tell.
 
-**Fix:** Use bullets only for actually list-like content: steps, features, options, requirements. Never for arguments or explanations.
+**Fix:** Use bullets only for actually list-like content: steps, features, options, requirements. Never for arguments or explanations. Drop the "N ways to" framing and write the paragraph.
 
 ### Excessive Code Blocks
 
@@ -190,6 +217,12 @@ Common offenses:
 Using markdown formatting in contexts that don't render it (emails, chat messages, commit messages).
 
 **Fix:** Match the formatting to the medium.
+
+### Horizontal-Rule Dividers
+
+Dropping `---`, `***`, or `___` rules between every section. Named as "another obvious AI writing marker" — recent Claude models throw them in constantly. A horizontal rule is for a genuine thematic break, not as connective tissue between paragraphs.
+
+**Fix:** Use a paragraph break. Reserve the rule for a real section boundary in a long document.
 
 ## Sentence-Level Anti-Patterns
 
@@ -254,6 +287,20 @@ AI writes about every topic with the same level of confidence and the same tone.
 Human writing naturally contains colloquialisms, incomplete thoughts, opinions stated without hedging, humor, sarcasm, and personal references. The near-total absence of these is itself a tell. AI text is "too clean."
 
 **Fix:** Write naturally. Use contractions. Leave in some rough edges. A slightly imperfect voice sounds human; a perfectly polished one sounds generated.
+
+### The Over-Corrected Register (Trying Not to Sound Like AI)
+
+The mirror of this whole catalog, and a real tell in its own right. As writers learned the 2024 markers, a second default appeared: prose visibly straining not to read as AI. It reads as a machine trying not to look like a machine just as fast as the thing it avoids. Naming it matters because an anti-slop pass that only removes the old tells pushes writing straight into this one.
+
+What it looks like:
+- Staccato three-word fragments on every beat — uniform in a new way
+- Forced lowercase or dropped capitals in otherwise-standard context
+- A "here's the thing" / "look" / "real talk" cold open bolted onto formal content
+- Profanity or "lol" dropped in to seem off-the-cuff against an otherwise polished register
+- Conspicuous em-dash avoidance: every dash swapped for an ellipsis or colon, or a sentence contorted around the gap
+- Deliberately inserted typos to beat detectors
+
+**Fix:** do not over-apply the rules. The fix for an em dash is a comma or period in a sentence you would actually write, not an ellipsis or a contortion. The fix for the smooth, voiceless paragraph is a real voice — pick a register and commit (see `choosing-with-intent.md`) — not the absence of voice dressed up as casual. Vary sentence length for real, long sentences included. If a casual marker is not native to the register you chose, cut it.
 
 ## Creative Writing Tells
 

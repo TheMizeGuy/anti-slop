@@ -1,0 +1,14 @@
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/plugins/
+.obsidian/themes/
+.anti-slop/
+**/.anti-slop/
+node_modules/
+**/node_modules/
+.serena/
+**/.serena/
+.remember/
+**/.remember/
+.claude/
+.DS_Store

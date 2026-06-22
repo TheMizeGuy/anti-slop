@@ -44,6 +44,8 @@ Review content for AI coding shortcomings: security holes, accessibility failure
    - `skills/anti-slop/references/frontend-patterns.md` (React, CSS, performance, HTML, UX patterns)
    - `skills/anti-slop/references/regression-patterns.md` (regression prevention, if reviewing code changes)
    - `skills/anti-slop/references/self-check.md` (checklists)
+   - `skills/anti-slop/references/empirical-rankings.md` (which tells matter most, by corpus data; which to apply with restraint)
+   - `skills/anti-slop/references/choosing-with-intent.md` (the positive direction -- what a deliberate choice looks like)
 3. Score the content on five dimensions (1-10 each):
    - **Directness** (3/10: opens with "Great question! Let me walk you through..." and recaps the user's question. 8/10: opens with the answer, no preamble.)
    - **Specificity** (3/10: "various factors contribute to significant impact." 8/10: names the factors and states the impact with numbers.)
@@ -86,38 +88,39 @@ Produce the report as rendered markdown (not inside a code block):
 
 ## What to Check (Priority Order)
 
-For **prose/text**:
-1. Sycophantic openers
-2. Banned words (especially: delve, leverage, utilize, pivotal, landscape, multifaceted, ensure, crucial)
-3. Em dash density
-4. Lists forced to exactly three items
-5. Banned phrases
-6. Structural cliches (binary contrasts, negative listings, hedging seesaw)
-7. Passive voice
-8. Sentence length uniformity
-9. Summary/recap at end
+For **prose/text** (lead with the data-backed top tells -- see `empirical-rankings.md`):
+1. Em dash density (the #1 tell) and the "It's not just X, it's Y" / "not only X but also Y" antithesis (the #1 sentence tell)
+2. Uniform sentence rhythm, fluent-but-empty paragraphs, sycophancy (regex-blind -- this is where your semantic read matters most; the scanner cannot see these)
+3. Sycophantic openers and reflexive agreement
+4. Banned words, judged by concentration (a lone "delve" / "however" / "comprehensive" is clean; several together is the tell)
+5. Banned phrases, listicle scaffolding ("5 ways to..."), "in today's fast-paced world", "in conclusion" closers, leftover "as an AI" boilerplate
+6. Structural cliches (binary contrasts, negative listings, hedging seesaw, rule-of-three defaults)
+7. The over-corrected "anti-AI" register (staccato fragments, forced lowercase, em-dash-dodging) -- banning the old tells produces this one
+8. Passive voice hiding the actor; sentence-length uniformity; summary/recap at the end
 
-For **code**:
-1. Comments that restate code
-2. Unnecessary abstractions (factories, strategies for single implementations)
-3. Error handling that swallows exceptions
-4. Unused imports/variables
-5. Unverified APIs (check unfamiliar methods exist)
-6. Security issues (SQL injection, XSS, hardcoded secrets, eval, path traversal)
-7. Convention mismatches with the codebase
-8. N+1 queries, missing timeouts, missing pagination
-9. React: useEffect for derived state, missing cleanup, "use client" overuse
-10. Full library imports (lodash, moment), hydration mismatches
-11. Debugging residue
+For **code** (separate *bug-class* from *cosmetic*, and verify before scanning -- see `empirical-rankings.md`). Never polish cosmetics while a bug-class finding ships:
+1. Hallucinated APIs / made-up packages -- the loudest bug; build or type-check to catch it, a regex cannot
+2. Tutorial-shaped boilerplate, over-engineering, ignoring the surrounding codebase -- the loudest tells, all regex-blind
+3. Error handling that swallows exceptions; unfinished "// rest of your code" stubs (both bug-class)
+4. Leftover chat artifacts ("Here's the updated code", "As an AI", ``` fences, "Good catch!")
+5. Comments that restate code; narrating "// Step 1" comments; generic names (process_data, doStuff)
+6. Unnecessary abstractions (factories/strategies for single implementations); over-correction into performed seniority
+7. Security issues (SQL injection, XSS, hardcoded secrets, eval, path traversal, SSRF, IDOR)
+8. Convention mismatches; unused imports/variables; debugging residue
+9. N+1 queries, missing timeouts, missing pagination
+10. React: useEffect for derived state, missing cleanup, "use client" overuse; full library imports (lodash, moment); hydration mismatches
 
-For **design/UI**:
-1. Accessibility failures (contrast, keyboard nav, focus management, semantic HTML, alt text, aria-live)
-2. Missing states (empty, error, loading, onboarding)
-3. Purple/indigo gradient defaults
-4. Inter/Roboto font defaults
-5. Three-column icon grids
-6. Missing form error states and accessible labels
-7. CSS magic numbers and !important
-8. Gratuitous animations without prefers-reduced-motion
-9. Generic microcopy ("Welcome back!", "Get started today!")
-10. Component library defaults not customized
+For **design/UI** (lead with the regex-blind tells the scanner cannot see -- the agent owns these):
+1. Cream + serif + sage "tasteful default" -- flag any two of {cream/beige page bg, serif display face like Instrument Serif/Fraunces, sage/forest accent} together (the current top emerging tell; the scanner keys single legs at best, the combination is the signal)
+2. Layout-quality, scanner-blind: text overflow/clipping past containers, inconsistent spacing (mixed p-3/p-7/arbitrary mt-[37px]), misaligned edges, no information hierarchy
+3. No real images -- every section icon-cards and abstract shapes, zero screenshots/photos (a top-cited complaint)
+4. Accessibility failures (contrast, keyboard nav, focus management, semantic HTML, alt text, aria-live)
+5. Missing states (empty, error, loading, onboarding)
+6. Purple/indigo defaults -- hex AND Tailwind classes (`bg-indigo-600`), plus raw-CSS gradients
+7. Inter/Roboto/Geist font defaults; un-themed shadcn/Tailwind defaults
+8. Three-column icon grids; the centered-hero + 3-cards + CTA skeleton
+9. Missing form error states and accessible labels
+10. CSS magic numbers and !important
+11. Gratuitous animations without prefers-reduced-motion
+12. Generic microcopy ("Welcome back!", "Get started today!"); marketing hype in functional UI
+13. Component library defaults not customized

@@ -8,14 +8,14 @@ import { createServer } from "http";
 import { createConnection } from "net";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join, dirname, extname, basename } from "path";
-import { fileURLToPath } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
 import { createHash } from "crypto";
 import { homedir } from "os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ── Banned Words (top 50 highest-signal, prose-only) ──
-const BANNED_WORDS = [
+export const BANNED_WORDS = [
   "delve", "delving", "leverage", "leveraging", "utilize", "utilizing",
   "harness", "harnessing", "streamline", "foster", "fostering",
   "cultivate", "elevate", "empower", "empowering", "embark",
@@ -27,12 +27,35 @@ const BANNED_WORDS = [
   "landscape", "tapestry", "realm", "synergy", "testament",
   "interplay", "paradigm", "intersection",
   "gossamer", "iridescent", "luminous", "ephemeral", "ethereal", "enigmatic",
+  // Inflated/low-confidence words: kept in the list but flagged only on clustering
+  // (count >= 2) at low severity, via LOW_CONFIDENCE_WORDS below.
+  "comprehensive", "robust", "navigate", "nuanced", "meticulous", "facilitate",
+  "holistic", "myriad", "plethora", "paramount", "intricate", "profound",
 ];
 
+// ── Low-confidence words: high keyword-match but rarely cited as a real tell ──
+// (Reddit corpus, see references/empirical-rankings.md). Flagged only when they
+// CLUSTER (count >= 2), at "low" severity. A lone hit is treated as clean.
+export const LOW_CONFIDENCE_WORDS = new Set([
+  "utilize", "utilizing", "comprehensive", "robust", "navigate", "nuanced",
+  "meticulous", "harness", "harnessing", "seamless", "foster", "fostering",
+  "facilitate", "streamline", "leverage", "leveraging", "realm", "holistic",
+  "myriad", "plethora", "paramount", "intricate", "vibrant", "captivating",
+  "profound", "empower", "empowering", "cultivate",
+]);
+
+// ── Escape hatch: a line carrying this marker is a deliberate choice; skip it. ──
+const ESCAPE_HATCH = /(?:anti-slop-allow|unslop-ignore)\b/i;
+
+// ── Em dash density (prose): the #1 cited writing tell. Flag on concentration, ──
+// not a single legitimate dash. Counts only after prose noise-stripping.
+const EMDASH_MIN_COUNT = 5;     // ignore a handful of legitimate dashes
+const EMDASH_MIN_DENSITY = 4;   // per 1000 words before it counts
+
 // ── Banned Phrases (top 40 highest-signal) ──
-const BANNED_PHRASES = [
+export const BANNED_PHRASES = [
   "great question", "that's a great question", "absolutely!",
-  "certainly!", "i'd be happy to help", "i'd be happy to assist",
+  "certainly!", "you're absolutely right", "i'd be happy to help", "i'd be happy to assist",
   "hope this helps", "feel free to", "let me know if you have",
   "does that make sense", "here's the thing", "let me walk you through",
   "let me break this down", "let's dive in", "let's unpack this",
@@ -47,32 +70,69 @@ const BANNED_PHRASES = [
   "key takeaways", "without further ado",
 ];
 
-// ── UI Design Patterns (Tailwind class combos) ──
-const DESIGN_PATTERNS = [
-  { name: "purple-gradient-default", pattern: /from-(indigo|purple|violet)-[45]00\s.*to-(indigo|purple|violet)-[56]00/i, desc: "Purple/indigo gradient (Tailwind AI default)" },
-  { name: "icon-in-colored-circle", pattern: /rounded-full\s[^"]*bg-[a-z]+-100\s[^"]*p-3/i, desc: "Icon in colored circle background" },
-  { name: "frosted-glass-nav", pattern: /backdrop-blur[^\s]*\s[^"]*bg-white\/[0-9]+\s[^"]*border-b/i, desc: "Frosted glass navigation bar" },
-  { name: "gradient-text", pattern: /bg-clip-text\s[^"]*text-transparent/i, desc: "Gradient text effect on heading" },
-  { name: "shadow-border-rounded-combo", pattern: /shadow-sm\s[^"]*border\s[^"]*rounded-xl/i, desc: "shadow-sm + border + rounded-xl AI card combo" },
-  { name: "z-index-escalation", pattern: /z-(?:index:\s*|\[)(?:999|9999|99999)/i, desc: "z-index escalation (999+)" },
-  { name: "important-overuse", pattern: /!important/g, desc: "!important usage" },
+// ── UI Design Patterns (severity per rule; optional `suppress` skips a line) ──
+// Ordered roughly by empirical signal. Severity reflects the corpus ranking:
+// shadcn-default / purple / gradients are the strongest; the rest are lighter.
+export const DESIGN_PATTERNS = [
+  { name: "purple-gradient-default", severity: "medium", pattern: /from-(indigo|purple|violet)-[45]00\s.*to-(indigo|purple|violet)-[56]00/i, desc: "Purple/indigo gradient (Tailwind AI default)" },
+  { name: "purple-blue-gradient", severity: "medium", pattern: /from-(purple|violet|indigo|fuchsia)-\d+\s+(via-[a-z]+-\d+\s+)?to-(blue|indigo|pink|cyan|sky)-\d+|linear-gradient\([^)]*#(6366f1|7c3aed|8b5cf6|a855f7)[^)]*\)/i, desc: "Purple-to-blue/pink gradient" },
+  { name: "ai-purple-hex", severity: "low", pattern: /#(6366f1|4f46e5|818cf8|7c3aed|6d28d9|8b5cf6|a855f7|9333ea|7e22ce|c026d3|d946ef)\b/i, desc: "AI purple (indigo/violet hex as brand color)" },
+  { name: "ai-purple-class", severity: "medium", pattern: /\b(bg|text|from|via|to|border|ring|fill|stroke|decoration|outline)-(indigo|violet|purple|fuchsia)-(400|500|600|700|800)\b/i, desc: "AI purple as primary (Tailwind indigo/violet/purple class)" },
+  { name: "gradient-text", severity: "medium", pattern: /bg-clip-text\s[^"]*text-transparent|text-transparent\s[^"]*bg-clip-text|-webkit-background-clip\s*:\s*text|\bbackground-clip\s*:\s*text/i, desc: "Gradient text on heading (strong AI tell)" },
+  { name: "cream-serif-default", severity: "low", pattern: /#(faf8f5|f5f1e8|f3eee3|fdfbf7|f7f3ec|faf6ef|f6f1e7|fbf7f0|f4efe4)\b|\bbg-(stone|amber|orange)-(50|100)\b|\b(Instrument\s*Serif|Fraunces|Playfair\s*Display|Cormorant|Spectral|DM\s*Serif)\b/i, desc: "Cream/serif 'tasteful default' (the 2026 tell)" },
+  { name: "shadcn-default-card", severity: "low", pattern: /rounded-lg\s+border\s+bg-card\s+text-card-foreground\s+shadow-sm|"baseColor"\s*:\s*"(slate|zinc|gray|neutral|stone)"|--radius\s*:\s*0\.5rem/i, desc: "Un-themed shadcn default card kit" },
+  { name: "icon-in-colored-circle", severity: "medium", pattern: /rounded-full\s[^"]*bg-[a-z]+-100\s[^"]*p-3/i, desc: "Icon in colored circle background" },
+  { name: "frosted-glass-nav", severity: "medium", pattern: /backdrop-blur[^\s]*\s[^"]*bg-white\/[0-9]+\s[^"]*border-b/i, desc: "Frosted glass navigation bar" },
+  { name: "shadow-border-rounded-combo", severity: "medium", pattern: /shadow-sm\s[^"]*border\s[^"]*rounded-xl/i, desc: "shadow-sm + border + rounded-xl AI card combo" },
+  { name: "neon-glow", severity: "low", pattern: /shadow-\[0_0_|drop-shadow-\[0_0_|box-shadow\s*:[^;]*\b0\s+0\s+\d{2,}px/i, desc: "Unprompted neon glow (dark-mode tell)" },
+  { name: "rounded-everything", severity: "low", pattern: /\brounded-(2xl|3xl|full)\b|border-radius\s*:\s*(999\d*px|9999px)/i, suppress: /\b[hw]-(\d|10|11|12|14|16)(\.5)?\b/i, desc: "Maximal rounding on everything (cards/pills)" },
+  { name: "generic-font", severity: "low", pattern: /font-family\s*:\s*['"]?(Inter|Geist|Roboto)\b|\b(Inter|Geist|Geist_Mono|Roboto)\s*\(/i, desc: "Generic default font (Inter/Geist/Roboto)" },
+  { name: "hype-copy", severity: "low", pattern: /\bTransform your\b|\bSupercharge\b|\bUnleash\b|\bEffortlessly\b|take your [^.]{0,30}to the next level/i, desc: "Marketing hype copy in UI" },
+  { name: "stock-illustration", severity: "low", pattern: /\b(undraw|storyset|drawkit)\b/i, desc: "Generic stock illustration (undraw/storyset)" },
+  { name: "z-index-escalation", severity: "medium", pattern: /z-(?:index:\s*|\[)(?:999|9999|99999)/i, desc: "z-index escalation (999+)" },
+  { name: "important-overuse", severity: (c) => (c > 3 ? "high" : "medium"), pattern: /!important/gi, desc: "!important usage" },
 ];
 
-// ── Code Patterns ──
-const CODE_PATTERNS = [
-  { name: "full-lodash-import", pattern: /import\s+_\s+from\s+['"]lodash['"]/g, desc: "Full lodash import (use cherry-picked imports)" },
-  { name: "full-moment-import", pattern: /import\s+moment\s+from\s+['"]moment['"]/g, desc: "moment.js import (use dayjs or date-fns)" },
-  { name: "eval-usage", pattern: /\beval\s*\(/g, desc: "eval() usage (security risk)" },
-  { name: "innerhtml-usage", pattern: /\.innerHTML\s*=/g, desc: "innerHTML assignment (XSS risk)" },
-  { name: "hardcoded-secret", pattern: /(?:api[_-]?key|password|secret|token)\s*[:=]\s*['"][^'"]{8,}['"]/gi, desc: "Possible hardcoded credential" },
-  { name: "console-log-emoji", pattern: /console\.log\s*\(\s*['"][^\n]*[\u{1F300}-\u{1FAFF}]/gu, desc: "Emoji in console.log" },
-  { name: "img-no-dimensions", pattern: /<img\s(?![^>]*(?:width|height))[^>]*>/gi, desc: "<img> without width/height (causes CLS)" },
-  { name: "useeffect-setstate", pattern: /useEffect\s*\(\s*\(\s*\)\s*=>\s*\{[^}]*set[A-Z]\w*\s*\(/g, desc: "useEffect setting state (likely derived state)" },
+// ── Code Patterns (severity per rule) ──
+export const CODE_PATTERNS = [
+  { name: "full-lodash-import", severity: "medium", pattern: /import\s+_\s+from\s+['"]lodash['"]/g, desc: "Full lodash import (use cherry-picked imports)" },
+  { name: "full-moment-import", severity: "medium", pattern: /import\s+moment\s+from\s+['"]moment['"]/g, desc: "moment.js import (use dayjs or date-fns)" },
+  { name: "eval-usage", severity: "high", pattern: /\beval\s*\(/g, desc: "eval() usage (security risk)" },
+  { name: "innerhtml-usage", severity: "high", pattern: /\.innerHTML\s*=/g, desc: "innerHTML assignment (XSS risk)" },
+  { name: "hardcoded-secret", severity: "high", pattern: /(?:api[_-]?key|password|secret|token)\s*[:=]\s*['"][^'"]{8,}['"]/gi, desc: "Possible hardcoded credential" },
+  { name: "console-log-emoji", severity: "medium", pattern: /console\.log\s*\(\s*['"][^\n]*[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FAFF}]/gu, desc: "Emoji in console.log" },
+  { name: "img-no-dimensions", severity: "medium", pattern: /<img\s(?![^>]*(?:width|height))[^>]*>/gi, desc: "<img> without width/height (causes CLS)" },
+  { name: "useeffect-setstate", severity: "medium", pattern: /useEffect\s*\(\s*\(\s*\)\s*=>\s*\{[^}]*set[A-Z]\w*\s*\(/g, desc: "useEffect setting state (likely derived state)" },
+  // AI-tell code patterns from the corpus study (high precision when present)
+  { name: "chat-artifact", severity: "high", pattern: /\bhere'?s the (updated|complete|full|fixed|revised|new) (code|version|implementation|file)\b|\bas an? (ai|a\.i\.) (language )?model\b|\b(good|great) catch!|\byou'?re absolutely right\b|\bi hope this helps\b/gi, desc: "Leftover chat artifact (assistant voice in code)" },
+  { name: "placeholder-comment", severity: "high", pattern: /(\/\/|#|\/\*|\*|--|<!--)\s*\.{2,}\s*(rest|the rest|your|remaining|existing|previous|other)\b|(\/\/|#|\/\*|\*|--|<!--)\s*(rest|remainder) of (your |the |my )?(code|implementation|logic|function|file)\b|(\/\/|#|\/\*|\*|--|<!--)\s*(your|the) (code|logic|implementation|stuff) (goes )?here\b|(\/\/|#|\/\*|\*|--|<!--)\s*(add|insert|implement|put) (your )?(code|logic|implementation) here\b|(\/\/|#|\/\*|\*|--|<!--)\s*(implementation|code|logic) (goes|go) here\b|(\/\/|#|\/\*|\*|--|<!--)\s*existing code (here|unchanged|stays|remains)\b|(\/\/|#|\/\*|\*|--|<!--)\s*TODO:?\s*(implement|add|fill in|finish)\b/gi, desc: "Placeholder-comment stub (file unfinished -- a bug)" },
+  { name: "narrating-comment", severity: "low", pattern: /(\/\/|#|\/\*|\*|--)\s*(step\s*\d+\b|now we\b|first,|next,|then,|finally,)|(\/\/|#|\/\*|\*|--)\s*(increment|decrement|initialize|declare|instantiate|loop (over|through)|iterate over|return the|set the|get the|call the)\b|(\/\/|#|\/\*|\*|--)\s*this (function|method|line|loop|variable|class|block) (does|handles|returns|creates)\b|(\/\/|#|\/\*|\*|--)\s*(import|importing) (the |required )?(libraries|modules|dependencies)\b/gi, desc: "Narrating comment (restates the code)" },
+  { name: "swallowed-error", severity: "medium", pattern: /^\s*except\s*:|^\s*except\s+(Exception|BaseException)\s*:\s*(pass|\.\.\.)\s*$|\bcatch\s*\([^)]*\)\s*\{\s*\}|\bcatch\s*\{\s*\}|\bcatch\s*\([^)]*\)\s*\{\s*\/\/[^\n]*\}|\bif\s+err\s*!=\s*nil\s*\{\s*\}|\bif\s+err\s*!=\s*nil\s*\{\s*\/\/[^\n]*\}/g, desc: "Swallowed error (bare except / empty catch / empty Go err block) -- a bug" },
+  { name: "generic-naming", severity: "low", pattern: /\b(def|function|func|fn|fun|sub)\s+(process_?[Dd]ata|handle_?[Dd]ata|do_?[Ss]tuff|do_?[Ss]omething|my_?[Ff]unction|process_?[Ii]tem|process_?[Ii]nput|main_?[Ff]unction)\b/g, desc: "Generic placeholder function name" },
+  { name: "boilerplate-marker", severity: "low", pattern: /\blorem ipsum\b|\bYOUR_API_KEY\b|\b(your|my)[-_]?api[-_]?key\b|\bexample\.com\b|\b(John|Jane) (Doe|Smith)\b|['"]sk-(xxx|your|placeholder|123)/gi, desc: "Tutorial/boilerplate marker (dummy data)" },
+];
+
+// ── Text constructs (prose only): regex-detectable sentence/format tells ──
+// Severity follows the corpus ranking. Emitted only after prose noise-stripping
+// (code fences, quotes, blockquotes, frontmatter, and escape-hatch lines blanked).
+export const TEXT_CONSTRUCTS = [
+  { name: "antithesis-not-just-x-y", severity: "medium", pattern: /\b(it'?s|its|it is|that'?s|this is|they'?re)\s+not\s+(just|only|merely|simply)\b[^.?!\n]{0,60}\bit'?s\b/gi, desc: '"It\'s not just X, it\'s Y" antithesis (#1 sentence tell)' },
+  { name: "antithesis-not-only-but", severity: "low", pattern: /\bnot\s+(just|only|merely|simply)\s+(a |an |the )?[\w-]+,?\s+but\b/gi, desc: '"not only X, but Y" antithesis' },
+  { name: "assistant-boilerplate", severity: "high", pattern: /\bas an? (ai|a\.i\.) (language )?model\b|\bas a large language model\b|\bi (cannot|can'?t|am unable to) (assist|help|fulfil|fulfill|comply|provide)\b|\bas of my last (knowledge )?(update|training)\b|\bknowledge cut[- ]?off\b|\bi (do not|don'?t) have (personal|the ability|access|feelings|opinions)\b/gi, desc: "Leftover assistant boilerplate (as-an-AI / refusal / cutoff)" },
+  { name: "assistant-offer", severity: "medium", pattern: /\bwould you like me to\b|\bis there anything else i can\b|\bi hope this (helps|email finds you well)\b/gi, desc: "Trailing assistant offer / sign-off" },
+  { name: "dive-in", severity: "low", pattern: /\b(deep dive|dive in(to)?|let'?s dive|diving in|dive deep)\b/gi, desc: '"dive in" / "deep dive" opener' },
+  { name: "listicle-scaffold", severity: "low", pattern: /(^|\s)#{0,4}\s*\d+\s+(ways|tips|signs|reasons|things|steps|tricks|secrets|lessons|mistakes|rules)\b/gi, desc: 'Listicle scaffolding ("N ways to...")' },
+  { name: "fast-paced-opener", severity: "low", pattern: /\bin today'?s\s+(fast[- ]?paced|digital|ever[- ]?changing|modern|competitive)?\s*(world|age|landscape|era|society|market)\b|\bin (the|this) (modern|digital) (world|age|era)\b/gi, desc: '"In today\'s fast-paced world" opener' },
+  { name: "unlock-potential", severity: "low", pattern: /\b(unlock|unleash|tap into)\w*\s+(the\s+|your\s+|its\s+|their\s+|full\s+)*(power|potential|capabilities|secrets)\b/gi, desc: '"unlock the potential" hype' },
+  { name: "in-conclusion", severity: "low", pattern: /\bin (conclusion|summary)\b|\bto (summari[sz]e|conclude|wrap (this |it )?up)\b|\bin closing\b/gi, desc: '"In conclusion / In summary" closer' },
+  { name: "honestly-opener", severity: "low", pattern: /(^|\n)\s*honestly,\s|\blet'?s be (honest|real)\b/gi, desc: '"Honestly," / "Let\'s be real" opener' },
+  { name: "hr-divider", severity: "low", pattern: /^\s{0,3}(---+|\*\*\*+|___+)\s*$/gm, desc: "Horizontal-rule divider between sections" },
+  { name: "hype-marketing", severity: "low", pattern: /\brevolution(ary|i[sz]e)\b|\btransform your (life|business|workflow)\b|\bto the next level\b|\bsupercharge\b|\bsay goodbye to\b|\blook no further\b|\bbuckle up\b|\bwithout further ado\b/gi, desc: "Marketing hype (revolutionary / supercharge)" },
 ];
 
 // ── Context Exceptions ──
 // If any of these domain words appear in the file, the banned word is likely legitimate
-const CONTEXT_EXCEPTIONS = {
+export const CONTEXT_EXCEPTIONS = {
   "realm": ["server", "wow", "warcraft", "mmo", "game", "character", "guild", "blizzard", "horde", "alliance", "dungeon", "raid", "player", "azeroth"],
   "enchanting": ["enchant", "wow", "warcraft", "spell", "magic", "item", "gear", "weapon", "profession", "disenchant"],
   "landscape": ["terrain", "geography", "map", "topograph", "satellite", "gis", "orientation", "portrait"],
@@ -93,14 +153,15 @@ const CONTEXT_EXCEPTIONS = {
   "bustling": ["city", "market", "port", "town", "npc", "merchant"],
   "pivotal": ["pivot table", "pivot point", "agile", "sprint"],
   "seamless": ["seam", "stitch", "texture", "tile", "tilemap"],
+  "harness": ["test harness", "wiring harness", "cable harness", "playwright", "cypress", "webdriver", "e2e"],
 };
 
 // ── Emoji detection ──
-const EMOJI_REGEX = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FAFF}]/gu;
+const EMOJI_REGEX = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FAFF}]/gu;
 
 // ── File type detection ──
 const PROSE_EXTENSIONS = new Set([".md", ".mdx", ".txt", ".rst"]);
-const CODE_EXTENSIONS = new Set([".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py", ".rb", ".go", ".rs", ".java", ".cs", ".php"]);
+const CODE_EXTENSIONS = new Set([".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py", ".rb", ".go", ".rs", ".java", ".cs", ".php", ".c", ".h", ".cpp", ".cc", ".hpp", ".kt", ".kts", ".swift", ".scala", ".m", ".mm", ".sh", ".bash", ".lua", ".dart", ".sql", ".r"]);
 const STYLE_EXTENSIONS = new Set([".css", ".scss", ".less", ".html", ".htm", ".jsx", ".tsx", ".vue", ".svelte"]);
 
 // ── Multi-project support ──
@@ -218,48 +279,106 @@ function saveScore(score) {
   writeFileSync(SCORE_FILE, JSON.stringify(trimmed, null, 2));
 }
 
+// ── Prose noise-stripping: keep only the author's own prose. Blanks fenced code,
+// inline code, double-quoted spans, blockquotes, YAML frontmatter, and any line
+// carrying the escape-hatch marker. Line count is preserved so line numbers hold. ──
+function stripProseNoise(content) {
+  const lines = content.split("\n");
+  const out = [];
+  let inFence = false;
+  let inFrontmatter = false;
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    if (i === 0 && line.trim() === "---") { inFrontmatter = true; out.push(""); continue; }
+    if (inFrontmatter) { if (line.trim() === "---") inFrontmatter = false; out.push(""); continue; }
+    if (/^\s*(```|~~~)/.test(line)) { inFence = !inFence; out.push(""); continue; }
+    if (inFence) { out.push(""); continue; }
+    if (/^\s*>/.test(line)) { out.push(""); continue; }
+    if (ESCAPE_HATCH.test(line)) { out.push(""); continue; }
+    line = line.replace(/`[^`]*`/g, " ").replace(/"[^"\n]*"/g, " ");
+    out.push(line);
+  }
+  return out.join("\n");
+}
+
+// ── Comment lines only (for scanning code files for prose-style tells) ──
+function extractComments(content) {
+  return content.split("\n")
+    .filter(l => /^\s*(\/\/|#|\*|\/\*|<!--|--)/.test(l) && !ESCAPE_HATCH.test(l))
+    .join("\n");
+}
+
+// ── Blank any line carrying the escape-hatch marker (preserves line count) ──
+function stripEscapeHatchLines(content) {
+  return content.split("\n").map(l => (ESCAPE_HATCH.test(l) ? "" : l)).join("\n");
+}
+
+function globalize(re) {
+  return re.flags.includes("g") ? re : new RegExp(re.source, re.flags + "g");
+}
+
+function resolveSeverity(sev, count) {
+  return typeof sev === "function" ? sev(count) : sev;
+}
+
+// ── Count regex matches per non-suppressed, non-escaped line ──
+function countLinePattern(lines, pat) {
+  const g = globalize(pat.pattern);
+  let count = 0;
+  for (const line of lines) {
+    if (ESCAPE_HATCH.test(line)) continue;
+    if (pat.suppress && pat.suppress.test(line)) continue;
+    const m = line.match(g);
+    if (m) count += m.length;
+  }
+  return count;
+}
+
 // ── Scanner ──
-function scanContent(content, filePath) {
+export function scanContent(content, filePath) {
   const violations = [];
   const ext = extname(filePath).toLowerCase();
   const isProse = PROSE_EXTENSIONS.has(ext);
   const isCode = CODE_EXTENSIONS.has(ext);
   const isStyle = STYLE_EXTENSIONS.has(ext) || isCode;
-  const lines = content.split("\n");
+  const config = loadProjectConfig();
+  const allowedWords = new Set((config.allowedWords || []).map(w => w.toLowerCase()));
+  const contentLower = content.toLowerCase();
 
+  // Prose scans the author's own text with noise stripped; code scans comment lines.
+  const proseScan = isProse ? stripProseNoise(content) : null;
+
+  // ── Banned words ──
   if (isProse || isCode) {
-    const textToScan = isProse ? content : lines.filter(l => l.match(/^\s*\/\/|^\s*#|^\s*\*|^\s*\/\*/) || isProse).join("\n");
-    const config = loadProjectConfig();
-    const allowedWords = new Set((config.allowedWords || []).map(w => w.toLowerCase()));
-    const contentLower = content.toLowerCase();
-
+    const textToScan = isProse ? proseScan : extractComments(content);
     for (const word of BANNED_WORDS) {
-      if (allowedWords.has(word.toLowerCase())) continue;
-
-      // Context exceptions: skip if domain-specific words appear in the file
-      const exceptions = CONTEXT_EXCEPTIONS[word.toLowerCase()];
+      const lw = word.toLowerCase();
+      if (allowedWords.has(lw)) continue;
+      const exceptions = CONTEXT_EXCEPTIONS[lw];
       if (exceptions && exceptions.some(e => contentLower.includes(e))) continue;
-
-      const regex = new RegExp(`\\b${word}\\b`, "gi");
-      const matches = textToScan.match(regex);
-      if (matches) {
-        violations.push({
-          type: "banned-word",
-          word,
-          count: matches.length,
-          severity: "medium",
-          desc: `Banned AI-tell word "${word}" found ${matches.length}x`,
-        });
-      }
+      const matches = textToScan.match(new RegExp(`\\b${word}\\b`, "gi"));
+      if (!matches) continue;
+      const count = matches.length;
+      // Concentration rule: a lone low-confidence word is the writer's own prose, not a tell.
+      const lowConf = LOW_CONFIDENCE_WORDS.has(lw);
+      if (lowConf && count < 2) continue;
+      violations.push({
+        type: "banned-word",
+        word,
+        count,
+        severity: lowConf ? "low" : "medium",
+        desc: `Banned AI-tell word "${word}" found ${count}x`,
+      });
     }
   }
 
+  // ── Banned phrases ──
   if (isProse || isCode) {
-    const lower = content.toLowerCase();
+    const hay = (isProse ? proseScan : content).toLowerCase();
     for (const phrase of BANNED_PHRASES) {
-      const idx = lower.indexOf(phrase);
+      const idx = hay.indexOf(phrase);
       if (idx !== -1) {
-        const lineNum = content.substring(0, idx).split("\n").length;
+        const lineNum = hay.substring(0, idx).split("\n").length;
         violations.push({
           type: "banned-phrase",
           phrase,
@@ -271,7 +390,36 @@ function scanContent(content, filePath) {
     }
   }
 
-  const emojiMatches = content.match(EMOJI_REGEX);
+  // ── Text constructs + em-dash density (prose only) ──
+  if (isProse) {
+    for (const pat of TEXT_CONSTRUCTS) {
+      const matches = proseScan.match(globalize(pat.pattern));
+      if (matches) {
+        violations.push({
+          type: "text-construct",
+          name: pat.name,
+          count: matches.length,
+          severity: pat.severity,
+          desc: `${pat.desc} (${matches.length}x)`,
+        });
+      }
+    }
+    const emdashes = (proseScan.match(/—/g) || []).length;
+    const words = (proseScan.match(/\S+/g) || []).length || 1;
+    const density = (emdashes / words) * 1000;
+    if (emdashes >= EMDASH_MIN_COUNT && density >= EMDASH_MIN_DENSITY) {
+      violations.push({
+        type: "text-construct",
+        name: "em-dash-density",
+        count: emdashes,
+        severity: density >= EMDASH_MIN_DENSITY * 2 ? "medium" : "low",
+        desc: `High em dash density (${emdashes} dashes, ${density.toFixed(1)}/1k words) -- the #1 AI writing tell`,
+      });
+    }
+  }
+
+  // ── Emoji (skips escape-hatch lines so an intentional CLI glyph can opt out) ──
+  const emojiMatches = stripEscapeHatchLines(content).match(EMOJI_REGEX);
   if (emojiMatches) {
     violations.push({
       type: "emoji",
@@ -281,33 +429,32 @@ function scanContent(content, filePath) {
     });
   }
 
+  // ── Design + code patterns (per-line, with suppress + escape hatch) ──
+  const lines = content.split("\n");
   if (isStyle) {
     for (const pat of DESIGN_PATTERNS) {
-      const matches = content.match(pat.pattern);
-      if (matches) {
-        const count = Array.isArray(matches) ? matches.length : 1;
+      const count = countLinePattern(lines, pat);
+      if (count > 0) {
         violations.push({
           type: "design-tell",
           name: pat.name,
           count,
-          severity: pat.name === "important-overuse" && count > 3 ? "high" : "medium",
+          severity: resolveSeverity(pat.severity, count),
           desc: `${pat.desc} (${count}x)`,
         });
       }
     }
   }
-
   if (isCode) {
     for (const pat of CODE_PATTERNS) {
-      const matches = content.match(pat.pattern);
-      if (matches) {
-        const severity = ["eval-usage", "innerhtml-usage", "hardcoded-secret"].includes(pat.name) ? "high" : "medium";
+      const count = countLinePattern(lines, pat);
+      if (count > 0) {
         violations.push({
           type: "code-pattern",
           name: pat.name,
-          count: matches.length,
-          severity,
-          desc: `${pat.desc} (${matches.length}x)`,
+          count,
+          severity: resolveSeverity(pat.severity, count),
+          desc: `${pat.desc} (${count}x)`,
         });
       }
     }
@@ -317,7 +464,7 @@ function scanContent(content, filePath) {
 }
 
 // ── Score calculation ──
-function calculateScore(violations) {
+export function calculateScore(violations) {
   let score = 50;
   for (const v of violations) {
     if (v.severity === "high") score -= 5;
@@ -325,6 +472,27 @@ function calculateScore(violations) {
     else score -= 1;
   }
   return Math.max(0, Math.min(50, score));
+}
+
+// ── Verdict ladder (source-aligned): a weighted-count tier for the scan summary. ──
+// Uses the source scanners' additive weights (high=3, medium=2, low=1), which are
+// distinct from the /50 score. For prose, pass the word count so a long, lightly
+// flecked document is not over-escalated (the concentration guard).
+export function verdict(violations, words = 0) {
+  const W = { high: 3, medium: 2, low: 1 };
+  let weighted = 0, high = 0, medium = 0;
+  for (const v of violations) {
+    weighted += W[v.severity] || 1;
+    if (v.severity === "high") high++;
+    else if (v.severity === "medium") medium++;
+  }
+  if (weighted === 0) return "CLEAN";
+  if (high === 0 && medium === 0) return "MINOR";
+  if (high >= 3 || weighted >= 15) return "STRONG";
+  if (high >= 1) return "SOME";
+  const density = words > 0 ? (weighted / words) * 1000 : 0;
+  if (weighted >= 6 && !(words >= 600 && density < 2.0)) return "SOME";
+  return "MINOR";
 }
 
 // ── Filter stale violations that are now context-allowed ──
@@ -653,7 +821,7 @@ async function startDashboardIfNeeded() {
 
 // ── MCP Server ──
 const mcpServer = new Server(
-  { name: "anti-slop-scanner", version: "1.1.0" },
+  { name: "anti-slop-scanner", version: "1.4.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -717,11 +885,14 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
       return { content: [{ type: "text", text: "" }] };
     }
 
+    const ext = (filePath.match(/\.[^./\\]+$/) || [""])[0].toLowerCase();
+    const isProseFile = [".md", ".mdx", ".txt", ".rst"].includes(ext);
+    const tier = verdict(violations, isProseFile ? (content.match(/\S+/g) || []).length : 0);
     const report = violations.map(v => `[${v.severity.toUpperCase()}] ${v.desc}`).join("\n");
     return {
       content: [{
         type: "text",
-        text: `Score: ${score}/50 | ${violations.length} violation(s) in ${filePath.split("/").pop().split("\\").pop()}\n\n${report}`,
+        text: `Score: ${score}/50 | ${tier} | ${violations.length} violation(s) in ${filePath.split("/").pop().split("\\").pop()}\n\n${report}`,
       }],
     };
   }
@@ -752,4 +923,8 @@ async function main() {
   await mcpServer.connect(transport);
 }
 
-main();
+// Only start the server when run directly; importing the module (for tests) must not.
+const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (invokedDirectly) {
+  main();
+}
