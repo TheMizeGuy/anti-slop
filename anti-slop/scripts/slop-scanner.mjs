@@ -98,8 +98,12 @@ export const CODE_PATTERNS = [
   { name: "full-lodash-import", severity: "medium", pattern: /import\s+_\s+from\s+['"]lodash['"]/g, desc: "Full lodash import (use cherry-picked imports)" },
   { name: "full-moment-import", severity: "medium", pattern: /import\s+moment\s+from\s+['"]moment['"]/g, desc: "moment.js import (use dayjs or date-fns)" },
   { name: "eval-usage", severity: "high", pattern: /\beval\s*\(/g, desc: "eval() usage (security risk)" },
-  { name: "innerhtml-usage", severity: "high", pattern: /\.innerHTML\s*=/g, desc: "innerHTML assignment (XSS risk)" },
-  { name: "hardcoded-secret", severity: "high", pattern: /(?:api[_-]?key|password|secret|token)\s*[:=]\s*['"][^'"]{8,}['"]/gi, desc: "Possible hardcoded credential" },
+  { name: "innerhtml-usage", severity: "high", skipInTests: true, pattern: /\.innerHTML\s*=/g, desc: "innerHTML assignment (XSS risk)" },
+  // Word-boundary on the key avoids compound identifiers (colorToken, currentPassword,
+  // URL_CHANGE_PASSWORD); the value lookahead excludes URLs/paths/CSS vars/hex that are
+  // never secrets. Test/fixture files are skipped (fake creds live there). "Possible",
+  // not definite: a candidate for a human read, not a confirmed leak.
+  { name: "hardcoded-secret", severity: "high", skipInTests: true, pattern: /\b(?:api[_-]?key|password|secret|token)\s*[:=]\s*['"](?!\/|https?:|\.\.?\/|var\(|--|#[0-9a-fA-F])[^'"]{8,}['"]/gi, desc: "Possible hardcoded credential" },
   { name: "console-log-emoji", severity: "medium", pattern: /console\.log\s*\(\s*['"][^\n]*[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FAFF}]/gu, desc: "Emoji in console.log" },
   { name: "img-no-dimensions", severity: "medium", pattern: /<img\s(?![^>]*(?:width|height))[^>]*>/gi, desc: "<img> without width/height (causes CLS)" },
   { name: "useeffect-setstate", severity: "medium", pattern: /useEffect\s*\(\s*\(\s*\)\s*=>\s*\{[^}]*set[A-Z]\w*\s*\(/g, desc: "useEffect setting state (likely derived state)" },
@@ -109,7 +113,7 @@ export const CODE_PATTERNS = [
   { name: "narrating-comment", severity: "low", pattern: /(\/\/|#|\/\*|\*|--)\s*(step\s*\d+\b|now we\b|first,|next,|then,|finally,)|(\/\/|#|\/\*|\*|--)\s*(increment|decrement|initialize|declare|instantiate|loop (over|through)|iterate over|return the|set the|get the|call the)\b|(\/\/|#|\/\*|\*|--)\s*this (function|method|line|loop|variable|class|block) (does|handles|returns|creates)\b|(\/\/|#|\/\*|\*|--)\s*(import|importing) (the |required )?(libraries|modules|dependencies)\b/gi, desc: "Narrating comment (restates the code)" },
   { name: "swallowed-error", severity: "medium", pattern: /^\s*except\s*:|^\s*except\s+(Exception|BaseException)\s*:\s*(pass|\.\.\.)\s*$|\bcatch\s*\([^)]*\)\s*\{\s*\}|\bcatch\s*\{\s*\}|\bcatch\s*\([^)]*\)\s*\{\s*\/\/[^\n]*\}|\bif\s+err\s*!=\s*nil\s*\{\s*\}|\bif\s+err\s*!=\s*nil\s*\{\s*\/\/[^\n]*\}/g, desc: "Swallowed error (bare except / empty catch / empty Go err block) -- a bug" },
   { name: "generic-naming", severity: "low", pattern: /\b(def|function|func|fn|fun|sub)\s+(process_?[Dd]ata|handle_?[Dd]ata|do_?[Ss]tuff|do_?[Ss]omething|my_?[Ff]unction|process_?[Ii]tem|process_?[Ii]nput|main_?[Ff]unction)\b/g, desc: "Generic placeholder function name" },
-  { name: "boilerplate-marker", severity: "low", pattern: /\blorem ipsum\b|\bYOUR_API_KEY\b|\b(your|my)[-_]?api[-_]?key\b|\bexample\.com\b|\b(John|Jane) (Doe|Smith)\b|['"]sk-(xxx|your|placeholder|123)/gi, desc: "Tutorial/boilerplate marker (dummy data)" },
+  { name: "boilerplate-marker", severity: "low", skipInTests: true, pattern: /\blorem ipsum\b|\bYOUR_API_KEY\b|\b(your|my)[-_]?api[-_]?key\b|\bexample\.com\b|\b(John|Jane) (Doe|Smith)\b|['"]sk-(xxx|your|placeholder|123)/gi, desc: "Tutorial/boilerplate marker (dummy data)" },
 ];
 
 // ── Text constructs (prose only): regex-detectable sentence/format tells ──
@@ -341,6 +345,9 @@ export function scanContent(content, filePath) {
   const isProse = PROSE_EXTENSIONS.has(ext);
   const isCode = CODE_EXTENSIONS.has(ext);
   const isStyle = STYLE_EXTENSIONS.has(ext) || isCode;
+  // Test/fixture files carry fake creds, example.com, and innerHTML scaffolding -- skip the
+  // security / dummy-data patterns there so real findings are not drowned in test noise.
+  const isTestFile = /\.(test|spec)\.[mc]?[jt]sx?$|(^|\/)(__tests__|__mocks__|fixtures|e2e)\/|\.stories\.[mc]?[jt]sx?$/i.test(filePath);
   const config = loadProjectConfig();
   const allowedWords = new Set((config.allowedWords || []).map(w => w.toLowerCase()));
   const contentLower = content.toLowerCase();
@@ -447,6 +454,7 @@ export function scanContent(content, filePath) {
   }
   if (isCode) {
     for (const pat of CODE_PATTERNS) {
+      if (isTestFile && pat.skipInTests) continue;
       const count = countLinePattern(lines, pat);
       if (count > 0) {
         violations.push({
@@ -821,7 +829,7 @@ async function startDashboardIfNeeded() {
 
 // ── MCP Server ──
 const mcpServer = new Server(
-  { name: "anti-slop-scanner", version: "1.4.0" },
+  { name: "anti-slop-scanner", version: "1.4.1" },
   { capabilities: { tools: {} } }
 );
 

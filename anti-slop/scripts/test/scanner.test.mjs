@@ -210,3 +210,27 @@ test("placeholder-comment: a real why-comment containing 'here' is not a stub", 
   // the genuine stub still fires
   assert.ok(named(scanContent("function f(){\n  // implementation goes here\n}", "a.ts"), "placeholder-comment"));
 });
+
+// ── 1.4.1: hardcoded-secret precision + test-file skipping ──
+
+test("hardcoded-secret flags real secrets, not compound identifiers or non-secret values", () => {
+  // real secrets still caught
+  assert.ok(named(scanContent('const apiKey = "sk_live_abcdef123456"', "a.ts"), "hardcoded-secret"));
+  assert.ok(named(scanContent('fetch({ token: "csrf-tok12xyz" })', "a.ts"), "hardcoded-secret"));
+  // compound identifiers (the word is a substring) are not credentials
+  assert.ok(!named(scanContent('const colorToken = "--color-positive"', "a.ts"), "hardcoded-secret"));
+  assert.ok(!named(scanContent('{ currentPassword: "a-fresh-strong-passphrase-12345" }', "a.ts"), "hardcoded-secret"));
+  assert.ok(!named(scanContent('const URL_CHANGE_PASSWORD = "/auth/change-password"', "a.ts"), "hardcoded-secret"));
+  // non-secret values (URL / CSS var) are excluded
+  assert.ok(!named(scanContent('const SKELETON_HEIGHT_TOKEN = "var(--nm-skel-h)"', "a.ts"), "hardcoded-secret"));
+});
+
+test("security / dummy-data patterns are skipped in test and fixture files, kept in prod", () => {
+  assert.ok(!named(scanContent('fetch({ token: "csrf-tok12xyz" })', "x.test.ts"), "hardcoded-secret"));
+  assert.ok(!named(scanContent("el.innerHTML = x", "x.test.tsx"), "innerhtml-usage"));
+  assert.ok(!named(scanContent('const e = "user@example.com"', "x.test.ts"), "boilerplate-marker"));
+  assert.ok(!named(scanContent('const t = "secret: passw0rd123"', "client/e2e/a.spec.ts"), "hardcoded-secret"));
+  // the same patterns still fire in production code
+  assert.ok(named(scanContent("el.innerHTML = userInput", "a.tsx"), "innerhtml-usage"));
+  assert.ok(named(scanContent('const apiKey = "sk_live_abcdef123456"', "src/config.ts"), "hardcoded-secret"));
+});
