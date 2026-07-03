@@ -1,3 +1,9 @@
+---
+last-refreshed: 2026-07-03
+next-due: 2026-10
+method: docs/rankings-refresh.md
+---
+
 # Empirical Rankings
 
 Which AI tells real people actually name, ranked by data instead of intuition. This file grounds the rest of the plugin: it tells you which rules to weight heavily, which to apply only when they cluster, and which popular "AI tells" the evidence does not support.
@@ -126,3 +132,29 @@ Trust comment share over post share when they diverge (comments are 100% on-topi
 - **Route regex-blind tells to a semantic read.** Rhythm, sycophancy, emptiness, formulaic shape, hallucinated APIs/citations, over-engineering, and codebase-fit need the `slop-detector` agent or a human, not the scanner.
 - **Honor the escape hatch.** A flagged construct on a line marked `anti-slop-allow:` / `unslop-ignore` is a deliberate choice. Skip it.
 - **A clean scan is not the finish line.** It clears the cheap layer. The structural read is where the real signal lives.
+
+## 2026-07 spot-check
+
+Bounded drift check of this file's top claims against public discussion from mid-2025 through mid-2026 (method and cadence: `docs/rankings-refresh.md`). This section records status only; any rule change goes through the measure harness first (`npm run measure` from `scripts/`).
+
+| Claim (as ranked above) | Status | Evidence |
+|-------------------------|--------|----------|
+| Em dash is the top writing tell | Confirmed; drifting down at the source | Still the most-named tell in press and detection guides through 2026-02 (vrid), but GPT-5.1 (2025-11) now obeys "no em dashes" custom instructions per Altman (via Mowshowitz, 2025-11-18) and vendors cut the default rate, so fresh model output carries fewer. Keep density scoring; re-measure before any promotion. |
+| `not just X, it's Y` antithesis | Confirmed; strengthening | Wikipedia's living "Signs of AI writing" page calls negative parallelism "stereotypically an AI sign"; Barron's counted the construction in Fortune 500 filings rising from ~50 (2023) to 200+ (2025) (via Hassid). |
+| Cream + serif + sage as the emerging design tell | Confirmed as now-mainstream; accent detail drifting | Chayka (2026-06-29) describes beige and cream backgrounds with large italicized serif display as the recognizable generic AI web style, with rusty-orange accents named where this file says sage. FP risk rising: human 2026 design trends converge on the same palette. |
+| AI purple / un-themed shadcn as the #1 concrete cause | Confirmed; NOT superseded by cream/serif | Still the leading concrete complaint for vibe-coded app UI; Adam Wathan's 2025-08 apology for `bg-indigo-500` drew 1M+ views (via prg.sh). Cream/serif is a second parallel default rather than a replacement. |
+| Sycophancy / yes-man tone (regex-blind) | Confirmed; worse | Claude Code's "You're absolutely right!" became a reported product complaint (The Register 2025-08-13; claude-code issue #3382); GPT-5.1 reviewers report increased glazing and automatic "Good question" openers (Mowshowitz). The catchphrases themselves are already in the scanner's banned-phrase list; the tone in flowing prose stays agent territory. |
+| Chat-artifact and cosmetic code tells (fences, emoji, placeholder comments) | Confirmed | Emoji-dense output is used operationally as a detection signal (Netcraft 2025); complaints about cleaning emoji-riddled AI comments persist on HN into 2026; 2026 AI-code-review checklists still lead with leftover artifacts. |
+| Diction cluster (`delve` etc.) as low-confidence only | Confirmed direction; aging out faster | Wikipedia notes `delve` dropped sharply in 2025 as models updated; PubMed-corpus work tracks the vocabulary receding in medical writing. Low-confidence treatment stays right; these are demotion candidates, never promotion. |
+| Loudest tells are structural and regex-blind | Confirmed with new evidence | arXiv 2601.21276 (2026-01) measures AI pull requests ignoring reuse opportunities while reviewers rate them positively: surface plausibility masks exactly the defects a regex cannot see. |
+
+New tells named in current sources that this file does not yet cover:
+
+- First-word fingerprints: model-specific openers ("Certainly!", "Good question", "I'd be happy to") treated as a distinct tell class (vrid 2026-02). Several are already banned phrases here; the class is broader than the current list.
+- Participial sentence openers (`-ing` phrase first) at 2-5x the human rate (vrid 2026-02). Regex-visible; high FP risk; needs corpus measurement before any rule.
+- `From X to Y` sweep construction (vrid 2026-02). Regex-visible; likely high FP.
+- Personification of tools and data ("the data tells a story") (vrid 2026-02). Regex-blind; agent territory.
+- Title case forced onto every heading (Wikipedia). High FP risk against legitimate house styles.
+- Em-dash-avoidance contortions are now themselves cited as a tell, which is finding 4 (the moving target) playing out on schedule.
+
+Sources (accessed 2026-07-03): Wikipedia "Signs of AI writing" (en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing); Kyle Chayka, "The generic style of AI web design", 2026-06-29 (kylechayka.substack.com); Zvi Mowshowitz, "GPT-5.1 Follows Custom Instructions and Glazes", 2025-11-18 (thezvi.wordpress.com); vrid.ai "Signs of AI Writing", 2026-02-11; Ruben Hassid, "It's not [X], it's [Y]" (ruben.substack.com); Milind Nair, dev.to (why-does-ai-keep-saying-its-not-x-its-y); The Register, 2025-08-13 (claude_codes_copious_coddling_confounds); github.com/anthropics/claude-code issue 3382; prg.sh "Why Your AI Keeps Building the Same Purple Gradient Website"; Netcraft, "Excessive Emojis as an AI Indicator"; arXiv 2601.21276 "More Code, Less Reuse", 2026-01-29; PMC12679996 "Delving Into PubMed Records"; github.com/JCarterJohnson/vibecoded-design-tells (upstream corpus, still the original snapshot).
