@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test test/*.test.mjs",
+    "measure": "node measure.mjs"
   },
   "keywords": [],
   "author": "",
