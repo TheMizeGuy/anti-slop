@@ -73,8 +73,167 @@ function countLinePattern(lines, pat) {
   return count;
 }
 
+// ── Suppressed-finding capture (opts.collectSuppressed) ──
+// Mirror of stripProseNoise that KEEPS only the escape-hatched lines (blanking
+// everything else, including fence/frontmatter/blockquote lines per the same
+// precedence as the active path) so callers can measure what an escape-hatched
+// line would have tripped had the marker not been there.
+function extractEscapeHatchedProse(content) {
+  const lines = content.split("\n");
+  const out = [];
+  let inFence = false;
+  let inFrontmatter = false;
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    if (i === 0 && line.trim() === "---") { inFrontmatter = true; out.push(""); continue; }
+    if (inFrontmatter) { if (line.trim() === "---") inFrontmatter = false; out.push(""); continue; }
+    if (/^\s*(```|~~~)/.test(line)) { inFence = !inFence; out.push(""); continue; }
+    if (inFence) { out.push(""); continue; }
+    if (/^\s*>/.test(line)) { out.push(""); continue; }
+    if (!ESCAPE_HATCH.test(line)) { out.push(""); continue; }
+    line = line.replace(/`[^`]*`/g, " ").replace(/"[^"\n]*"/g, " ");
+    out.push(line);
+  }
+  return out.join("\n");
+}
+
+// Mirror of extractComments that selects only the escape-hatched comment lines.
+function extractEscapeHatchedComments(content) {
+  return content.split("\n")
+    .filter(l => /^\s*(\/\/|#|\*|\/\*|<!--|--)/.test(l) && ESCAPE_HATCH.test(l))
+    .join("\n");
+}
+
+// Mirror of countLinePattern that counts only escape-hatched lines. A suppress-regex
+// guard still applies: if it matches, the rule would not have fired even without the
+// escape hatch, so that hit is a rule-internal exclusion, not a suppressed finding.
+function countLinePatternOnEscapedLines(lines, pat) {
+  const g = globalize(pat.pattern);
+  let count = 0;
+  for (const line of lines) {
+    if (!ESCAPE_HATCH.test(line)) continue;
+    if (pat.suppress && pat.suppress.test(line)) continue;
+    const m = line.match(g);
+    if (m) count += m.length;
+  }
+  return count;
+}
+
+// Additive-only: computes what WOULD have fired for two deliberate-suppression paths
+// -- (a) escape-hatched lines, (b) an allowedWords config entry -- so the dashboard can
+// show suppressed activity without ever touching the active `violations` array above it.
+// Scope is the four rule families keyed by a stable violation `type`: banned-word,
+// banned-phrase, design-tell, code-pattern (text-construct/emoji are out of scope for
+// this pass; see e-fb blackboard for rationale).
+function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle, isTestFile, proseScan, allowedWords, contentLower }) {
+  const suppressed = [];
+
+  // (a) escape-hatch: words/phrases/design/code hits confined to escape-hatched lines.
+  if (isProse || isCode) {
+    const hatchedText = isProse ? extractEscapeHatchedProse(content) : extractEscapeHatchedComments(content);
+    for (const word of BANNED_WORDS) {
+      const lw = word.toLowerCase();
+      if (allowedWords.has(lw)) continue; // covered under (b) instead
+      const exceptions = CONTEXT_EXCEPTIONS[lw];
+      if (exceptions && exceptions.some(e => contentLower.includes(e))) continue;
+      const matches = hatchedText.match(BANNED_WORD_REGEXES.get(word));
+      if (!matches) continue;
+      const count = matches.length;
+      const lowConf = LOW_CONFIDENCE_WORDS.has(lw);
+      if (lowConf && count < 2) continue;
+      suppressed.push({
+        type: "banned-word", word, count,
+        severity: lowConf ? "low" : "medium",
+        desc: `Banned AI-tell word "${word}" found ${count}x`,
+        suppressed: true, suppressedBy: "escape-hatch",
+      });
+    }
+  }
+
+  if (isProse) {
+    const hatchedHay = extractEscapeHatchedProse(content).toLowerCase();
+    for (const phrase of BANNED_PHRASES) {
+      if (!phrase) continue;
+      const firstIdx = hatchedHay.indexOf(phrase);
+      if (firstIdx === -1) continue;
+      let count = 0;
+      let searchFrom = 0;
+      let idx;
+      while ((idx = hatchedHay.indexOf(phrase, searchFrom)) !== -1) {
+        count++;
+        searchFrom = idx + phrase.length;
+      }
+      const lineNum = hatchedHay.substring(0, firstIdx).split("\n").length;
+      suppressed.push({
+        type: "banned-phrase", phrase, line: lineNum, count,
+        severity: "medium",
+        desc: `Banned phrase "${phrase}" found ${count}x (first at line ${lineNum})`,
+        suppressed: true, suppressedBy: "escape-hatch",
+      });
+    }
+  }
+
+  if (isStyle) {
+    for (const pat of DESIGN_PATTERNS) {
+      const count = countLinePatternOnEscapedLines(lines, pat);
+      if (count > 0) {
+        suppressed.push({
+          type: "design-tell", name: pat.name, count,
+          severity: resolveSeverity(pat.severity, count),
+          desc: `${pat.desc} (${count}x)`,
+          suppressed: true, suppressedBy: "escape-hatch",
+        });
+      }
+    }
+  }
+
+  if (isCode) {
+    for (const pat of CODE_PATTERNS) {
+      if (isTestFile && pat.skipInTests) continue;
+      const count = countLinePatternOnEscapedLines(lines, pat);
+      if (count > 0) {
+        suppressed.push({
+          type: "code-pattern", name: pat.name, count,
+          severity: resolveSeverity(pat.severity, count),
+          desc: `${pat.desc} (${count}x)`,
+          suppressed: true, suppressedBy: "escape-hatch",
+        });
+      }
+    }
+  }
+
+  // (b) allowedWords: uses the SAME active textToScan (hatch lines already excluded
+  // there), so this never double-counts against (a).
+  if ((isProse || isCode) && allowedWords.size > 0) {
+    const textToScan = isProse ? proseScan : extractComments(content);
+    for (const word of BANNED_WORDS) {
+      const lw = word.toLowerCase();
+      if (!allowedWords.has(lw)) continue;
+      const exceptions = CONTEXT_EXCEPTIONS[lw];
+      if (exceptions && exceptions.some(e => contentLower.includes(e))) continue;
+      const matches = textToScan.match(BANNED_WORD_REGEXES.get(word));
+      if (!matches) continue;
+      const count = matches.length;
+      const lowConf = LOW_CONFIDENCE_WORDS.has(lw);
+      if (lowConf && count < 2) continue;
+      suppressed.push({
+        type: "banned-word", word, count,
+        severity: lowConf ? "low" : "medium",
+        desc: `Banned AI-tell word "${word}" found ${count}x`,
+        suppressed: true, suppressedBy: "allowed-words",
+      });
+    }
+  }
+
+  return suppressed;
+}
+
 // ── Scanner ──
-export function scanContent(content, filePath) {
+// opts.collectSuppressed (default false): when true, additionally appends entries for
+// findings that a deliberate suppression choice hid -- an escape-hatched line or an
+// allowedWords config entry -- flagged { suppressed: true, suppressedBy }. Default-off
+// behavior is byte-identical to calling scanContent(content, filePath) with no opts.
+export function scanContent(content, filePath, opts = {}) {
   const violations = [];
   const ext = extname(filePath).toLowerCase();
   const isProse = PROSE_EXTENSIONS.has(ext);
@@ -209,6 +368,12 @@ export function scanContent(content, filePath) {
         });
       }
     }
+  }
+
+  if (opts.collectSuppressed) {
+    violations.push(...collectSuppressedViolations({
+      content, lines, isProse, isCode, isStyle, isTestFile, proseScan, allowedWords, contentLower,
+    }));
   }
 
   return violations;

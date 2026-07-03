@@ -212,3 +212,46 @@ test("get_dashboard_url tool description documents on-demand start + disable swi
   assert.match(toolBlock, /on demand/i);
   assert.match(toolBlock, /dashboard.*false/i);
 });
+
+// ── D6: suppressed-finding capture reaches the dashboard ──
+
+test("D6: dashboard.html's Findings by Rule table gains a Suppressed column", () => {
+  const html = readFileSync(DASHBOARD_HTML_PATH, "utf8");
+  assert.match(html, /<th>Suppressed<\/th>/, "Findings by Rule table must have a Suppressed column header");
+});
+
+test("D6: renderRules tallies active vs suppressed per rule and sorts by their sum", () => {
+  const html = readFileSync(DASHBOARD_HTML_PATH, "utf8");
+  const rulesFn = html.slice(html.indexOf("function renderRules"), html.indexOf("function renderChart"));
+  assert.match(rulesFn, /suppressedCount/, "renderRules must track a suppressed count alongside the active count");
+  assert.match(rulesFn, /v\.suppressed/, "renderRules must branch on the suppressed flag when tallying");
+});
+
+test("D6: renderStats and renderLog (Findings Caught / Recent Findings) count active entries only", () => {
+  const html = readFileSync(DASHBOARD_HTML_PATH, "utf8");
+  const statsFn = html.slice(html.indexOf("function renderStats"), html.indexOf("function renderRules"));
+  assert.match(statsFn, /!v\.suppressed/, "renderStats must filter out suppressed entries before computing Findings Caught / High / Medium / Low");
+  const logFn = html.slice(html.indexOf("function renderLog"), html.indexOf("async function load()"));
+  assert.match(logFn, /!v\.suppressed/, "renderLog (Recent Findings) must filter out suppressed entries");
+});
+
+test("D6: /api/log serves suppressed entries and drops only STALE active banned-word entries for now-allowed words", async () => {
+  writeConfig({ allowedWords: ["leverage"] });
+  store.saveLog([
+    { type: "banned-word", word: "leverage", severity: "low", file: "a.md", timestamp: "2026-07-01T00:00:00.000Z" }, // stale active: leverage is now allowed
+    { type: "banned-word", word: "leverage", severity: "low", suppressed: true, suppressedBy: "allowed-words", file: "a.md", timestamp: "2026-07-02T00:00:00.000Z" },
+    { type: "banned-word", word: "delve", suppressed: true, suppressedBy: "escape-hatch", severity: "medium", file: "b.md", timestamp: "2026-07-03T00:00:00.000Z" },
+    { type: "code-pattern", name: "eval-usage", severity: "high", file: "c.ts", timestamp: "2026-07-04T00:00:00.000Z" },
+  ]);
+
+  const port = dashboard.DASHBOARD_PORT;
+  assert.ok(Number.isInteger(port) && port > 0, "dashboard must already be running from an earlier test in this file");
+  const res = await fetch(`http://127.0.0.1:${port}/api/log`);
+  assert.equal(res.status, 200);
+  const log = await res.json();
+
+  assert.ok(!log.some((v) => v.word === "leverage" && !v.suppressed), "the stale ACTIVE leverage entry must be dropped now that it's allowed");
+  assert.ok(log.some((v) => v.word === "leverage" && v.suppressed === true), "the SUPPRESSED leverage entry must survive the allowedWords filter");
+  assert.ok(log.some((v) => v.word === "delve" && v.suppressed === true), "escape-hatch suppressed entries must survive unfiltered");
+  assert.ok(log.some((v) => v.name === "eval-usage" && !v.suppressed), "unrelated active entries must be untouched");
+});

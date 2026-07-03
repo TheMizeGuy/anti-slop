@@ -55,7 +55,7 @@
   <div class="card">
     <h2>Findings by Rule</h2>
     <table>
-      <thead><tr><th>Rule</th><th>Count</th><th>Severity</th></tr></thead>
+      <thead><tr><th>Rule</th><th>Count</th><th>Suppressed</th><th>Severity</th></tr></thead>
       <tbody id="rules-body"></tbody>
     </table>
     <div id="empty-rules" class="empty" style="display:none">No findings yet.</div>
@@ -120,12 +120,13 @@ async function loadProjects() {
 }
 
 function renderStats(logRes, scoresRes) {
+  var activeLog = logRes.filter(function(v) { return !v.suppressed; });
   var statsEl = document.getElementById('stats');
   var totalScans = scoresRes.length;
-  var findingsCaught = logRes.length;
-  var high = logRes.filter(function(v) { return v.severity === 'high'; }).length;
-  var medium = logRes.filter(function(v) { return v.severity === 'medium'; }).length;
-  var low = logRes.filter(function(v) { return v.severity === 'low'; }).length;
+  var findingsCaught = activeLog.length;
+  var high = activeLog.filter(function(v) { return v.severity === 'high'; }).length;
+  var medium = activeLog.filter(function(v) { return v.severity === 'medium'; }).length;
+  var low = activeLog.filter(function(v) { return v.severity === 'low'; }).length;
   var files = {};
   scoresRes.forEach(function(s) { if (s.file) files[s.file] = true; });
   logRes.forEach(function(v) { if (v.file) files[v.file] = true; });
@@ -149,13 +150,14 @@ function renderRules(logRes) {
   var tally = {};
   logRes.forEach(function(v) {
     var name = ruleName(v);
-    if (!tally[name]) tally[name] = { count: 0, severity: v.severity || 'low' };
-    tally[name].count += 1;
+    if (!tally[name]) tally[name] = { count: 0, suppressedCount: 0, severity: v.severity || 'low' };
+    if (v.suppressed) tally[name].suppressedCount += 1;
+    else tally[name].count += 1;
     tally[name].severity = worstSeverity(tally[name].severity, v.severity || 'low');
   });
   var rows = Object.keys(tally).map(function(name) {
-    return { name: name, count: tally[name].count, severity: tally[name].severity };
-  }).sort(function(a, b) { return b.count - a.count; }).slice(0, 10);
+    return { name: name, count: tally[name].count, suppressedCount: tally[name].suppressedCount, severity: tally[name].severity };
+  }).sort(function(a, b) { return (b.count + b.suppressedCount) - (a.count + a.suppressedCount); }).slice(0, 10);
 
   var tbody = document.getElementById('rules-body');
   var emptyEl = document.getElementById('empty-rules');
@@ -167,6 +169,7 @@ function renderRules(logRes) {
     tbody.innerHTML = rows.map(function(r) {
       var sev = esc(r.severity);
       return '<tr><td>' + esc(r.name) + '</td><td>' + esc(String(r.count)) + '</td>' +
+        '<td>' + esc(String(r.suppressedCount)) + '</td>' +
         '<td class="sev-' + sev + '">' + sev + '</td></tr>';
     }).join('');
   }
@@ -186,14 +189,15 @@ function renderChart(scoresRes) {
 }
 
 function renderLog(logRes) {
+  var activeLog = logRes.filter(function(v) { return !v.suppressed; });
   var tbody = document.getElementById('log-body');
   var emptyEl = document.getElementById('empty-log');
-  if (!logRes.length) {
+  if (!activeLog.length) {
     tbody.innerHTML = '';
     emptyEl.style.display = 'block';
   } else {
     emptyEl.style.display = 'none';
-    tbody.innerHTML = logRes.slice(-50).reverse().map(function(v) {
+    tbody.innerHTML = activeLog.slice(-50).reverse().map(function(v) {
       var fname = esc((v.file || '-').split('/').pop().split('\\').pop());
       var sev = esc(v.severity || '');
       return '<tr><td>' + esc(new Date(v.timestamp).toLocaleTimeString()) + '</td>' +

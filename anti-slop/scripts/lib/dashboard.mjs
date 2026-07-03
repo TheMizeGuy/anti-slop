@@ -22,10 +22,14 @@ const DASHBOARD_HTML_PATH = join(__dirname, "dashboard.html");
 export let DASHBOARD_PORT = null;
 
 // ── Filter stale violations that are now context-allowed ──
+// A suppressed:true entry is already-labeled deliberate-suppression data (escape hatch
+// or allowedWords, see scan.mjs opts.collectSuppressed) and is never "stale" the way an
+// old ACTIVE banned-word entry becomes once its word is added to allowedWords.
 function filterAllowedViolations(log) {
   const config = loadProjectConfig();
   const allowedWords = new Set((config.allowedWords || []).map(w => w.toLowerCase()));
   return log.filter(v => {
+    if (v.suppressed === true) return true;
     if (v.type !== "banned-word") return true;
     if (allowedWords.has((v.word || "").toLowerCase())) return false;
     return true;
