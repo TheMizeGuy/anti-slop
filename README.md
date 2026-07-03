@@ -2,8 +2,6 @@
 
 A Claude Code plugin that scans for security vulnerabilities, accessibility failures, performance problems, and generic design defaults in AI-generated output.
 
-![anti-slop dashboard](anti-slop-dashboard-overview.png)
-
 ## What it does
 
 Loads pattern-matching rules during content generation. The rules target failure modes documented in published research.
@@ -25,8 +23,8 @@ Rules yield to domain context. Academic writing gets its hedging language. Legal
 | **Skill** (`anti-slop`) | Core rules, activates automatically on writes/edits/builds |
 | **Agent** (`slop-detector`) | Deep semantic review, scores on 5 dimensions (50pt scale) |
 | **Command** (`/slop-check`) | Manual review — point it at a file, diff, or PR |
-| **MCP Server** (`anti-slop-scanner`) | Fast deterministic scanner — regex-based pattern matching for banned words, phrases, design tells, code smells, security issues. Three tools: `scan_file`, `get_dashboard_url`, `get_score_history` |
-| **Web Dashboard** | Per-project score history, violation log, severity breakdown, multi-project navigation. Starts automatically, each project gets a deterministic port |
+| **MCP Server** (`anti-slop-scanner`) | Fast deterministic scanner — regex-based pattern matching for banned words, phrases, design tells, code smells, security issues. Three tools: `scan_file`, `get_dashboard_url`, `get_score_history`. Implemented as the `scripts/slop-scanner.mjs` entry point plus `scripts/lib/` modules for rule data, scanning, storage, and the dashboard |
+| **Web Dashboard** | Optional, off by default. Nothing starts when the MCP server starts. Calling `get_dashboard_url` starts it on demand at a per-project deterministic port and returns the URL. Shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, recent findings |
 | **8 reference files** | ~230 banned words, ~210 banned phrases, plus pattern catalogs for writing, code, design, frontend, regressions, and self-check checklists |
 
 The MCP scanner and the agent serve different purposes. The scanner is fast — it runs regex patterns against file content and returns in milliseconds. The agent is thorough — it reads reference files, understands context, and produces a scored report with specific fixes. The `/slop-check` command runs both: scanner first for a quick pass, then the agent for semantic analysis.
@@ -66,17 +64,20 @@ The skill activates whenever you write, build, or edit code. For manual review:
 /slop-check pr                           # review current PR
 ```
 
-The dashboard starts automatically when the MCP scanner runs its first scan. Score history and violation log persist in `.anti-slop/` in your project directory. If you're working across multiple projects, the dashboard shows tabs for all active projects.
+The dashboard is optional and never starts on its own. Starting the MCP server does not open anything. Call the `get_dashboard_url` MCP tool to start it on demand; it opens at a per-project deterministic port and the tool returns the URL. It shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, and recent findings. Scan and finding data persist in `.anti-slop/` in your project directory (`scan-log.json` for findings, `scores.json` for per-scan records). If you're working across multiple projects, the dashboard shows tabs for all active projects.
 
 ### Configuration
 
-Drop a `.anti-slop/config.json` in your project if you need to allow specific words the scanner flags:
+Drop a `.anti-slop/config.json` in your project to adjust scanner and dashboard behavior:
 
 ```json
 {
-  "allowedWords": ["leverage", "ecosystem"]
+  "allowedWords": ["leverage", "ecosystem"],
+  "dashboard": false
 }
 ```
+
+`allowedWords` exempts specific words or phrases the scanner would otherwise flag. `dashboard` set to `false` disables the web dashboard entirely; omit it (or set it to `true`) to leave the dashboard available on demand.
 
 ## Scope
 

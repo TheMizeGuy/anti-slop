@@ -33,7 +33,7 @@ If the diff or PR is empty, inform the user that no changes were found.
 4. If the Agent tool also fails, perform the review directly using the rules in the anti-slop skill.
 5. Present the scored report to the user (include both MCP scan results and agent analysis)
 6. Offer to fix the identified issues if the user wants
-7. Mention the score-history dashboard: call the `get_dashboard_url` MCP tool from the anti-slop-scanner for the project-specific address (the scanner assigns a per-project port starting at 7847)
+7. The dashboard is optional and off by default -- offer it only if the user asks or it's contextually useful. If so, call the `get_dashboard_url` MCP tool from the anti-slop-scanner; it starts the dashboard on demand at a per-project address and returns the URL
 
 ## Usage Examples
 
