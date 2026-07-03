@@ -118,6 +118,7 @@ export function scanContent(content, filePath) {
   if (isProse || isCode) {
     const hay = (isProse ? proseScan : content).toLowerCase();
     for (const phrase of BANNED_PHRASES) {
+      if (!phrase) continue; // indexOf("") returns 0, which would loop forever below
       const firstIdx = hay.indexOf(phrase);
       if (firstIdx === -1) continue;
       let count = 0;

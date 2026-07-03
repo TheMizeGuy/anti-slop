@@ -77,7 +77,7 @@ Drop a `.anti-slop/config.json` in your project to adjust scanner and dashboard 
 }
 ```
 
-`allowedWords` exempts specific words or phrases the scanner would otherwise flag. `dashboard` set to `false` disables the web dashboard entirely; omit it (or set it to `true`) to leave the dashboard available on demand.
+`allowedWords` exempts specific banned words (including hyphenated ones like `cutting-edge`) the scanner would otherwise flag; it does not cover banned phrases. `dashboard` set to `false` disables the web dashboard entirely; omit it (or set it to `true`) to leave the dashboard available on demand.
 
 ## Scope
 

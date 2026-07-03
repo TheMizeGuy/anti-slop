@@ -37,22 +37,22 @@ function startDashboard(port) {
   const html = readFileSync(DASHBOARD_HTML_PATH, "utf8");
   const server = createServer((req, res) => {
     if (req.url === "/api/log") {
-      res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+      res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(filterAllowedViolations(loadLog())));
       return;
     }
     if (req.url === "/api/scores") {
-      res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+      res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(loadScores()));
       return;
     }
     if (req.url === "/api/registry") {
-      res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+      res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(loadRegistry()));
       return;
     }
     if (req.url === "/api/project") {
-      res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+      res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ path: PROJECT_PATH, name: PROJECT_NAME, port }));
       return;
     }
@@ -72,6 +72,8 @@ function startDashboard(port) {
 
 // ── Dashboard lifecycle: fully on-demand. First call starts the dashboard (or
 // reports why it didn't); later calls reuse the already-running instance. ──
+let startPromise = null;
+
 export async function ensureDashboard() {
   const config = loadProjectConfig();
   if (config.dashboard === false) {
@@ -82,6 +84,18 @@ export async function ensureDashboard() {
     return { disabled: false, port: DASHBOARD_PORT };
   }
 
+  // Concurrent tool calls must share one start attempt: without this, each caller
+  // binds its own port, stacks duplicate exit handlers, and all but the last
+  // registered server is orphaned off-registry until process exit.
+  if (!startPromise) {
+    startPromise = startOnce().finally(() => {
+      if (!DASHBOARD_PORT) startPromise = null; // failed start: allow a later retry
+    });
+  }
+  return startPromise;
+}
+
+async function startOnce() {
   await cleanStaleEntries();
 
   const registry = loadRegistry();

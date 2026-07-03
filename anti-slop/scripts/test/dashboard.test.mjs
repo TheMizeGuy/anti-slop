@@ -110,9 +110,48 @@ test("A2/A4: default config starts on demand; second call reuses; interval only 
 
   const res = await fetch(`http://127.0.0.1:${first.port}/api/project`);
   assert.equal(res.status, 200);
+  assert.equal(res.headers.get("access-control-allow-origin"), null, "the API must not serve a CORS wildcard (no cross-origin consumer exists)");
   const body = await res.json();
   assert.equal(body.port, first.port);
   assert.equal(body.name, store.PROJECT_NAME);
+});
+
+test("A2: concurrent get_dashboard_url calls share one start (no second server, one interval)", async () => {
+  // Needs a process where DASHBOARD_PORT is still null, so run in a fresh child
+  // with its own scratch project + registry.
+  const raceProject = mkdtempSync(join(tmpdir(), "anti-slop-race-project-"));
+  const raceRegistry = mkdtempSync(join(tmpdir(), "anti-slop-race-registry-"));
+  const script = [
+    "let intervals = 0;",
+    "const real = globalThis.setInterval;",
+    "globalThis.setInterval = (...a) => { intervals++; return real(...a); };",
+    `const { ensureDashboard } = await import(${JSON.stringify(pathToFileURL(DASHBOARD_PATH).href)});`,
+    "const [a, b] = await Promise.all([ensureDashboard(), ensureDashboard()]);",
+    "console.log(JSON.stringify({ aPort: a.port, bPort: b.port, intervals }));",
+    "process.exit(0);",
+  ].join("\n");
+  const out = await new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ["--input-type=module", "-e", script], {
+      cwd: raceProject,
+      env: { ...process.env, ANTI_SLOP_REGISTRY_DIR: raceRegistry },
+      stdio: ["ignore", "pipe", "inherit"],
+    });
+    let stdout = "";
+    child.stdout.on("data", (d) => { stdout += d; });
+    const timer = setTimeout(() => { child.kill(); reject(new Error("race child timed out")); }, 10000);
+    child.on("exit", (code) => {
+      clearTimeout(timer);
+      if (code === 0) resolve(stdout.trim());
+      else reject(new Error(`race child exited ${code}: ${stdout}`));
+    });
+    child.on("error", (err) => { clearTimeout(timer); reject(err); });
+  });
+  rmSync(raceProject, { recursive: true, force: true });
+  rmSync(raceRegistry, { recursive: true, force: true });
+  const result = JSON.parse(out);
+  assert.ok(Number.isInteger(result.aPort) && result.aPort > 0, "first concurrent call must get a real port");
+  assert.equal(result.bPort, result.aPort, "concurrent calls must resolve to the SAME dashboard, not start two servers");
+  assert.equal(result.intervals, 1, "exactly one cleanup interval must be registered for one logical start");
 });
 
 // ── A5/A6: dashboard.html is a fully static document with the findings-only UI ──
@@ -120,6 +159,17 @@ test("A2/A4: default config starts on demand; second call reuses; interval only 
 test("A6: dashboard.html has no server-side interpolation placeholders", () => {
   const html = readFileSync(DASHBOARD_HTML_PATH, "utf8");
   assert.ok(!/\$\{/.test(html), "dashboard.html must be a static document (no ${...} template interpolation)");
+});
+
+test("A6: Windows basename split is at the right escape level for a static file", () => {
+  // In the old template literal, split('\\\\') collapsed to split('\\') when served;
+  // as a static file nothing collapses, so the source must carry the single-backslash
+  // form or Windows paths render in full instead of as basenames.
+  // The FILE must contain two backslash characters (browser parses '\\' into one);
+  // these test-source literals are therefore twice as deep again.
+  const html = readFileSync(DASHBOARD_HTML_PATH, "utf8");
+  assert.ok(html.includes("split('\\\\')"), "file paths must be split on a single backslash at browser runtime");
+  assert.ok(!html.includes("split('\\\\\\\\')"), "a template-literal-era four-backslash token would split on two backslashes and never match real Windows separators");
 });
 
 test("A5: dashboard.html shows findings stats, not the old score-centric UI", () => {

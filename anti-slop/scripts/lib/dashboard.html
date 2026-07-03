@@ -194,7 +194,7 @@ function renderLog(logRes) {
   } else {
     emptyEl.style.display = 'none';
     tbody.innerHTML = logRes.slice(-50).reverse().map(function(v) {
-      var fname = esc((v.file || '-').split('/').pop().split('\\\\').pop());
+      var fname = esc((v.file || '-').split('/').pop().split('\\').pop());
       var sev = esc(v.severity || '');
       return '<tr><td>' + esc(new Date(v.timestamp).toLocaleTimeString()) + '</td>' +
         '<td>' + fname + '</td>' +
