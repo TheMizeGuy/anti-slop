@@ -1,6 +1,6 @@
 {
   "name": "anti-slop",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Catches agentic development shortcomings: security holes, accessibility failures, regressions, and generic defaults. Context-aware: yields to domain conventions.",
   "author": {
     "name": "TheMizeGuy"

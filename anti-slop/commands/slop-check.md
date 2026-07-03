@@ -31,7 +31,7 @@ If the diff or PR is empty, inform the user that no changes were found.
 2. If a file path is provided, first run the `scan_file` MCP tool from the anti-slop-scanner for a fast deterministic check (banned words, text constructs, design tells, code patterns, security issues). The scanner catches surface tells and honors the `anti-slop-allow` / `unslop-ignore` escape hatch; it cannot see the structural tells (sentence rhythm, sycophancy, tutorial-shaped or over-engineered code, hallucinated APIs). Then dispatch to the `slop-detector` agent for that semantic review. For code, verify first -- a build or type-check catches hallucinated APIs that no scanner will.
 3. If the MCP scanner is unavailable, or for non-file targets, dispatch directly to the `slop-detector` agent.
 4. If the Agent tool also fails, perform the review directly using the rules in the anti-slop skill.
-5. Present the scored report to the user (include both MCP scan results and agent analysis)
+5. Present the scored report to the user: the MCP tool's scan score (deterministic, `Scan score: N/50`) and the agent's review score (5-dimension judgment, `Review score: N/50`) are different scales measuring different things -- include both, labeled
 6. Offer to fix the identified issues if the user wants
 7. The dashboard is optional and off by default -- offer it only if the user asks or it's contextually useful. If so, call the `get_dashboard_url` MCP tool from the anti-slop-scanner; it starts the dashboard on demand at a per-project address and returns the URL
 

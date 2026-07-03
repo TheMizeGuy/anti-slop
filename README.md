@@ -23,11 +23,13 @@ Rules yield to domain context. Academic writing gets its hedging language. Legal
 | **Skill** (`anti-slop`) | Core rules, activates automatically on writes/edits/builds |
 | **Agent** (`slop-detector`) | Deep semantic review, scores on 5 dimensions (50pt scale) |
 | **Command** (`/slop-check`) | Manual review — point it at a file, diff, or PR |
-| **MCP Server** (`anti-slop-scanner`) | Fast deterministic scanner — regex-based pattern matching for banned words, phrases, design tells, code smells, security issues. Three tools: `scan_file`, `get_dashboard_url`, `get_score_history`. Implemented as the `scripts/slop-scanner.mjs` entry point plus `scripts/lib/` modules for rule data, scanning, storage, and the dashboard |
+| **MCP Server** (`anti-slop-scanner`) | Fast deterministic scanner — regex-based pattern matching for banned words, phrases, design tells, code smells, security issues. Three tools: `scan_file`, `get_dashboard_url`, `get_score_history`. Implemented as the `scripts/slop-scanner.mjs` entry point plus `scripts/lib/` modules for rule data, scanning, storage, and the dashboard. The same entry point also runs as a CI-facing CLI (`scan` subcommand) outside the MCP protocol |
 | **Web Dashboard** | Optional, off by default. Nothing starts when the MCP server starts. Calling `get_dashboard_url` starts it on demand at a per-project deterministic port and returns the URL. Shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, recent findings |
 | **8 reference files** | ~230 banned words, ~210 banned phrases, plus pattern catalogs for writing, code, design, frontend, regressions, and self-check checklists |
 
 The MCP scanner and the agent serve different purposes. The scanner is fast — it runs regex patterns against file content and returns in milliseconds. The agent is thorough — it reads reference files, understands context, and produces a scored report with specific fixes. The `/slop-check` command runs both: scanner first for a quick pass, then the agent for semantic analysis.
+
+The two also report different scales, on purpose. **Scan score** (`Scan score: N/50`) is the scanner's deterministic deduction count from `scan_file` or the CLI. **Review score** (`Review score: N/50`) is the `slop-detector` agent's 5-dimension judgment call, and neither implies the other.
 
 ## The numbers
 
@@ -65,6 +67,26 @@ The skill activates whenever you write, build, or edit code. For manual review:
 ```
 
 The dashboard is optional and never starts on its own. Starting the MCP server does not open anything. Call the `get_dashboard_url` MCP tool to start it on demand; it opens at a per-project deterministic port and the tool returns the URL. It shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, and recent findings. Scan and finding data persist in `.anti-slop/` in your project directory (`scan-log.json` for findings, `scores.json` for per-scan records). If you're working across multiple projects, the dashboard shows tabs for all active projects.
+
+### CI usage
+
+The same entry point that runs the MCP server also runs as a standalone CLI when given a `scan` subcommand, for pre-commit hooks and CI gates that don't speak MCP:
+
+```bash
+node scripts/slop-scanner.mjs scan [options] <file...>
+
+# Typical CI usage: scan only what changed
+git diff --name-only origin/main... | xargs -r node scripts/slop-scanner.mjs scan --fail-on high
+```
+
+Options:
+
+- `--format text|json`: output format (default `text`)
+- `--fail-on any|high|medium|low|none`: minimum severity that triggers a nonzero exit (default `any`)
+- `--record`: write findings to `.anti-slop/scan-log.json` and `scores.json`, same as an MCP `scan_file` call. Default is off; a CI scan leaves no trace in your project directory unless you opt in
+- `--quiet`: suppress all output, exit code only
+
+Exit codes: `0` clean or below the `--fail-on` threshold, `1` findings at or above the threshold, `2` usage error or unreadable file. The CLI takes files only, with no glob or directory recursion, so compose it with your own file list as in the `git diff` example above.
 
 ### Configuration
 

@@ -21,10 +21,11 @@ export { scanContent, calculateScore, verdict };
 
 import { loadLog, saveLog, loadScores, saveScore } from "./lib/store.mjs";
 import { ensureDashboard } from "./lib/dashboard.mjs";
+import { runCli } from "./lib/cli.mjs";
 
 // ── MCP Server ──
 const mcpServer = new Server(
-  { name: "anti-slop-scanner", version: "1.5.0" },
+  { name: "anti-slop-scanner", version: "1.6.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -49,7 +50,7 @@ mcpServer.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: "get_score_history",
-      description: "Get the score history for this project.",
+      description: "Get the scan score history for this project.",
       inputSchema: { type: "object", properties: {} },
     },
   ],
@@ -71,31 +72,36 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
       return { content: [{ type: "text", text: "No content to scan." }] };
     }
 
-    const violations = scanContent(content, filePath);
-    const score = calculateScore(violations);
+    // collectSuppressed is a no-op today (scan.mjs's current signature ignores the third
+    // argument) and activates once the rule-stats feedback loop lands in scan.mjs -- the
+    // filter below is on `v.suppressed` truthiness, never on whether the option was honored,
+    // so this handler needs no further changes when that merges.
+    const allEntries = scanContent(content, filePath, { collectSuppressed: true });
+    const activeViolations = allEntries.filter(v => !v.suppressed);
+    const score = calculateScore(activeViolations);
 
-    if (violations.length > 0) {
+    if (allEntries.length > 0) {
       const log = loadLog();
-      for (const v of violations) {
+      for (const v of allEntries) {
         log.push({ ...v, file: filePath, timestamp: new Date().toISOString() });
       }
       saveLog(log);
     }
 
-    saveScore({ score, file: filePath, violations: violations.length });
+    saveScore({ score, file: filePath, violations: activeViolations.length });
 
-    if (violations.length === 0) {
+    if (activeViolations.length === 0) {
       return { content: [{ type: "text", text: "" }] };
     }
 
     const ext = (filePath.match(/\.[^./\\]+$/) || [""])[0].toLowerCase();
     const isProseFile = [".md", ".mdx", ".txt", ".rst"].includes(ext);
-    const tier = verdict(violations, isProseFile ? (content.match(/\S+/g) || []).length : 0);
-    const report = violations.map(v => `[${v.severity.toUpperCase()}] ${v.desc}`).join("\n");
+    const tier = verdict(activeViolations, isProseFile ? (content.match(/\S+/g) || []).length : 0);
+    const report = activeViolations.map(v => `[${v.severity.toUpperCase()}] ${v.desc}`).join("\n");
     return {
       content: [{
         type: "text",
-        text: `Score: ${score}/50 | ${tier} | ${violations.length} violation(s) in ${filePath.split("/").pop().split("\\").pop()}\n\n${report}`,
+        text: `Scan score: ${score}/50 | ${tier} | ${activeViolations.length} violation(s) in ${filePath.split("/").pop().split("\\").pop()}\n\n${report}`,
       }],
     };
   }
@@ -116,7 +122,7 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
     if (!scores.length) return { content: [{ type: "text", text: "No scores recorded yet." }] };
     const recent = scores.slice(-10);
     const text = recent.map(s =>
-      `${new Date(s.timestamp).toLocaleString()} | ${s.score}/50 | ${s.violations} violations | ${s.file || "scan"}`
+      `${new Date(s.timestamp).toLocaleString()} | Scan score: ${s.score}/50 | ${s.violations} violations | ${s.file || "scan"}`
     ).join("\n");
     return { content: [{ type: "text", text: `Last ${recent.length} scans:\n${text}` }] };
   }
@@ -131,7 +137,15 @@ async function main() {
 }
 
 // Only start the server when run directly; importing the module (for tests) must not.
+// With subcommand args present ("scan ..."), dispatch to the CI-facing CLI instead of
+// starting the MCP stdio server; zero args keeps the MCP-server behavior unchanged.
 const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (invokedDirectly) {
-  main();
+  const argv = process.argv.slice(2);
+  if (argv.length > 0) {
+    const exitCode = await runCli(argv);
+    process.exit(exitCode);
+  } else {
+    main();
+  }
 }

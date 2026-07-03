@@ -58,7 +58,7 @@ Review content for AI coding shortcomings: security holes, accessibility failure
 
 Produce the report as rendered markdown (not inside a code block):
 
-## Slop Score: [total]/50
+## Review score: [total]/50
 
 | Dimension | Score | Notes |
 |-----------|-------|-------|
