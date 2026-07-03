@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='none' stroke='%23ef4444' stroke-width='8'/><line x1='22' y1='22' x2='78' y2='78' stroke='%23ef4444' stroke-width='8' stroke-linecap='round'/></svg>">
+<title>anti-slop</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace; background: #0a0a0a; color: #e0e0e0; padding: 24px; }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 8px; color: #fff; }
+  h2 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+  .card { background: #141414; border: 1px solid #222; border-radius: 8px; padding: 20px; }
+  .chart { height: 120px; display: flex; align-items: flex-end; gap: 2px; }
+  .bar { background: #333; border-radius: 2px 2px 0 0; min-width: 4px; flex: 1; transition: background 0.2s; position: relative; }
+  .bar:hover { background: #555; }
+  .bar.good { background: #22c55e; }
+  .bar.ok { background: #eab308; }
+  .bar.bad { background: #ef4444; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; padding: 8px 12px; color: #666; border-bottom: 1px solid #222; font-weight: 500; }
+  td { padding: 8px 12px; border-bottom: 1px solid #1a1a1a; }
+  .sev-high { color: #ef4444; }
+  .sev-medium { color: #eab308; }
+  .sev-low { color: #22c55e; }
+  .type-badge { background: #1e1e1e; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+  .empty { color: #444; font-style: italic; padding: 40px; text-align: center; }
+  .refresh { color: #555; font-size: 11px; cursor: pointer; float: right; }
+  .refresh:hover { color: #888; }
+  .stats { display: flex; flex-wrap: wrap; gap: 32px; margin-bottom: 24px; }
+  .stat { text-align: center; }
+  .stat-value { font-size: 28px; font-weight: 700; color: #fff; }
+  .stat-label { font-size: 11px; color: #666; }
+  .project-nav { display: flex; gap: 4px; margin-bottom: 20px; padding: 4px; background: #111; border-radius: 6px; border: 1px solid #1a1a1a; overflow-x: auto; }
+  .project-tab { padding: 6px 14px; border-radius: 4px; font-size: 12px; color: #666; cursor: pointer; white-space: nowrap; text-decoration: none; transition: color 0.15s, background 0.15s; }
+  .project-tab:hover { color: #aaa; background: #1a1a1a; }
+  .project-tab.active { color: #e0e0e0; background: #222; }
+  .header-row { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
+  .project-name { color: #555; font-size: 14px; font-weight: 400; }
+</style>
+</head>
+<body>
+<div class="header-row">
+  <h1>anti-slop <span style="color:#555">dashboard</span></h1>
+  <span class="project-name" id="project-name-label"></span>
+  <span class="refresh" onclick="load()">refresh</span>
+</div>
+
+<div id="project-nav" class="project-nav" style="display:none"></div>
+
+<div class="stats" id="stats"></div>
+
+<div class="grid">
+  <div class="card">
+    <h2>Findings by Rule</h2>
+    <table>
+      <thead><tr><th>Rule</th><th>Count</th><th>Severity</th></tr></thead>
+      <tbody id="rules-body"></tbody>
+    </table>
+    <div id="empty-rules" class="empty" style="display:none">No findings yet.</div>
+  </div>
+  <div class="card">
+    <h2>Findings per Scan</h2>
+    <div class="chart" id="chart"></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Recent Findings</h2>
+  <table>
+    <thead><tr><th>Time</th><th>File</th><th>Rule</th><th>Severity</th><th>Description</th></tr></thead>
+    <tbody id="log-body"></tbody>
+  </table>
+  <div id="empty-log" class="empty" style="display:none">No findings recorded yet. Run a scan and results will appear here.</div>
+</div>
+
+<script>
+var CURRENT_PORT = null;
+
+function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function ruleName(v) { return v.name || v.word || v.phrase || v.type || 'unknown'; }
+
+function worstSeverity(a, b) {
+  var rank = { high: 3, medium: 2, low: 1 };
+  return (rank[b] || 0) > (rank[a] || 0) ? b : a;
+}
+
+async function loadProject() {
+  try {
+    var res = await fetch('/api/project');
+    var data = await res.json();
+    CURRENT_PORT = data.port;
+    document.getElementById('project-name-label').textContent = data.name;
+    document.title = 'anti-slop | ' + data.name;
+  } catch (e) {}
+}
+
+async function loadProjects() {
+  try {
+    var res = await fetch('/api/registry');
+    var registry = await res.json();
+    var projects = Object.entries(registry);
+    var nav = document.getElementById('project-nav');
+    nav.style.display = 'flex';
+    nav.innerHTML = '';
+    projects.forEach(function(entry) {
+      var info = entry[1];
+      var a = document.createElement('a');
+      a.className = 'project-tab' + (info.port === CURRENT_PORT ? ' active' : '');
+      a.href = 'http://127.0.0.1:' + parseInt(info.port, 10);
+      a.textContent = info.name;
+      nav.appendChild(a);
+    });
+    if (projects.length === 0) { nav.style.display = 'none'; }
+  } catch (e) {
+    document.getElementById('project-nav').style.display = 'none';
+  }
+}
+
+function renderStats(logRes, scoresRes) {
+  var statsEl = document.getElementById('stats');
+  var totalScans = scoresRes.length;
+  var findingsCaught = logRes.length;
+  var high = logRes.filter(function(v) { return v.severity === 'high'; }).length;
+  var medium = logRes.filter(function(v) { return v.severity === 'medium'; }).length;
+  var low = logRes.filter(function(v) { return v.severity === 'low'; }).length;
+  var files = {};
+  scoresRes.forEach(function(s) { if (s.file) files[s.file] = true; });
+  logRes.forEach(function(v) { if (v.file) files[v.file] = true; });
+  var filesScanned = Object.keys(files).length;
+  var lastScan = scoresRes.length ? new Date(scoresRes[scoresRes.length - 1].timestamp).toLocaleString() : '--';
+
+  statsEl.innerHTML = [
+    { v: totalScans, l: 'Total Scans' },
+    { v: findingsCaught, l: 'Findings Caught' },
+    { v: high, l: 'High' },
+    { v: medium, l: 'Medium' },
+    { v: low, l: 'Low' },
+    { v: filesScanned, l: 'Files Scanned' },
+    { v: lastScan, l: 'Last Scan' },
+  ].map(function(s) {
+    return '<div class="stat"><div class="stat-value">' + esc(String(s.v)) + '</div><div class="stat-label">' + esc(s.l) + '</div></div>';
+  }).join('');
+}
+
+function renderRules(logRes) {
+  var tally = {};
+  logRes.forEach(function(v) {
+    var name = ruleName(v);
+    if (!tally[name]) tally[name] = { count: 0, severity: v.severity || 'low' };
+    tally[name].count += 1;
+    tally[name].severity = worstSeverity(tally[name].severity, v.severity || 'low');
+  });
+  var rows = Object.keys(tally).map(function(name) {
+    return { name: name, count: tally[name].count, severity: tally[name].severity };
+  }).sort(function(a, b) { return b.count - a.count; }).slice(0, 10);
+
+  var tbody = document.getElementById('rules-body');
+  var emptyEl = document.getElementById('empty-rules');
+  if (!rows.length) {
+    tbody.innerHTML = '';
+    emptyEl.style.display = 'block';
+  } else {
+    emptyEl.style.display = 'none';
+    tbody.innerHTML = rows.map(function(r) {
+      var sev = esc(r.severity);
+      return '<tr><td>' + esc(r.name) + '</td><td>' + esc(String(r.count)) + '</td>' +
+        '<td class="sev-' + sev + '">' + sev + '</td></tr>';
+    }).join('');
+  }
+}
+
+function renderChart(scoresRes) {
+  var chartEl = document.getElementById('chart');
+  var recent = scoresRes.slice(-50);
+  var max = recent.reduce(function(m, s) { return Math.max(m, s.violations || 0); }, 1);
+  chartEl.innerHTML = recent.map(function(s) {
+    var v = s.violations || 0;
+    var h = v === 0 ? 4 : Math.max(4, (v / max) * 120);
+    var cls = v === 0 ? 'good' : v <= 3 ? 'ok' : 'bad';
+    var title = v + ' finding(s) - ' + new Date(s.timestamp).toLocaleTimeString();
+    return '<div class="bar ' + cls + '" style="height:' + h + 'px" title="' + esc(title) + '"></div>';
+  }).join('');
+}
+
+function renderLog(logRes) {
+  var tbody = document.getElementById('log-body');
+  var emptyEl = document.getElementById('empty-log');
+  if (!logRes.length) {
+    tbody.innerHTML = '';
+    emptyEl.style.display = 'block';
+  } else {
+    emptyEl.style.display = 'none';
+    tbody.innerHTML = logRes.slice(-50).reverse().map(function(v) {
+      var fname = esc((v.file || '-').split('/').pop().split('\\\\').pop());
+      var sev = esc(v.severity || '');
+      return '<tr><td>' + esc(new Date(v.timestamp).toLocaleTimeString()) + '</td>' +
+        '<td>' + fname + '</td>' +
+        '<td><span class="type-badge">' + esc(ruleName(v)) + '</span></td>' +
+        '<td class="sev-' + sev + '">' + sev + '</td>' +
+        '<td>' + esc(v.desc || '') + '</td></tr>';
+    }).join('');
+  }
+}
+
+async function load() {
+  await loadProject();
+
+  var logRes = [], scoresRes = [];
+  try {
+    var responses = await Promise.all([
+      fetch('/api/log').then(function(r) { return r.json(); }),
+      fetch('/api/scores').then(function(r) { return r.json(); })
+    ]);
+    logRes = responses[0] || [];
+    scoresRes = responses[1] || [];
+  } catch (e) {}
+
+  renderStats(logRes, scoresRes);
+  renderRules(logRes);
+  renderChart(scoresRes);
+  renderLog(logRes);
+
+  loadProjects();
+}
+load();
+setInterval(load, 5000);
+</script>
+</body>
+</html>

@@ -5,10 +5,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { readFileSync } from "fs";
-import { dirname } from "path";
-import { fileURLToPath, pathToFileURL } from "url";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { pathToFileURL } from "url";
 
 export {
   BANNED_WORDS,
@@ -22,12 +19,12 @@ export {
 import { scanContent, calculateScore, verdict } from "./lib/scan.mjs";
 export { scanContent, calculateScore, verdict };
 
-import { PROJECT_PATH, loadLog, saveLog, loadScores, saveScore, loadRegistry } from "./lib/store.mjs";
-import { startDashboardIfNeeded, DASHBOARD_PORT } from "./lib/dashboard.mjs";
+import { loadLog, saveLog, loadScores, saveScore } from "./lib/store.mjs";
+import { ensureDashboard } from "./lib/dashboard.mjs";
 
 // ── MCP Server ──
 const mcpServer = new Server(
-  { name: "anti-slop-scanner", version: "1.4.1" },
+  { name: "anti-slop-scanner", version: "1.5.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -47,7 +44,7 @@ mcpServer.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: "get_dashboard_url",
-      description: "Get the URL of the anti-slop web dashboard for this project.",
+      description: "Get the URL of the anti-slop web dashboard for this project. Starts the dashboard on demand on first call (later calls reuse it); disable entirely via .anti-slop/config.json { \"dashboard\": false }.",
       inputSchema: { type: "object", properties: {} },
     },
     {
@@ -104,9 +101,14 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   if (name === "get_dashboard_url") {
-    const port = DASHBOARD_PORT || loadRegistry()[PROJECT_PATH]?.port;
-    if (!port) return { content: [{ type: "text", text: "Dashboard not started." }] };
-    return { content: [{ type: "text", text: `Dashboard: http://127.0.0.1:${port}` }] };
+    const result = await ensureDashboard();
+    if (result.disabled) {
+      return { content: [{ type: "text", text: 'Dashboard is disabled by .anti-slop/config.json ("dashboard": false).' }] };
+    }
+    if (!result.port) {
+      return { content: [{ type: "text", text: "Dashboard could not be started (no available port)." }] };
+    }
+    return { content: [{ type: "text", text: `Dashboard: http://127.0.0.1:${result.port}` }] };
   }
 
   if (name === "get_score_history") {
@@ -124,7 +126,6 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 // ── Start ──
 async function main() {
-  await startDashboardIfNeeded();
   const transport = new StdioServerTransport();
   await mcpServer.connect(transport);
 }

@@ -7,7 +7,10 @@ import { homedir } from "os";
 // ── Multi-project support ──
 export const PROJECT_PATH = process.cwd();
 export const PROJECT_NAME = basename(PROJECT_PATH);
-const REGISTRY_DIR = join(homedir(), ".anti-slop");
+// Overridable so tests can point the registry at a scratch dir instead of the
+// real ~/.anti-slop (which would otherwise register/unregister fake projects
+// in the developer's actual multi-project registry).
+const REGISTRY_DIR = process.env.ANTI_SLOP_REGISTRY_DIR || join(homedir(), ".anti-slop");
 const REGISTRY_FILE = join(REGISTRY_DIR, "registry.json");
 
 export function getPreferredPort() {
