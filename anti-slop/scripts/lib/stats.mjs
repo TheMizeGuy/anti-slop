@@ -41,7 +41,10 @@ export function computeRuleStats(logEntries) {
     stats.worstSeverity = stats.worstSeverity === null ? sev : worseSeverity(stats.worstSeverity, sev);
 
     const ts = entry.timestamp;
-    if (ts && (stats.lastSeen === null || new Date(ts).getTime() > new Date(stats.lastSeen).getTime())) {
+    // Legacy/corrupt entries may lack a parseable timestamp; never let one become
+    // lastSeen or the consumer renders "Invalid Date".
+    if (ts && Number.isFinite(new Date(ts).getTime()) &&
+        (stats.lastSeen === null || new Date(ts).getTime() > new Date(stats.lastSeen).getTime())) {
       stats.lastSeen = ts;
     }
   }

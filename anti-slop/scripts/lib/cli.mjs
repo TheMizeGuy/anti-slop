@@ -17,7 +17,7 @@ const USAGE = `Usage: slop-scanner.mjs scan [options] <file...>
 Scans one or more files with the anti-slop deterministic scanner. Files only --
 no glob or directory recursion; pipe a file list in, e.g.:
 
-  git diff --name-only | xargs node .../slop-scanner.mjs scan
+  git diff --name-only --diff-filter=d | xargs node .../slop-scanner.mjs scan
 
 Options:
   --format text|json   Output format (default: text)
@@ -80,16 +80,17 @@ function meetsThreshold(violations, failOn) {
 }
 
 // Writes exactly what an MCP scan_file call would write, so --record output is
-// indistinguishable from data produced through the MCP tool.
-function recordScan(filePath, violations, score) {
-  if (violations.length > 0) {
+// indistinguishable from data produced through the MCP tool: ALL entries (including
+// suppressed ones, for rule stats) go to the log; the score entry counts active only.
+function recordScan(filePath, allEntries, score, activeCount) {
+  if (allEntries.length > 0) {
     const log = loadLog();
-    for (const v of violations) {
+    for (const v of allEntries) {
       log.push({ ...v, file: filePath, timestamp: new Date().toISOString() });
     }
     saveLog(log);
   }
-  saveScore({ score, file: filePath, violations: violations.length });
+  saveScore({ score, file: filePath, violations: activeCount });
 }
 
 function formatTextReport(result) {
@@ -125,19 +126,28 @@ export async function runCli(argv) {
     return 2;
   }
 
-  const results = [];
+  // Read everything up front so an unreadable file aborts BEFORE any scan is
+  // recorded -- exit 2 must leave no partial --record side effects behind.
+  const contents = new Map();
   for (const filePath of opts.files) {
-    let content;
     try {
-      content = readFileSync(filePath, "utf8");
+      contents.set(filePath, readFileSync(filePath, "utf8"));
     } catch {
       process.stderr.write(`Cannot read file: ${filePath}\n\n${USAGE}`);
       return 2;
     }
-    const violations = scanContent(content, filePath);
+  }
+
+  const results = [];
+  for (const filePath of opts.files) {
+    const content = contents.get(filePath);
+    // Suppressed entries (escape hatch / allowedWords) are logged under --record for
+    // rule stats, exactly like scan_file, but never reach output, score, or exit code.
+    const allEntries = scanContent(content, filePath, { collectSuppressed: true });
+    const violations = allEntries.filter((v) => !v.suppressed);
     const score = calculateScore(violations);
     const tier = classifyVerdict(content, filePath, violations);
-    if (opts.record) recordScan(filePath, violations, score);
+    if (opts.record) recordScan(filePath, allEntries, score, violations.length);
     results.push({ file: filePath, score, verdict: tier, violations });
   }
 

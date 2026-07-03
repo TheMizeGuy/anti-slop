@@ -20,7 +20,7 @@ import { scanContent, calculateScore, verdict } from "./lib/scan.mjs";
 export { scanContent, calculateScore, verdict };
 
 import { loadLog, saveLog, loadScores, saveScore } from "./lib/store.mjs";
-import { ensureDashboard } from "./lib/dashboard.mjs";
+import { ensureDashboard, filterAllowedViolations } from "./lib/dashboard.mjs";
 import { computeRuleStats } from "./lib/stats.mjs";
 import { runCli } from "./lib/cli.mjs";
 
@@ -132,10 +132,11 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   if (name === "get_rule_stats") {
-    const { rules, totals } = computeRuleStats(loadLog());
+    // Same stale-entry filter the dashboard applies, so both surfaces agree on "active".
+    const { rules, totals } = computeRuleStats(filterAllowedViolations(loadLog()));
     if (!rules.length) return { content: [{ type: "text", text: "No findings recorded yet." }] };
     const lines = rules.map(r =>
-      `${r.rule}: ${r.active} active, ${r.suppressed} suppressed, worst=${r.worstSeverity}, last=${new Date(r.lastSeen).toLocaleString()}`
+      `${r.rule}: ${r.active} active, ${r.suppressed} suppressed, worst=${r.worstSeverity}, last=${r.lastSeen === null ? "unknown" : new Date(r.lastSeen).toLocaleString()}`
     );
     return { content: [{ type: "text", text: `${totals.active} active / ${totals.suppressed} suppressed across ${rules.length} rules\n\n${lines.join("\n")}` }] };
   }

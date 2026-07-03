@@ -30,7 +30,7 @@ npm run measure -- --format json   # machine-readable, same shape as baseline.js
 ```
 
 `measure.mjs` always exits 0 -- it is a measurement tool, not a CI gate. The gate lives in
-`corpus.test.mjs` (run by `npm test`/`node --test` like every other suite): it re-measures and
+`corpus.test.mjs` (run by `npm test` like every other suite; bare `node --test` breaks because Node's recursive discovery executes the corpus code samples as bogus suites): it re-measures and
 asserts precision and recall have not dropped by more than 0.02 below the committed baseline,
 overall and per modality.
 
@@ -51,7 +51,7 @@ overall and per modality.
      surfacing rule-tuning candidates, not hiding them. Do not tune scanner rules from this
      package (they belong to `lib/rules.mjs`/`lib/scan.mjs`) -- write the finding down for
      whoever owns that follow-up work instead.
-4. Run the full suite (`node --test`). `corpus.test.mjs` will only fail if your change moved
+4. Run the full suite (`npm test`). `corpus.test.mjs` will only fail if your change moved
    overall or per-modality precision/recall down by more than the 0.02 tolerance -- a single
    added clean negative or a new true positive should not trip it.
 

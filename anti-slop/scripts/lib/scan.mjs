@@ -123,8 +123,9 @@ function countLinePatternOnEscapedLines(lines, pat) {
 // -- (a) escape-hatched lines, (b) an allowedWords config entry -- so the dashboard can
 // show suppressed activity without ever touching the active `violations` array above it.
 // Scope is the four rule families keyed by a stable violation `type`: banned-word,
-// banned-phrase, design-tell, code-pattern (text-construct/emoji are out of scope for
-// this pass; see e-fb blackboard for rationale).
+// banned-phrase, design-tell, code-pattern. text-construct and emoji are deferred:
+// their per-line escape semantics differ (density/whole-document rules), so counting
+// a hatched line as one suppressed construct would misstate what was avoided.
 function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle, isTestFile, proseScan, allowedWords, contentLower }) {
   const suppressed = [];
 
@@ -133,7 +134,9 @@ function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle,
     const hatchedText = isProse ? extractEscapeHatchedProse(content) : extractEscapeHatchedComments(content);
     for (const word of BANNED_WORDS) {
       const lw = word.toLowerCase();
-      if (allowedWords.has(lw)) continue; // covered under (b) instead
+      // Allowed words are counted under (b) against the active text; a hatched-only
+      // occurrence of an allowed word is deliberately counted nowhere (double-suppressed).
+      if (allowedWords.has(lw)) continue;
       const exceptions = CONTEXT_EXCEPTIONS[lw];
       if (exceptions && exceptions.some(e => contentLower.includes(e))) continue;
       const matches = hatchedText.match(BANNED_WORD_REGEXES.get(word));

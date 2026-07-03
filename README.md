@@ -70,13 +70,14 @@ The dashboard is optional and never starts on its own. Starting the MCP server d
 
 ### CI usage
 
-The same entry point that runs the MCP server also runs as a standalone CLI when given a `scan` subcommand, for pre-commit hooks and CI gates that don't speak MCP:
+The same entry point that runs the MCP server also runs as a standalone CLI when given a `scan` subcommand, for pre-commit hooks and CI gates that don't speak MCP (paths below are relative to the plugin root; from a clone of this repo, prefix with `anti-slop/`):
 
 ```bash
 node scripts/slop-scanner.mjs scan [options] <file...>
 
-# Typical CI usage: scan only what changed
-git diff --name-only origin/main... | xargs -r node scripts/slop-scanner.mjs scan --fail-on high
+# Typical CI usage: scan only what changed (--diff-filter=d skips deleted files,
+# which would otherwise abort the scan as unreadable)
+git diff --name-only --diff-filter=d origin/main... | xargs -r node scripts/slop-scanner.mjs scan --fail-on high
 ```
 
 Options:

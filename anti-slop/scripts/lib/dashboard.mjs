@@ -25,7 +25,7 @@ export let DASHBOARD_PORT = null;
 // A suppressed:true entry is already-labeled deliberate-suppression data (escape hatch
 // or allowedWords, see scan.mjs opts.collectSuppressed) and is never "stale" the way an
 // old ACTIVE banned-word entry becomes once its word is added to allowedWords.
-function filterAllowedViolations(log) {
+export function filterAllowedViolations(log) {
   const config = loadProjectConfig();
   const allowedWords = new Set((config.allowedWords || []).map(w => w.toLowerCase()));
   return log.filter(v => {

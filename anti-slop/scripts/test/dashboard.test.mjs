@@ -196,13 +196,30 @@ test("A8: dashboard.html passes the plugin's own scanner", async () => {
 
 // ── A9: version bump ──
 
-test("A9: MCP server version string matches the plugin manifest", () => {
+test("A9: all five version spots agree (entry, both manifests, marketplace, SKILL.md)", () => {
+  const pluginDir = dirname(SCRIPTS_DIR);
+  const repoRoot = dirname(pluginDir);
+
   const entrySrc = readFileSync(ENTRY_PATH, "utf8");
-  const manifestPath = join(dirname(SCRIPTS_DIR), ".claude-plugin", "plugin.json");
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   const m = entrySrc.match(/version:\s*"([^"]+)"/);
   assert.ok(m, "entry must declare an MCP server version string");
-  assert.equal(m[1], manifest.version, "entry MCP version must match anti-slop/.claude-plugin/plugin.json");
+
+  const pluginManifest = JSON.parse(readFileSync(join(pluginDir, ".claude-plugin", "plugin.json"), "utf8"));
+  const rootManifest = JSON.parse(readFileSync(join(repoRoot, ".claude-plugin", "plugin.json"), "utf8"));
+  const marketplace = JSON.parse(readFileSync(join(repoRoot, ".claude-plugin", "marketplace.json"), "utf8"));
+  const skillSrc = readFileSync(join(pluginDir, "skills", "anti-slop", "SKILL.md"), "utf8");
+  const skillVersion = skillSrc.match(/^version:\s*(\S+)$/m);
+  assert.ok(skillVersion, "SKILL.md frontmatter must declare a version");
+
+  const spots = {
+    "entry MCP Server string": m[1],
+    "anti-slop/.claude-plugin/plugin.json": pluginManifest.version,
+    ".claude-plugin/plugin.json": rootManifest.version,
+    "marketplace.json plugins[0]": marketplace.plugins[0].version,
+    "SKILL.md frontmatter": skillVersion[1],
+  };
+  const values = new Set(Object.values(spots));
+  assert.equal(values.size, 1, `version spots disagree: ${JSON.stringify(spots)}`);
 });
 
 // ── A2 (tool description): get_dashboard_url documents the on-demand behavior ──
@@ -213,7 +230,7 @@ test("get_rule_stats tool is wired: listed with a description and handled via co
   assert.ok(start !== -1, "get_rule_stats tool block not found in tools list");
   assert.match(entrySrc.slice(start, start + 400), /active.*suppressed/s, "description must explain active vs suppressed counts");
   assert.ok(entrySrc.includes('if (name === "get_rule_stats")'), "handler branch missing");
-  assert.ok(entrySrc.includes("computeRuleStats(loadLog())"), "handler must aggregate the scan log via computeRuleStats");
+  assert.ok(entrySrc.includes("computeRuleStats(filterAllowedViolations(loadLog()))"), "handler must aggregate the scan log via computeRuleStats behind the same stale-entry filter the dashboard uses");
 });
 
 test("get_dashboard_url tool description documents on-demand start + disable switch", () => {

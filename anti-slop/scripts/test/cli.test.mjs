@@ -181,21 +181,22 @@ test("A3: --record writes scores.json and scan-log.json exactly as an MCP scan_f
     const result = runCli(["--record", "slop.md"], dir);
     assert.equal(result.status, 1);
 
-    const expectedViolations = scanContent(SLOP_MD, "slop.md");
-    const expectedScore = calculateScore(expectedViolations);
+    const expectedAll = scanContent(SLOP_MD, "slop.md", { collectSuppressed: true });
+    const expectedActive = expectedAll.filter((v) => !v.suppressed);
+    const expectedScore = calculateScore(expectedActive);
 
     const scores = JSON.parse(readFileSync(join(dir, ".anti-slop", "scores.json"), "utf8"));
     assert.equal(scores.length, 1);
     assert.equal(scores[0].score, expectedScore);
     assert.equal(scores[0].file, "slop.md");
-    assert.equal(scores[0].violations, expectedViolations.length);
+    assert.equal(scores[0].violations, expectedActive.length);
     assert.match(scores[0].timestamp, /^\d{4}-\d{2}-\d{2}T/);
 
     const log = JSON.parse(readFileSync(join(dir, ".anti-slop", "scan-log.json"), "utf8"));
-    assert.equal(log.length, expectedViolations.length);
+    assert.equal(log.length, expectedAll.length);
     log.forEach((entry, i) => {
       const { timestamp, ...rest } = entry;
-      const { ...expected } = expectedViolations[i];
+      const { ...expected } = expectedAll[i];
       assert.deepEqual(rest, { ...expected, file: "slop.md" });
       assert.match(timestamp, /^\d{4}-\d{2}-\d{2}T/);
     });
@@ -215,6 +216,38 @@ test("A3: --record on a clean file still logs a score entry but no scan-log entr
     assert.equal(scores.length, 1);
     assert.equal(scores[0].violations, 0);
     assert.equal(existsSync(join(dir, ".anti-slop", "scan-log.json")), false, "no findings means no scan-log.json write");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("A3: --record logs suppressed escape-hatched findings without affecting output or exit code", () => {
+  const dir = scratchDir();
+  try {
+    writeFileSync(join(dir, "hatched.md"), "This is a game-changer. <!-- anti-slop-allow: deliberate hype -->\nThe migration ran cleanly against the staging copy.\n");
+    const result = runCli(["--record", "--format", "json", "hatched.md"], dir);
+    assert.equal(result.status, 0, `suppressed findings must not affect the exit code: ${result.stderr}`);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.totals.violations, 0, "suppressed findings must not appear in JSON output");
+
+    const log = JSON.parse(readFileSync(join(dir, ".anti-slop", "scan-log.json"), "utf8"));
+    assert.ok(log.length >= 1, "the suppressed finding must still be logged for rule stats");
+    assert.ok(log.every((e) => e.suppressed === true && e.suppressedBy === "escape-hatch"), JSON.stringify(log));
+    const scores = JSON.parse(readFileSync(join(dir, ".anti-slop", "scores.json"), "utf8"));
+    assert.equal(scores[0].violations, 0, "the score entry counts active findings only");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("A3: an unreadable file aborts before anything is recorded", () => {
+  const dir = scratchDir();
+  try {
+    writeFileSync(join(dir, "ok.md"), SLOP_MD);
+    const result = runCli(["--record", "ok.md", "missing.md"], dir);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /Cannot read file: missing\.md/);
+    assert.equal(existsSync(join(dir, ".anti-slop")), false, "exit-2 abort must leave no partial --record side effects");
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

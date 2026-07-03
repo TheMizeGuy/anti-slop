@@ -72,7 +72,7 @@ The measure gate, mandatory for every scanner rule change:
 1. From `scripts/`, run `npm run measure` BEFORE the change and save the output.
 2. Apply the rule change.
 3. Run `npm run measure` again. Both outputs go into the commit or PR description.
-4. `node --test` must stay green; `test/corpus.test.mjs` enforces that precision/recall does not drop below the committed baseline tolerance. If the change intentionally moves the baseline, regenerate it consciously per `test/corpus/README.md` and say so in the commit message.
+4. `npm test` must stay green; `test/corpus.test.mjs` enforces that precision/recall does not drop below the committed baseline tolerance. If the change intentionally moves the baseline, regenerate it consciously per `test/corpus/README.md` and say so in the commit message.
 
 ## Stamp format
 
@@ -115,4 +115,4 @@ Writing rules that keep the delta at zero:
 - Put every quoted example tell in backticks or double quotes; noise-stripping exempts those spans.
 - Add no em dashes of your own; the density rule is cumulative over the file.
 - Avoid the banned vocabulary in your own voice (the scanner will tell you if you slip).
-- Run the full suite afterward even for docs-only changes: `cd anti-slop/scripts && node --test`.
+- Run the full suite afterward even for docs-only changes: `cd anti-slop/scripts && npm test`.
