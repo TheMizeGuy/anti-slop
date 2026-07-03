@@ -1,8 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
+import { tmpdir } from "node:os";
+import { spawnSync } from "node:child_process";
 import {
   scanContent,
   calculateScore,
@@ -13,6 +15,7 @@ import {
   DESIGN_PATTERNS,
   CODE_PATTERNS,
 } from "../slop-scanner.mjs";
+import { BANNED_WORD_REGEXES } from "../lib/rules.mjs";
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 
@@ -233,4 +236,76 @@ test("security / dummy-data patterns are skipped in test and fixture files, kept
   // the same patterns still fire in production code
   assert.ok(named(scanContent("el.innerHTML = userInput", "a.tsx"), "innerhtml-usage"));
   assert.ok(named(scanContent('const apiKey = "sk_live_abcdef123456"', "src/config.ts"), "hardcoded-secret"));
+});
+
+// ── D3: scanner optimization -- phrase counting, config filtering, context exceptions, ──
+// ── precompiled-regex parity ──
+
+test("a repeated banned phrase reports the total count and the first occurrence's line", () => {
+  const doc = [
+    "Great question! Let's get into it.",
+    "Filler line with no tells.",
+    "Great question, glad you asked again.",
+  ].join("\n");
+  const vs = scanContent(doc, "post.md");
+  const hit = vs.find((v) => v.type === "banned-phrase" && v.phrase === "great question");
+  assert.ok(hit, JSON.stringify(vs));
+  assert.equal(hit.count, 2, "should count both occurrences, not just the first");
+  assert.equal(hit.line, 1, "line should point at the FIRST occurrence");
+});
+
+test("allowedWords in .anti-slop/config.json suppresses a banned word", async () => {
+  // loadProjectConfig() reads .anti-slop/config.json relative to process.cwd() captured at
+  // module-load time in lib/store.mjs -- it cannot be faked by chdir-ing inside this test
+  // process (other tests in this file depend on the real cwd). Spawn a fresh child process
+  // with its cwd pointed at a temp project dir instead.
+  const dir = mkdtempSync(join(tmpdir(), "anti-slop-allowedwords-"));
+  try {
+    mkdirSync(join(dir, ".anti-slop"), { recursive: true });
+    writeFileSync(
+      join(dir, ".anti-slop", "config.json"),
+      JSON.stringify({ allowedWords: ["leverage"] }),
+    );
+    const scanMjsUrl = pathToFileURL(
+      join(dirname(fileURLToPath(import.meta.url)), "..", "lib", "scan.mjs"),
+    ).href;
+    const script = [
+      `import { scanContent } from ${JSON.stringify(scanMjsUrl)};`,
+      `const vs = scanContent("We leverage A. We leverage B. We leverage C.", "b.md");`,
+      `console.log(JSON.stringify({ flagged: vs.some((v) => v.word === "leverage") }));`,
+    ].join("\n");
+    const result = spawnSync(process.execPath, ["--input-type=module", "-e", script], {
+      cwd: dir,
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const { flagged } = JSON.parse(result.stdout.trim());
+    assert.equal(flagged, false, "allowedWords should suppress the banned word even when clustered");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a CONTEXT_EXCEPTIONS word is not flagged when its domain context is present", () => {
+  // "realm" is low-confidence (needs clustering) -- use two occurrences so the base case
+  // (no domain context) actually flags, then show the domain word suppresses it.
+  const withoutContext = "Welcome to the enchanted realm. In this realm, everything feels possible.";
+  const vsWithout = scanContent(withoutContext, "a.md");
+  assert.ok(vsWithout.some((v) => v.word === "realm"), "realm should flag without domain context (clustered)");
+
+  const withContext = withoutContext + " The server handles each request in milliseconds.";
+  const vsWith = scanContent(withContext, "a.md");
+  assert.ok(!vsWith.some((v) => v.word === "realm"), "realm should be excused once 'server' appears in the doc");
+});
+
+test("precompiled banned-word regexes cover every word, case-insensitively, with word boundaries", () => {
+  for (const word of BANNED_WORDS) {
+    assert.ok(BANNED_WORD_REGEXES.has(word), `missing compiled regex for "${word}"`);
+    const re = BANNED_WORD_REGEXES.get(word);
+    assert.ok(re instanceof RegExp, `"${word}" entry should be a RegExp`);
+    assert.ok(re.global && re.ignoreCase, `"${word}" regex must be global + case-insensitive`);
+  }
+  const delveRe = BANNED_WORD_REGEXES.get("delve");
+  assert.ok("We DELVE into details.".match(delveRe), "case-insensitive match should still work");
+  assert.ok(!"We delved into details.".match(delveRe), '"delved" must not match \\bdelve\\b');
 });

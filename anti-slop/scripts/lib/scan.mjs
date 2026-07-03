@@ -2,6 +2,7 @@ import { extname } from "path";
 import { loadProjectConfig } from "./store.mjs";
 import {
   BANNED_WORDS,
+  BANNED_WORD_REGEXES,
   LOW_CONFIDENCE_WORDS,
   BANNED_PHRASES,
   DESIGN_PATTERNS,
@@ -97,7 +98,7 @@ export function scanContent(content, filePath) {
       if (allowedWords.has(lw)) continue;
       const exceptions = CONTEXT_EXCEPTIONS[lw];
       if (exceptions && exceptions.some(e => contentLower.includes(e))) continue;
-      const matches = textToScan.match(new RegExp(`\\b${word}\\b`, "gi"));
+      const matches = textToScan.match(BANNED_WORD_REGEXES.get(word));
       if (!matches) continue;
       const count = matches.length;
       // Concentration rule: a lone low-confidence word is the writer's own prose, not a tell.
@@ -117,17 +118,24 @@ export function scanContent(content, filePath) {
   if (isProse || isCode) {
     const hay = (isProse ? proseScan : content).toLowerCase();
     for (const phrase of BANNED_PHRASES) {
-      const idx = hay.indexOf(phrase);
-      if (idx !== -1) {
-        const lineNum = hay.substring(0, idx).split("\n").length;
-        violations.push({
-          type: "banned-phrase",
-          phrase,
-          line: lineNum,
-          severity: "medium",
-          desc: `Banned phrase "${phrase}" at line ${lineNum}`,
-        });
+      const firstIdx = hay.indexOf(phrase);
+      if (firstIdx === -1) continue;
+      let count = 0;
+      let searchFrom = 0;
+      let idx;
+      while ((idx = hay.indexOf(phrase, searchFrom)) !== -1) {
+        count++;
+        searchFrom = idx + phrase.length;
       }
+      const lineNum = hay.substring(0, firstIdx).split("\n").length;
+      violations.push({
+        type: "banned-phrase",
+        phrase,
+        line: lineNum,
+        count,
+        severity: "medium",
+        desc: `Banned phrase "${phrase}" found ${count}x (first at line ${lineNum})`,
+      });
     }
   }
 

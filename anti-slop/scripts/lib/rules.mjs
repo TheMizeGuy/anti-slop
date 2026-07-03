@@ -17,6 +17,13 @@ export const BANNED_WORDS = [
   "holistic", "myriad", "plethora", "paramount", "intricate", "profound",
 ];
 
+// ── Precompiled per-word regexes (word boundary, case-insensitive, global). Built once at
+// module load instead of per-scan; String.prototype.match() with the g flag resets lastIndex
+// on every call, so a single shared RegExp per word is safe to reuse across scans. ──
+export const BANNED_WORD_REGEXES = new Map(
+  BANNED_WORDS.map((word) => [word, new RegExp(`\\b${word}\\b`, "gi")]),
+);
+
 // ── Low-confidence words: high keyword-match but rarely cited as a real tell ──
 // (Reddit corpus, see references/empirical-rankings.md). Flagged only when they
 // CLUSTER (count >= 2), at "low" severity. A lone hit is treated as clean.
