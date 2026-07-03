@@ -21,6 +21,7 @@ export { scanContent, calculateScore, verdict };
 
 import { loadLog, saveLog, loadScores, saveScore } from "./lib/store.mjs";
 import { ensureDashboard } from "./lib/dashboard.mjs";
+import { computeRuleStats } from "./lib/stats.mjs";
 import { runCli } from "./lib/cli.mjs";
 
 // ── MCP Server ──
@@ -53,6 +54,11 @@ mcpServer.setRequestHandler(ListToolsRequestSchema, async () => ({
       description: "Get the scan score history for this project.",
       inputSchema: { type: "object", properties: {} },
     },
+    {
+      name: "get_rule_stats",
+      description: "Get per-rule statistics for this project: how many times each rule has fired live (active) versus been deliberately suppressed (escape hatch or an allowedWords config entry), worst severity seen, and when it last fired. Use this to see which AI-tell patterns show up most often in this codebase.",
+      inputSchema: { type: "object", properties: {} },
+    },
   ],
 }));
 
@@ -72,10 +78,8 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
       return { content: [{ type: "text", text: "No content to scan." }] };
     }
 
-    // collectSuppressed is a no-op today (scan.mjs's current signature ignores the third
-    // argument) and activates once the rule-stats feedback loop lands in scan.mjs -- the
-    // filter below is on `v.suppressed` truthiness, never on whether the option was honored,
-    // so this handler needs no further changes when that merges.
+    // Suppressed entries (escape hatch / allowedWords) are logged for rule stats but
+    // never reach the report text or the score.
     const allEntries = scanContent(content, filePath, { collectSuppressed: true });
     const activeViolations = allEntries.filter(v => !v.suppressed);
     const score = calculateScore(activeViolations);
@@ -125,6 +129,15 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
       `${new Date(s.timestamp).toLocaleString()} | Scan score: ${s.score}/50 | ${s.violations} violations | ${s.file || "scan"}`
     ).join("\n");
     return { content: [{ type: "text", text: `Last ${recent.length} scans:\n${text}` }] };
+  }
+
+  if (name === "get_rule_stats") {
+    const { rules, totals } = computeRuleStats(loadLog());
+    if (!rules.length) return { content: [{ type: "text", text: "No findings recorded yet." }] };
+    const lines = rules.map(r =>
+      `${r.rule}: ${r.active} active, ${r.suppressed} suppressed, worst=${r.worstSeverity}, last=${new Date(r.lastSeen).toLocaleString()}`
+    );
+    return { content: [{ type: "text", text: `${totals.active} active / ${totals.suppressed} suppressed across ${rules.length} rules\n\n${lines.join("\n")}` }] };
   }
 
   return { content: [{ type: "text", text: `Unknown tool: ${name}` }] };

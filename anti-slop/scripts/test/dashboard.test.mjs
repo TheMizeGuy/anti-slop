@@ -207,6 +207,15 @@ test("A9: MCP server version string matches the plugin manifest", () => {
 
 // ── A2 (tool description): get_dashboard_url documents the on-demand behavior ──
 
+test("get_rule_stats tool is wired: listed with a description and handled via computeRuleStats", () => {
+  const entrySrc = readFileSync(ENTRY_PATH, "utf8");
+  const start = entrySrc.indexOf('name: "get_rule_stats"');
+  assert.ok(start !== -1, "get_rule_stats tool block not found in tools list");
+  assert.match(entrySrc.slice(start, start + 400), /active.*suppressed/s, "description must explain active vs suppressed counts");
+  assert.ok(entrySrc.includes('if (name === "get_rule_stats")'), "handler branch missing");
+  assert.ok(entrySrc.includes("computeRuleStats(loadLog())"), "handler must aggregate the scan log via computeRuleStats");
+});
+
 test("get_dashboard_url tool description documents on-demand start + disable switch", () => {
   const entrySrc = readFileSync(ENTRY_PATH, "utf8");
   const start = entrySrc.indexOf('name: "get_dashboard_url"');
