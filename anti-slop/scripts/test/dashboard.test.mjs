@@ -196,9 +196,13 @@ test("A8: dashboard.html passes the plugin's own scanner", async () => {
 
 // ── A9: version bump ──
 
-test("A9: MCP server version string is 1.5.0", () => {
+test("A9: MCP server version string matches the plugin manifest", () => {
   const entrySrc = readFileSync(ENTRY_PATH, "utf8");
-  assert.match(entrySrc, /version:\s*"1\.5\.0"/);
+  const manifestPath = join(dirname(SCRIPTS_DIR), ".claude-plugin", "plugin.json");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  const m = entrySrc.match(/version:\s*"([^"]+)"/);
+  assert.ok(m, "entry must declare an MCP server version string");
+  assert.equal(m[1], manifest.version, "entry MCP version must match anti-slop/.claude-plugin/plugin.json");
 });
 
 // ── A2 (tool description): get_dashboard_url documents the on-demand behavior ──
