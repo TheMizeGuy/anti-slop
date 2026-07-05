@@ -3,7 +3,8 @@
   "version": "1.6.0",
   "description": "Catches agentic development shortcomings: security holes, accessibility failures, regressions, and generic defaults. Context-aware: yields to domain conventions.",
   "author": {
-    "name": "TheMizeGuy"
+    "name": "TheMizeGuy",
+    "email": "ben@meipath.com"
   },
   "homepage": "https://github.com/TheMizeGuy/anti-slop",
   "repository": "https://github.com/TheMizeGuy/anti-slop",

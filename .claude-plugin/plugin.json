@@ -3,7 +3,8 @@
   "version": "1.6.0",
   "description": "Catches and blocks detectable AI patterns in prose, code, and UI output across all projects.",
   "author": {
-    "name": "TheMizeGuy"
+    "name": "TheMizeGuy",
+    "email": "ben@meipath.com"
   },
   "repository": "https://github.com/TheMizeGuy/anti-slop",
   "license": "MIT",

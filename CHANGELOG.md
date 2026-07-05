@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `anti-slop/.claude-plugin/plugin.json`, and the SKILL.md frontmatter — all four are bumped together.
+All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `anti-slop/.claude-plugin/plugin.json`, the SKILL.md frontmatter, and the MCP Server constructor string in `anti-slop/scripts/slop-scanner.mjs` — all five are bumped together.
 
 ## 1.6.0 (current)
 
