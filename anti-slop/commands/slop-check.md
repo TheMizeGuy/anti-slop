@@ -1,6 +1,6 @@
 ---
 name: slop-check
-description: Review output or files for AI slop patterns with scored report.
+description: Review output, a file, the working diff, or the current PR for AI slop patterns; reports a deterministic scan score and an agent review score with per-finding fixes.
 argument-hint: "[target]"
 allowed-tools: Read, Grep, Glob, Agent, Bash(git diff:*), Bash(gh pr:*)
 ---
