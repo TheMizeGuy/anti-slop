@@ -25,7 +25,7 @@ Rules yield to domain context. Academic writing gets its hedging language. Legal
 | **Command** (`/slop-check`) | Manual review — point it at a file, diff, or PR |
 | **MCP Server** (`anti-slop-scanner`) | Fast deterministic scanner — regex-based pattern matching for banned words, phrases, design tells, code smells, security issues. Four tools: `scan_file`, `get_dashboard_url`, `get_score_history`, `get_rule_stats` (per-rule active vs deliberately-suppressed counts). Implemented as the `scripts/slop-scanner.mjs` entry point plus `scripts/lib/` modules for rule data, scanning, storage, and the dashboard. The same entry point also runs as a CI-facing CLI (`scan` subcommand) outside the MCP protocol |
 | **Web Dashboard** | Optional, off by default. Nothing starts when the MCP server starts. Calling `get_dashboard_url` starts it on demand at a per-project deterministic port and returns the URL. Shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, recent findings |
-| **8 reference files** | ~230 banned words, ~210 banned phrases, plus pattern catalogs for writing, code, design, frontend, regressions, and self-check checklists |
+| **10 reference files** | ~230 banned words, ~210 banned phrases, plus pattern catalogs for writing, code, design, frontend, regressions, self-check checklists, empirical rankings, and choosing-with-intent guidance |
 
 The MCP scanner and the agent serve different purposes. The scanner is fast — it runs regex patterns against file content and returns in milliseconds. The agent is thorough — it reads reference files, understands context, and produces a scored report with specific fixes. The `/slop-check` command runs both: scanner first for a quick pass, then the agent for semantic analysis.
 
@@ -101,6 +101,40 @@ Drop a `.anti-slop/config.json` in your project to adjust scanner and dashboard 
 ```
 
 `allowedWords` exempts specific banned words (including hyphenated ones like `cutting-edge`) the scanner would otherwise flag; it does not cover banned phrases. `dashboard` set to `false` disables the web dashboard entirely; omit it (or set it to `true`) to leave the dashboard available on demand.
+
+## Walkthrough
+
+A worked example, start to finish:
+
+1. Install the plugin (see Installation above) and open Claude Code in a project.
+2. Ask Claude to write or edit a file. The `anti-slop` skill activates automatically during the write; no command is needed for this pass.
+3. Run a manual review on a specific file: `/slop-check src/components/Header.tsx`.
+4. Claude Code first calls the `scan_file` MCP tool (the deterministic scanner). A finding-bearing file returns output shaped like:
+
+   ```
+   Scan score: 42/50 | SOME | 4 violation(s) in Header.tsx
+
+   [HIGH] Hardcoded API key literal on line 12
+   [MEDIUM] "leverage" (banned word) on line 30
+   [MEDIUM] useEffect missing dependency array on line 44
+   [LOW] em-dash density (3 in 80 words) on lines 50-58
+   ```
+
+   A clean file returns an empty result — no output, no false "all good" message.
+5. Claude then dispatches the `slop-detector` agent for the semantic pass the scanner cannot do (sentence rhythm, sycophancy, tutorial-shaped code, hallucinated APIs). The agent replies with its own `Review score: N/50` on the five judgment dimensions (directness, specificity, security/a11y awareness, code quality, design quality) plus concrete fixes per finding.
+6. Claude presents both scores together, labeled (`Scan score` and `Review score` measure different things and are not comparable), and offers to apply the fixes.
+7. Optional: ask for the dashboard (`get_dashboard_url`) to see scan counts, severity breakdown, and findings-by-rule for the project over time.
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `/slop-check` runs but no MCP scan output appears | `anti-slop-scanner` MCP server isn't registered or Claude Code hasn't picked up `.mcp.json` | Reinstall/update the plugin from the marketplace, or restart Claude Code; confirm `anti-slop/.mcp.json` exists in the installed plugin directory |
+| Every file scans clean even when it clearly has banned words | A `.anti-slop/config.json` in the project lists the word under `allowedWords`, or the line ends in `anti-slop-allow: <reason>` / `unslop-ignore` | Check the project's `.anti-slop/config.json` and inline escape hatches; both are intentional per-project overrides, not bugs |
+| `get_dashboard_url` returns "Dashboard is disabled" | `.anti-slop/config.json` has `"dashboard": false` | Remove the key or set it to `true`, then call `get_dashboard_url` again |
+| `get_dashboard_url` returns "could not be started (no available port)" | No free port in the dashboard's deterministic per-project range | Free up local ports or retry; the dashboard is optional and scan/review still work without it |
+| CI scan exits 2 | A path in the file list is unreadable (often a deleted file from a diff) | Use `--diff-filter=d` on `git diff` before piping into `slop-scanner.mjs scan`, as shown in the CI usage example |
+| `npm test` fails with import errors from files you never wrote | The bare `node --test` runner was used instead of `npm test` | Always run `npm test` from `anti-slop/scripts` — `test/corpus/` intentionally contains samples with broken imports that only the project's own test runner knows to skip |
 
 ## Scope
 
