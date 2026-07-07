@@ -116,3 +116,19 @@ Writing rules that keep the delta at zero:
 - Add no em dashes of your own; the density rule is cumulative over the file.
 - Avoid the banned vocabulary in your own voice (the scanner will tell you if you slip).
 - Run the full suite afterward even for docs-only changes: `cd anti-slop/scripts && npm test`.
+
+## Downstream sync: ui-craft catalogue
+
+The consolidated `ui-craft` Claude Code plugin (private, TheMizeGuy/ui-craft) distills this
+plugin's UI research into two files that must be refreshed whenever a quarterly refresh
+changes the UI/design section of `empirical-rankings.md` or the UI tells in
+`design-patterns.md` / `frontend-patterns.md`:
+
+- `references/catalogue/02-empirical-evidence.md` -- mirrors the UI ranking table,
+  cleared-memes list, and drift spot-checks.
+- `references/catalogue/01-ai-tells.md` -- carries the merged tell catalogue; new or
+  re-graded UI tells land there as well.
+
+Procedure: after the refresh stamp lands here, apply the same delta to the ui-craft repo,
+bump its patch version, and release through the mize-plugins channel. anti-slop remains the
+source of truth for corpus evidence; ui-craft is a downstream distillation.
