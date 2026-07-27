@@ -1,3 +1,41 @@
+// ── Confidence classes ──
+// How sure the scanner is that a match is WRONG HERE, which is a different axis from
+// how much it would cost if it is (that is `severity`). The two never collapse: a
+// hardcoded-credential match is severity "high" and confidence "Pattern smell", because
+// a regex cannot prove the string is a live secret; an em-dash cluster is severity "low"
+// and still only a smell.
+//
+// The doctrinal definitions live in ONE place -- skills/anti-slop/references/
+// confidence-and-evidence.md. This object is the machine mirror of that file, and
+// test/rule-metadata.test.mjs asserts the two carry the same four classes, so the mirror
+// cannot drift from the doctrine without failing the suite.
+export const CONFIDENCE = Object.freeze({
+  HARD: "Hard defect",
+  QUALITY: "Quality defect",
+  SMELL: "Pattern smell",
+  TASTE: "Taste note",
+});
+export const CONFIDENCE_CLASSES = Object.freeze(Object.values(CONFIDENCE));
+
+// Confidence for the rule families that are not table-driven (they are inlined in
+// scan.mjs rather than living in a pattern array).
+export const BANNED_WORD_CONFIDENCE = CONFIDENCE.SMELL;
+export const BANNED_PHRASE_CONFIDENCE = CONFIDENCE.SMELL;
+export const EMDASH_CONFIDENCE = CONFIDENCE.SMELL;
+export const EMOJI_CONFIDENCE = CONFIDENCE.QUALITY;
+
+// ── Firing modes ──
+// "presence": one occurrence is the finding. Reserved for specific, high-signal
+//   compositions that read as generated on sight (a verbatim default string, a named
+//   component fingerprint).
+// "concentration": the finding is the DENSITY, not the instance. Carries `minCount`;
+//   below it the rule stays silent. A regex engine fires on presence by default, so any
+//   tell whose real signal is repetition needs this or it reports every file that ever
+//   used the technique once.
+// The floor rule behind it: a lone utility-class hit is not a finding.
+export const PRESENCE = "presence";
+export const CONCENTRATION = "concentration";
+
 // ── Banned Words (top 50 highest-signal, prose-only) ──
 export const BANNED_WORDS = [
   "delve", "delving", "leverage", "leveraging", "utilize", "utilizing",
@@ -61,68 +99,117 @@ export const BANNED_PHRASES = [
   "key takeaways", "without further ado",
 ];
 
-// ── UI Design Patterns (severity per rule; optional `suppress` skips a line) ──
+// ── UI Design Patterns (WEB surfaces only -- see WEB_SURFACE_EXTENSIONS) ──
 // Ordered roughly by empirical signal. Severity reflects the corpus ranking:
 // shadcn-default / purple / gradients are the strongest; the rest are lighter.
+//
+// Every rule declares:
+//   severity    -- what it costs if real (may be a function of the match count)
+//   confidence  -- how sure we are it is wrong HERE (the four-class enum above)
+//   mode        -- PRESENCE (one hit is the finding) or CONCENTRATION (+ minCount)
+//   suppress    -- optional per-line guard: a line matching it is a correct use
+//
+// A tell with no remediation is a tell that gets "fixed" by deletion, so the remediation
+// for every rule here is in skills/anti-slop/references/design-patterns.md. Where the
+// cheapest way to clear a match is to remove responsive, accessible, or motion-preference
+// behaviour, the match is too wide -- narrow it instead (see `tailwind-hero-triplet` and
+// the `important-overuse` suppress guard, both of which exist for exactly that reason).
 export const DESIGN_PATTERNS = [
-  { name: "purple-gradient-default", severity: "medium", pattern: /from-(indigo|purple|violet)-[45]00\s.*to-(indigo|purple|violet)-[56]00/i, desc: "Purple/indigo gradient (Tailwind AI default)" },
-  { name: "purple-blue-gradient", severity: "medium", pattern: /from-(purple|violet|indigo|fuchsia)-\d+\s+(via-[a-z]+-\d+\s+)?to-(blue|indigo|pink|cyan|sky)-\d+|linear-gradient\([^)]*#(6366f1|7c3aed|8b5cf6|a855f7)[^)]*\)/i, desc: "Purple-to-blue/pink gradient" },
-  { name: "ai-purple-hex", severity: "low", pattern: /#(6366f1|4f46e5|818cf8|7c3aed|6d28d9|8b5cf6|a855f7|9333ea|7e22ce|c026d3|d946ef)\b/i, desc: "AI purple (indigo/violet hex as brand color)" },
-  { name: "ai-purple-class", severity: "medium", pattern: /\b(bg|text|from|via|to|border|ring|fill|stroke|decoration|outline)-(indigo|violet|purple|fuchsia)-(400|500|600|700|800)\b/i, desc: "AI purple as primary (Tailwind indigo/violet/purple class)" },
-  { name: "gradient-text", severity: "medium", pattern: /bg-clip-text\s[^"]*text-transparent|text-transparent\s[^"]*bg-clip-text|-webkit-background-clip\s*:\s*text|\bbackground-clip\s*:\s*text/i, desc: "Gradient text on heading (strong AI tell)" },
-  { name: "cream-serif-default", severity: "low", pattern: /#(faf8f5|f5f1e8|f3eee3|fdfbf7|f7f3ec|faf6ef|f6f1e7|fbf7f0|f4efe4)\b|\bbg-(stone|amber|orange)-(50|100)\b|\b(Instrument\s*Serif|Fraunces|Playfair\s*Display|Cormorant|Spectral|DM\s*Serif)\b/i, desc: "Cream/serif 'tasteful default' (the 2026 tell)" },
-  { name: "shadcn-default-card", severity: "low", pattern: /rounded-lg\s+border\s+bg-card\s+text-card-foreground\s+shadow-sm|"baseColor"\s*:\s*"(slate|zinc|gray|neutral|stone)"|--radius\s*:\s*0\.5rem/i, desc: "Un-themed shadcn default card kit" },
-  { name: "icon-in-colored-circle", severity: "medium", pattern: /rounded-full\s[^"]*bg-[a-z]+-100\s[^"]*p-3/i, desc: "Icon in colored circle background" },
-  { name: "frosted-glass-nav", severity: "medium", pattern: /backdrop-blur[^\s]*\s[^"]*bg-white\/[0-9]+\s[^"]*border-b/i, desc: "Frosted glass navigation bar" },
-  { name: "shadow-border-rounded-combo", severity: "medium", pattern: /shadow-sm\s[^"]*border\s[^"]*rounded-xl/i, desc: "shadow-sm + border + rounded-xl AI card combo" },
-  { name: "neon-glow", severity: "low", pattern: /shadow-\[0_0_|drop-shadow-\[0_0_|box-shadow\s*:[^;]*\b0\s+0\s+\d{2,}px/i, desc: "Unprompted neon glow (dark-mode tell)" },
-  { name: "rounded-everything", severity: "low", pattern: /\brounded-(2xl|3xl|full)\b|border-radius\s*:\s*(999\d*px|9999px)/i, suppress: /\b[hw]-(\d|10|11|12|14|16)(\.5)?\b/i, desc: "Maximal rounding on everything (cards/pills)" },
-  { name: "generic-font", severity: "low", pattern: /font-family\s*:\s*['"]?(Inter|Geist|Roboto)\b|\b(Inter|Geist|Geist_Mono|Roboto)\s*\(/i, desc: "Generic default font (Inter/Geist/Roboto)" },
-  { name: "hype-copy", severity: "low", pattern: /\bTransform your\b|\bSupercharge\b|\bUnleash\b|\bEffortlessly\b|take your [^.]{0,30}to the next level/i, desc: "Marketing hype copy in UI" },
-  { name: "stock-illustration", severity: "low", pattern: /\b(undraw|storyset|drawkit)\b/i, desc: "Generic stock illustration (undraw/storyset)" },
-  { name: "z-index-escalation", severity: "medium", pattern: /z-(?:index:\s*|\[)(?:999|9999|99999)/i, desc: "z-index escalation (999+)" },
-  { name: "important-overuse", severity: (c) => (c > 3 ? "high" : "medium"), pattern: /!important/gi, desc: "!important usage" },
+  { name: "purple-gradient-default", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /from-(indigo|purple|violet)-[45]00\s.*to-(indigo|purple|violet)-[56]00/i, desc: "Purple/indigo gradient (Tailwind AI default)" },
+  { name: "purple-blue-gradient", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /from-(purple|violet|indigo|fuchsia)-\d+\s+(via-[a-z]+-\d+\s+)?to-(blue|indigo|pink|cyan|sky)-\d+|linear-gradient\([^)]*#(6366f1|7c3aed|8b5cf6|a855f7)[^)]*\)/i, desc: "Purple-to-blue/pink gradient" },
+  // Hex and utility-class purple are property-level: the tell is "indigo IS the palette",
+  // which one stray declaration does not establish.
+  { name: "ai-purple-hex", severity: "low", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, pattern: /#(6366f1|4f46e5|818cf8|7c3aed|6d28d9|8b5cf6|a855f7|9333ea|7e22ce|c026d3|d946ef)\b/i, desc: "AI purple (indigo/violet hex as brand color)" },
+  { name: "ai-purple-class", severity: "medium", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, pattern: /\b(bg|text|from|via|to|border|ring|fill|stroke|decoration|outline)-(indigo|violet|purple|fuchsia)-(400|500|600|700|800)\b/i, desc: "AI purple as primary (Tailwind indigo/violet/purple class)" },
+  { name: "gradient-text", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /bg-clip-text\s[^"]*text-transparent|text-transparent\s[^"]*bg-clip-text|-webkit-background-clip\s*:\s*text|\bbackground-clip\s*:\s*text/i, desc: "Gradient text on heading (strong AI tell)" },
+  // design-patterns.md has always said "the signal is the combination -- any two of
+  // {cream background, serif display, sage green}. One alone may be a real decision."
+  // minCount 2 is that sentence, enforced: a lone Fraunces heading is a choice.
+  { name: "cream-serif-default", severity: "low", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, pattern: /#(faf8f5|f5f1e8|f3eee3|fdfbf7|f7f3ec|faf6ef|f6f1e7|fbf7f0|f4efe4)\b|\bbg-(stone|amber|orange)-(50|100)\b|\b(Instrument\s*Serif|Fraunces|Playfair\s*Display|Cormorant|Spectral|DM\s*Serif)\b/i, desc: "Cream/serif 'tasteful default' (the 2026 tell -- two or more legs of the combination)" },
+  { name: "shadcn-default-card", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /rounded-lg\s+border\s+bg-card\s+text-card-foreground\s+shadow-sm|"baseColor"\s*:\s*"(slate|zinc|gray|neutral|stone)"|--radius\s*:\s*0\.5rem/i, desc: "Un-themed shadcn default card kit" },
+  { name: "icon-in-colored-circle", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /rounded-full\s[^"]*bg-[a-z]+-100\s[^"]*p-3/i, desc: "Icon in colored circle background" },
+  { name: "frosted-glass-nav", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /backdrop-blur[^\s]*\s[^"]*bg-white\/[0-9]+\s[^"]*border-b/i, desc: "Frosted glass navigation bar" },
+  { name: "shadow-border-rounded-combo", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /shadow-sm\s[^"]*border\s[^"]*rounded-xl/i, desc: "shadow-sm + border + rounded-xl AI card combo" },
+  { name: "neon-glow", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /shadow-\[0_0_|drop-shadow-\[0_0_|box-shadow\s*:[^;]*\b0\s+0\s+\d{2,}px/i, desc: "Unprompted neon glow (dark-mode tell)" },
+  // "Maximal rounding on EVERYTHING": the tell is the uniform treatment across a surface,
+  // not any single rounded corner. Below three the floor rule applies -- a lone
+  // `rounded-full` on an icon wrapper is not "the same radius on every control".
+  { name: "rounded-everything", severity: "low", confidence: CONFIDENCE.QUALITY, mode: CONCENTRATION, minCount: 3, pattern: /\brounded-(2xl|3xl|full)\b|border-radius\s*:\s*(999\d*px|9999px)/i, suppress: /\b[hw]-(\d|10|11|12|14|16)(\.5)?\b/i, desc: "Maximal rounding on every control (uncommitted radius)" },
+  { name: "generic-font", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /font-family\s*:\s*['"]?(Inter|Geist|Roboto)\b|\b(Inter|Geist|Geist_Mono|Roboto)\s*\(/i, desc: "Generic default font (Inter/Geist/Roboto)" },
+  { name: "hype-copy", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\bTransform your\b|\bSupercharge\b|\bUnleash\b|\bEffortlessly\b|take your [^.]{0,30}to the next level/i, desc: "Marketing hype copy in UI" },
+  { name: "stock-illustration", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /\b(undraw|storyset|drawkit)\b/i, desc: "Generic stock illustration (undraw/storyset)" },
+  { name: "z-index-escalation", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /z-(?:index:\s*|\[)(?:999|9999|99999)/i, desc: "z-index escalation (999+)" },
+  // The rule is named *overuse*. One pragmatic override against a third-party widget is
+  // not it, and `* { transition: none !important }` inside a prefers-reduced-motion block
+  // is the canonical WCAG 2.3.3 implementation -- flagging it invites a "fix" that deletes
+  // motion-preference handling, which is the failure mode this whole release exists to stop.
+  { name: "important-overuse", severity: (c) => (c > 3 ? "high" : "medium"), confidence: CONFIDENCE.QUALITY, mode: CONCENTRATION, minCount: 2, pattern: /!important/gi, suppress: /(transition|animation|scroll-behavior)\s*:\s*[^;]*!important|prefers-reduced-motion/i, desc: "!important overuse (specificity not fixed)" },
+  // Item 1. NOT a rule against responsive typography: it matches only the verbatim
+  // unmodified Tailwind hero run, which is a genericness fingerprint. A scale on other
+  // steps, a tuned tracking, or a fluid clamp() ramp is a different string and stays clean.
+  // The remediation is a fluid ramp, never a fixed size (design-patterns.md).
+  { name: "tailwind-hero-triplet", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /\btext-4xl\s+sm:text-5xl\s+lg:text-6xl\s+font-bold\s+tracking-tight\b/, desc: "Verbatim Tailwind default hero type run (genericness signal, not a responsive-type finding)" },
+];
+
+// ── Native UI Patterns (APPLE surfaces only -- see NATIVE_UI_EXTENSIONS) ──
+// Kept in a separate table from the web tells on purpose: a rule that fires `.frame(width:`
+// on a stylesheet, or `text-4xl` on a Swift file, is worse than no rule.
+//
+// The through-line is the same one the web tells have: a layout that answers the parent's
+// size proposal with a number survives exactly one context. Remediations are in
+// skills/anti-slop/references/native-ui-patterns.md, and none of them is "make it fixed".
+export const NATIVE_PATTERNS = [
+  { name: "uiscreen-bounds", severity: "medium", confidence: CONFIDENCE.HARD, mode: PRESENCE, pattern: /\bUIScreen\.main\.bounds\b/g, desc: "UIScreen.main.bounds for layout (the window is not the screen)" },
+  // 3+ digits means >= 100pt: a content shell, not an icon or a control. `.frame(width: 44)`
+  // on an SF Symbol is correct and must stay clean.
+  { name: "fixed-content-frame", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\.frame\(\s*(?:width|height):\s*\d{3,}/g, desc: "Fixed content frame (survives one window width)" },
+  { name: "device-idiom-branch", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\bUIDevice\.current\.userInterfaceIdiom\b/g, desc: "Branching on the device idiom instead of the size class" },
+  { name: "fixed-grid-columns", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /GridItem\(\s*\.fixed\(/g, desc: "Fixed GridItem array (gains no columns as the window grows)" },
+  { name: "repeating-symbol-effect", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\.symbolEffect\([^)]*options:\s*\.repeating/g, desc: "Looping symbol effect (never auto-gated for Reduce Motion)" },
 ];
 
 // ── Code Patterns (severity per rule) ──
 export const CODE_PATTERNS = [
-  { name: "full-lodash-import", severity: "medium", pattern: /import\s+_\s+from\s+['"]lodash['"]/g, desc: "Full lodash import (use cherry-picked imports)" },
-  { name: "full-moment-import", severity: "medium", pattern: /import\s+moment\s+from\s+['"]moment['"]/g, desc: "moment.js import (use dayjs or date-fns)" },
-  { name: "eval-usage", severity: "high", pattern: /\beval\s*\(/g, desc: "eval() usage (security risk)" },
-  { name: "innerhtml-usage", severity: "high", skipInTests: true, pattern: /\.innerHTML\s*=/g, desc: "innerHTML assignment (XSS risk)" },
+  { name: "full-lodash-import", severity: "medium", confidence: CONFIDENCE.QUALITY, pattern: /import\s+_\s+from\s+['"]lodash['"]/g, desc: "Full lodash import (use cherry-picked imports)" },
+  { name: "full-moment-import", severity: "medium", confidence: CONFIDENCE.QUALITY, pattern: /import\s+moment\s+from\s+['"]moment['"]/g, desc: "moment.js import (use dayjs or date-fns)" },
+  { name: "eval-usage", severity: "high", confidence: CONFIDENCE.HARD, pattern: /\beval\s*\(/g, desc: "eval() usage (security risk)" },
+  { name: "innerhtml-usage", severity: "high", confidence: CONFIDENCE.HARD, skipInTests: true, pattern: /\.innerHTML\s*=/g, desc: "innerHTML assignment (XSS risk)" },
   // Word-boundary on the key avoids compound identifiers (colorToken, currentPassword,
   // URL_CHANGE_PASSWORD); the value lookahead excludes URLs/paths/CSS vars/hex that are
   // never secrets. Test/fixture files are skipped (fake creds live there). "Possible",
   // not definite: a candidate for a human read, not a confirmed leak.
-  { name: "hardcoded-secret", severity: "high", skipInTests: true, pattern: /\b(?:api[_-]?key|password|secret|token)\s*[:=]\s*['"](?!\/|https?:|\.\.?\/|var\(|--|#[0-9a-fA-F])[^'"]{8,}['"]/gi, desc: "Possible hardcoded credential" },
-  { name: "console-log-emoji", severity: "medium", pattern: /console\.log\s*\(\s*['"][^\n]*[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FAFF}]/gu, desc: "Emoji in console.log" },
-  { name: "img-no-dimensions", severity: "medium", pattern: /<img\s(?![^>]*(?:width|height))[^>]*>/gi, desc: "<img> without width/height (causes CLS)" },
-  { name: "useeffect-setstate", severity: "medium", pattern: /useEffect\s*\(\s*\(\s*\)\s*=>\s*\{[^}]*set[A-Z]\w*\s*\(/g, desc: "useEffect setting state (likely derived state)" },
+  // severity high, confidence Pattern smell: if it IS a live credential it is the worst
+  // finding in the file, but a regex cannot prove the string is one -- it may be a fixture,
+  // a variable name, or a placeholder. This pairing is why the two axes stay separate.
+  { name: "hardcoded-secret", severity: "high", confidence: CONFIDENCE.SMELL, skipInTests: true, pattern: /\b(?:api[_-]?key|password|secret|token)\s*[:=]\s*['"](?!\/|https?:|\.\.?\/|var\(|--|#[0-9a-fA-F])[^'"]{8,}['"]/gi, desc: "Possible hardcoded credential" },
+  { name: "console-log-emoji", severity: "medium", confidence: CONFIDENCE.QUALITY, pattern: /console\.log\s*\(\s*['"][^\n]*[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FAFF}]/gu, desc: "Emoji in console.log" },
+  { name: "img-no-dimensions", severity: "medium", confidence: CONFIDENCE.HARD, pattern: /<img\s(?![^>]*(?:width|height))[^>]*>/gi, desc: "<img> without width/height (causes CLS)" },
+  { name: "useeffect-setstate", severity: "medium", confidence: CONFIDENCE.SMELL, pattern: /useEffect\s*\(\s*\(\s*\)\s*=>\s*\{[^}]*set[A-Z]\w*\s*\(/g, desc: "useEffect setting state (likely derived state)" },
   // AI-tell code patterns from the corpus study (high precision when present)
-  { name: "chat-artifact", severity: "high", pattern: /\bhere'?s the (updated|complete|full|fixed|revised|new) (code|version|implementation|file)\b|\bas an? (ai|a\.i\.) (language )?model\b|\b(good|great) catch!|\byou'?re absolutely right\b|\bi hope this helps\b/gi, desc: "Leftover chat artifact (assistant voice in code)" },
-  { name: "placeholder-comment", severity: "high", pattern: /(\/\/|#|\/\*|\*|--|<!--)\s*\.{2,}\s*(rest|the rest|your|remaining|existing|previous|other)\b|(\/\/|#|\/\*|\*|--|<!--)\s*(rest|remainder) of (your |the |my )?(code|implementation|logic|function|file)\b|(\/\/|#|\/\*|\*|--|<!--)\s*(your|the) (code|logic|implementation|stuff) (goes )?here\b|(\/\/|#|\/\*|\*|--|<!--)\s*(add|insert|implement|put) (your )?(code|logic|implementation) here\b|(\/\/|#|\/\*|\*|--|<!--)\s*(implementation|code|logic) (goes|go) here\b|(\/\/|#|\/\*|\*|--|<!--)\s*existing code (here|unchanged|stays|remains)\b|(\/\/|#|\/\*|\*|--|<!--)\s*TODO:?\s*(implement|add|fill in|finish)\b/gi, desc: "Placeholder-comment stub (file unfinished -- a bug)" },
-  { name: "narrating-comment", severity: "low", pattern: /(\/\/|#|\/\*|\*|--)\s*(step\s*\d+\b|now we\b|first,|next,|then,|finally,)|(\/\/|#|\/\*|\*|--)\s*(increment|decrement|initialize|declare|instantiate|loop (over|through)|iterate over|return the|set the|get the|call the)\b|(\/\/|#|\/\*|\*|--)\s*this (function|method|line|loop|variable|class|block) (does|handles|returns|creates)\b|(\/\/|#|\/\*|\*|--)\s*(import|importing) (the |required )?(libraries|modules|dependencies)\b/gi, desc: "Narrating comment (restates the code)" },
-  { name: "swallowed-error", severity: "medium", pattern: /^\s*except\s*:|^\s*except\s+(Exception|BaseException)\s*:\s*(pass|\.\.\.)\s*$|\bcatch\s*\([^)]*\)\s*\{\s*\}|\bcatch\s*\{\s*\}|\bcatch\s*\([^)]*\)\s*\{\s*\/\/[^\n]*\}|\bif\s+err\s*!=\s*nil\s*\{\s*\}|\bif\s+err\s*!=\s*nil\s*\{\s*\/\/[^\n]*\}/g, desc: "Swallowed error (bare except / empty catch / empty Go err block) -- a bug" },
-  { name: "generic-naming", severity: "low", pattern: /\b(def|function|func|fn|fun|sub)\s+(process_?[Dd]ata|handle_?[Dd]ata|do_?[Ss]tuff|do_?[Ss]omething|my_?[Ff]unction|process_?[Ii]tem|process_?[Ii]nput|main_?[Ff]unction)\b/g, desc: "Generic placeholder function name" },
-  { name: "boilerplate-marker", severity: "low", skipInTests: true, pattern: /\blorem ipsum\b|\bYOUR_API_KEY\b|\b(your|my)[-_]?api[-_]?key\b|\bexample\.com\b|\b(John|Jane) (Doe|Smith)\b|['"]sk-(xxx|your|placeholder|123)/gi, desc: "Tutorial/boilerplate marker (dummy data)" },
+  { name: "chat-artifact", severity: "high", confidence: CONFIDENCE.HARD, pattern: /\bhere'?s the (updated|complete|full|fixed|revised|new) (code|version|implementation|file)\b|\bas an? (ai|a\.i\.) (language )?model\b|\b(good|great) catch!|\byou'?re absolutely right\b|\bi hope this helps\b/gi, desc: "Leftover chat artifact (assistant voice in code)" },
+  { name: "placeholder-comment", severity: "high", confidence: CONFIDENCE.HARD, pattern: /(\/\/|#|\/\*|\*|--|<!--)\s*\.{2,}\s*(rest|the rest|your|remaining|existing|previous|other)\b|(\/\/|#|\/\*|\*|--|<!--)\s*(rest|remainder) of (your |the |my )?(code|implementation|logic|function|file)\b|(\/\/|#|\/\*|\*|--|<!--)\s*(your|the) (code|logic|implementation|stuff) (goes )?here\b|(\/\/|#|\/\*|\*|--|<!--)\s*(add|insert|implement|put) (your )?(code|logic|implementation) here\b|(\/\/|#|\/\*|\*|--|<!--)\s*(implementation|code|logic) (goes|go) here\b|(\/\/|#|\/\*|\*|--|<!--)\s*existing code (here|unchanged|stays|remains)\b|(\/\/|#|\/\*|\*|--|<!--)\s*TODO:?\s*(implement|add|fill in|finish)\b/gi, desc: "Placeholder-comment stub (file unfinished -- a bug)" },
+  { name: "narrating-comment", severity: "low", confidence: CONFIDENCE.QUALITY, pattern: /(\/\/|#|\/\*|\*|--)\s*(step\s*\d+\b|now we\b|first,|next,|then,|finally,)|(\/\/|#|\/\*|\*|--)\s*(increment|decrement|initialize|declare|instantiate|loop (over|through)|iterate over|return the|set the|get the|call the)\b|(\/\/|#|\/\*|\*|--)\s*this (function|method|line|loop|variable|class|block) (does|handles|returns|creates)\b|(\/\/|#|\/\*|\*|--)\s*(import|importing) (the |required )?(libraries|modules|dependencies)\b/gi, desc: "Narrating comment (restates the code)" },
+  { name: "swallowed-error", severity: "medium", confidence: CONFIDENCE.HARD, pattern: /^\s*except\s*:|^\s*except\s+(Exception|BaseException)\s*:\s*(pass|\.\.\.)\s*$|\bcatch\s*\([^)]*\)\s*\{\s*\}|\bcatch\s*\{\s*\}|\bcatch\s*\([^)]*\)\s*\{\s*\/\/[^\n]*\}|\bif\s+err\s*!=\s*nil\s*\{\s*\}|\bif\s+err\s*!=\s*nil\s*\{\s*\/\/[^\n]*\}/g, desc: "Swallowed error (bare except / empty catch / empty Go err block) -- a bug" },
+  { name: "generic-naming", severity: "low", confidence: CONFIDENCE.QUALITY, pattern: /\b(def|function|func|fn|fun|sub)\s+(process_?[Dd]ata|handle_?[Dd]ata|do_?[Ss]tuff|do_?[Ss]omething|my_?[Ff]unction|process_?[Ii]tem|process_?[Ii]nput|main_?[Ff]unction)\b/g, desc: "Generic placeholder function name" },
+  { name: "boilerplate-marker", severity: "low", confidence: CONFIDENCE.SMELL, skipInTests: true, pattern: /\blorem ipsum\b|\bYOUR_API_KEY\b|\b(your|my)[-_]?api[-_]?key\b|\bexample\.com\b|\b(John|Jane) (Doe|Smith)\b|['"]sk-(xxx|your|placeholder|123)/gi, desc: "Tutorial/boilerplate marker (dummy data)" },
 ];
 
 // ── Text constructs (prose only): regex-detectable sentence/format tells ──
 // Severity follows the corpus ranking. Emitted only after prose noise-stripping
 // (code fences, quotes, blockquotes, frontmatter, and escape-hatch lines blanked).
 export const TEXT_CONSTRUCTS = [
-  { name: "antithesis-not-just-x-y", severity: "medium", pattern: /\b(it'?s|its|it is|that'?s|this is|they'?re)\s+not\s+(just|only|merely|simply)\b[^.?!\n]{0,60}\bit'?s\b/gi, desc: '"It\'s not just X, it\'s Y" antithesis (#1 sentence tell)' },
-  { name: "antithesis-not-only-but", severity: "low", pattern: /\bnot\s+(just|only|merely|simply)\s+(a |an |the )?[\w-]+,?\s+but\b/gi, desc: '"not only X, but Y" antithesis' },
-  { name: "assistant-boilerplate", severity: "high", pattern: /\bas an? (ai|a\.i\.) (language )?model\b|\bas a large language model\b|\bi (cannot|can'?t|am unable to) (assist|help|fulfil|fulfill|comply|provide)\b|\bas of my last (knowledge )?(update|training)\b|\bknowledge cut[- ]?off\b|\bi (do not|don'?t) have (personal|the ability|access|feelings|opinions)\b/gi, desc: "Leftover assistant boilerplate (as-an-AI / refusal / cutoff)" },
-  { name: "assistant-offer", severity: "medium", pattern: /\bwould you like me to\b|\bis there anything else i can\b|\bi hope this (helps|email finds you well)\b/gi, desc: "Trailing assistant offer / sign-off" },
-  { name: "dive-in", severity: "low", pattern: /\b(deep dive|dive in(to)?|let'?s dive|diving in|dive deep)\b/gi, desc: '"dive in" / "deep dive" opener' },
-  { name: "listicle-scaffold", severity: "low", pattern: /(^|\s)#{0,4}\s*\d+\s+(ways|tips|signs|reasons|things|steps|tricks|secrets|lessons|mistakes|rules)\b/gi, desc: 'Listicle scaffolding ("N ways to...")' },
-  { name: "fast-paced-opener", severity: "low", pattern: /\bin today'?s\s+(fast[- ]?paced|digital|ever[- ]?changing|modern|competitive)?\s*(world|age|landscape|era|society|market)\b|\bin (the|this) (modern|digital) (world|age|era)\b/gi, desc: '"In today\'s fast-paced world" opener' },
-  { name: "unlock-potential", severity: "low", pattern: /\b(unlock|unleash|tap into)\w*\s+(the\s+|your\s+|its\s+|their\s+|full\s+)*(power|potential|capabilities|secrets)\b/gi, desc: '"unlock the potential" hype' },
-  { name: "in-conclusion", severity: "low", pattern: /\bin (conclusion|summary)\b|\bto (summari[sz]e|conclude|wrap (this |it )?up)\b|\bin closing\b/gi, desc: '"In conclusion / In summary" closer' },
-  { name: "honestly-opener", severity: "low", pattern: /(^|\n)\s*honestly,\s|\blet'?s be (honest|real)\b/gi, desc: '"Honestly," / "Let\'s be real" opener' },
-  { name: "hr-divider", severity: "low", pattern: /^\s{0,3}(---+|\*\*\*+|___+)\s*$/gm, desc: "Horizontal-rule divider between sections" },
-  { name: "hype-marketing", severity: "low", pattern: /\brevolution(ary|i[sz]e)\b|\btransform your (life|business|workflow)\b|\bto the next level\b|\bsupercharge\b|\bsay goodbye to\b|\blook no further\b|\bbuckle up\b|\bwithout further ado\b/gi, desc: "Marketing hype (revolutionary / supercharge)" },
+  { name: "antithesis-not-just-x-y", severity: "medium", confidence: CONFIDENCE.SMELL, pattern: /\b(it'?s|its|it is|that'?s|this is|they'?re)\s+not\s+(just|only|merely|simply)\b[^.?!\n]{0,60}\bit'?s\b/gi, desc: '"It\'s not just X, it\'s Y" antithesis (#1 sentence tell)' },
+  { name: "antithesis-not-only-but", severity: "low", confidence: CONFIDENCE.SMELL, pattern: /\bnot\s+(just|only|merely|simply)\s+(a |an |the )?[\w-]+,?\s+but\b/gi, desc: '"not only X, but Y" antithesis' },
+  { name: "assistant-boilerplate", severity: "high", confidence: CONFIDENCE.HARD, pattern: /\bas an? (ai|a\.i\.) (language )?model\b|\bas a large language model\b|\bi (cannot|can'?t|am unable to) (assist|help|fulfil|fulfill|comply|provide)\b|\bas of my last (knowledge )?(update|training)\b|\bknowledge cut[- ]?off\b|\bi (do not|don'?t) have (personal|the ability|access|feelings|opinions)\b/gi, desc: "Leftover assistant boilerplate (as-an-AI / refusal / cutoff)" },
+  { name: "assistant-offer", severity: "medium", confidence: CONFIDENCE.QUALITY, pattern: /\bwould you like me to\b|\bis there anything else i can\b|\bi hope this (helps|email finds you well)\b/gi, desc: "Trailing assistant offer / sign-off" },
+  { name: "dive-in", severity: "low", confidence: CONFIDENCE.SMELL, pattern: /\b(deep dive|dive in(to)?|let'?s dive|diving in|dive deep)\b/gi, desc: '"dive in" / "deep dive" opener' },
+  { name: "listicle-scaffold", severity: "low", confidence: CONFIDENCE.SMELL, pattern: /(^|\s)#{0,4}\s*\d+\s+(ways|tips|signs|reasons|things|steps|tricks|secrets|lessons|mistakes|rules)\b/gi, desc: 'Listicle scaffolding ("N ways to...")' },
+  { name: "fast-paced-opener", severity: "low", confidence: CONFIDENCE.SMELL, pattern: /\bin today'?s\s+(fast[- ]?paced|digital|ever[- ]?changing|modern|competitive)?\s*(world|age|landscape|era|society|market)\b|\bin (the|this) (modern|digital) (world|age|era)\b/gi, desc: '"In today\'s fast-paced world" opener' },
+  { name: "unlock-potential", severity: "low", confidence: CONFIDENCE.SMELL, pattern: /\b(unlock|unleash|tap into)\w*\s+(the\s+|your\s+|its\s+|their\s+|full\s+)*(power|potential|capabilities|secrets)\b/gi, desc: '"unlock the potential" hype' },
+  { name: "in-conclusion", severity: "low", confidence: CONFIDENCE.SMELL, pattern: /\bin (conclusion|summary)\b|\bto (summari[sz]e|conclude|wrap (this |it )?up)\b|\bin closing\b/gi, desc: '"In conclusion / In summary" closer' },
+  { name: "honestly-opener", severity: "low", confidence: CONFIDENCE.SMELL, pattern: /(^|\n)\s*honestly,\s|\blet'?s be (honest|real)\b/gi, desc: '"Honestly," / "Let\'s be real" opener' },
+  { name: "hr-divider", severity: "low", confidence: CONFIDENCE.TASTE, pattern: /^\s{0,3}(---+|\*\*\*+|___+)\s*$/gm, desc: "Horizontal-rule divider between sections" },
+  { name: "hype-marketing", severity: "low", confidence: CONFIDENCE.QUALITY, pattern: /\brevolution(ary|i[sz]e)\b|\btransform your (life|business|workflow)\b|\bto the next level\b|\bsupercharge\b|\bsay goodbye to\b|\blook no further\b|\bbuckle up\b|\bwithout further ado\b/gi, desc: "Marketing hype (revolutionary / supercharge)" },
 ];
 
 // ── Context Exceptions ──
@@ -158,3 +245,13 @@ export const EMOJI_REGEX = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27B
 export const PROSE_EXTENSIONS = new Set([".md", ".mdx", ".txt", ".rst"]);
 export const CODE_EXTENSIONS = new Set([".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py", ".rb", ".go", ".rs", ".java", ".cs", ".php", ".c", ".h", ".cpp", ".cc", ".hpp", ".kt", ".kts", ".swift", ".scala", ".m", ".mm", ".sh", ".bash", ".lua", ".dart", ".sql", ".r"]);
 export const STYLE_EXTENSIONS = new Set([".css", ".scss", ".less", ".html", ".htm", ".jsx", ".tsx", ".vue", ".svelte"]);
+
+// Which surface each UI rule table is allowed to see. Design tells are Tailwind/CSS/DOM
+// vocabulary and native tells are SwiftUI vocabulary; running either table over the other's
+// files produces findings that cannot be true, which costs more trust than the rule earns.
+// Web surfaces include JS/TS because Tailwind class strings live in components, not just
+// markup. Everything else (.py, .go, .rs, .java, .sh, ...) gets code rules only.
+export const WEB_SURFACE_EXTENSIONS = new Set([
+  ...STYLE_EXTENSIONS, ".js", ".ts", ".mjs", ".cjs", ".astro",
+]);
+export const NATIVE_UI_EXTENSIONS = new Set([".swift", ".m", ".mm"]);

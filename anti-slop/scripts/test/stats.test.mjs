@@ -125,7 +125,14 @@ test("escape-hatch: a banned phrase on a hatched line yields a suppressed banned
 });
 
 test("escape-hatch: a design-tell on a hatched line yields a suppressed design-tell entry, but the suppress-regex guard is NOT counted", () => {
-  const pill = '<button class="rounded-full px-6 py-3">Go</button> <!-- anti-slop-allow: brand pill -->';
+  // rounded-everything is a concentration tell (minCount 3), so the hatched lines have to
+  // reach the threshold: below it the rule would not have fired even without the marker,
+  // and reporting it as "suppressed" would overstate what the escape hatch actually hid.
+  const pill = [
+    '<input class="rounded-full border px-4"> <!-- anti-slop-allow: brand pill -->',
+    '<select class="rounded-full border px-4"></select> <!-- anti-slop-allow: brand pill -->',
+    '<button class="rounded-full px-6 py-3">Go</button> <!-- anti-slop-allow: brand pill -->',
+  ].join("\n");
   const vsPill = scanContent(pill, "a.tsx", { collectSuppressed: true });
   assert.ok(!active(vsPill).some((v) => v.name === "rounded-everything"), "must not be active on the hatched line");
   const pillHit = suppressedOnly(vsPill).find((v) => v.name === "rounded-everything");

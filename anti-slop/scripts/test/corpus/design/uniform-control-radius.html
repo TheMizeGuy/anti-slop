@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ledger - add a posting rule</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { --ink: oklch(0.22 0.02 60); --paper: oklch(0.97 0.008 85); --signal: oklch(0.55 0.15 45); }
+    body { background: var(--paper); color: var(--ink); font-family: ui-sans-serif, system-ui, sans-serif; }
+    label:focus-within { outline: 3px solid var(--signal); outline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <!--
+    Positive control for `rounded-everything` as a CONCENTRATION tell.
+
+    Five interactive controls -- text input, select, textarea, chip, submit button -- all
+    carry the same maximal `rounded-full`, with no radius identity stated anywhere. That
+    uniform treatment across every control is what the tell actually describes.
+
+    This is the fixture the rule was missing. Before the threshold landed, the rule fired
+    on small-avatar-clean.html's single decorative avatar and on one pill button, which is
+    the floor-rule violation ui-craft found in its own corpus: a lone utility-class hit is
+    not "the same radius on every interactive control".
+
+    Everything else here is committed: ochre accent off the AI purple arc, the platform
+    system stack, real copy, a visible focus ring.
+  -->
+  <main class="mx-auto max-w-2xl px-6 py-16">
+    <h1 class="text-3xl font-semibold tracking-tight">Add a posting rule</h1>
+    <p class="mt-4 max-w-prose">
+      Rules run in order at 04:00, before reconciliation. A rule that matches nothing for
+      thirty days is reported, not deleted.
+    </p>
+
+    <form class="mt-10 grid gap-6" action="/rules" method="post">
+      <label class="grid gap-2">
+        <span>Rule name</span>
+        <input name="name" type="text" class="rounded-full border px-4 py-2" required>
+      </label>
+
+      <label class="grid gap-2">
+        <span>Applies to account</span>
+        <select name="account" class="rounded-full border px-4 py-2">
+          <option>8841 - card settlement</option>
+          <option>8842 - card refunds</option>
+        </select>
+      </label>
+
+      <label class="grid gap-2">
+        <span>Why this rule exists</span>
+        <textarea name="reason" rows="3" class="rounded-full border px-4 py-2"></textarea>
+      </label>
+
+      <p>
+        <span class="rounded-full border px-3 py-1">runs at 04:00</span>
+      </p>
+
+      <button type="submit" class="rounded-full bg-[var(--signal)] px-5 py-3 text-white">
+        Save and run tonight
+      </button>
+    </form>
+  </main>
+</body>
+</html>

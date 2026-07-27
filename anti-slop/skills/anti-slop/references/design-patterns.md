@@ -445,10 +445,69 @@ For reference, the patterns most reliably marking output as AI-generated:
 6. `bg-primary/10` icon containers (`w-12 h-12 rounded-lg`) in feature grids
 7. `animate-pulse bg-gray-200` skeletons with fractional widths
 8. `bg-black/50` modal overlay with `max-w-md p-6 rounded-xl`
-9. `text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight` hero heading scale
+9. The **verbatim** run `text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight` on a hero heading -- the unmodified string, not a responsive type scale
 10. 4-column footer with "Product / Company / Legal" headers
 
 None of these are wrong individually. The tell is when they all appear together on the same project with no variation or customization.
+
+### What entry 9 is, and what it is not
+
+Entry 9 is a **genericness signal**: the presence of the untouched copy-paste string that
+ships with every Tailwind hero example. It is graded as a pattern smell, not a defect, and
+the scanner matches only that exact class run in that exact order.
+
+**It is not a rule against responsive typography.** A scale on different steps, a tuned
+tracking value, or a fluid `clamp()` ramp is a different string and is not this
+fingerprint. This distinction is load-bearing, because the cheapest way to make the
+original over-broad rule stop matching was to delete the responsive sizes, which makes the
+page worse and fails WCAG 1.4.4 Resize Text. A review of a hero heading that ends with
+less responsive behaviour than it started with was a wrong review.
+
+**Remediation:** replace the stepped ramp with a fluid one and tune the tracking, so every
+viewport width in the range gets a size chosen for it rather than the size of the nearest
+breakpoint down:
+
+```css
+h1 {
+  font-size: clamp(2rem, 1.2rem + 3.2vw, 4.5rem);
+  letter-spacing: -0.025em;
+}
+```
+
+Keep the `min` at or above 16px on body text. Never replace it with a single fixed size.
+
+## Presence and concentration
+
+Not every tell fires the same way, and treating a concentration tell as if one hit were
+damning is the largest single source of false positives. Before writing a finding,
+classify what you matched.
+
+**Presence-flaggable -- one instance is the finding.** Specific, high-signal compositions
+that read as generated on sight: the AI Component Fingerprints above, the Strongest-10,
+gradient text on a hero word, the frosted sticky nav, the unmodified shadcn card.
+
+**Concentration -- the finding is the density, not the instance.** Most property-level
+rows: colors, fonts, radii, spacing. Weight by repetition, and count before flagging. The
+scanner's thresholds:
+
+| Tell | Fires at | Because |
+|---|--:|---|
+| `rounded-everything` | 3 | "The same radius on every interactive control" is a pattern; one pill is a choice |
+| `cream-serif-default` | 2 | The combination is the signal -- any two of cream, serif display, sage |
+| `ai-purple-hex` / `ai-purple-class` | 2 | The tell is "indigo IS the palette", which one declaration does not establish |
+| `important-overuse` | 2 | The rule is named *overuse*; one override against a third-party widget is pragmatism |
+
+**The floor rule: a lone utility-class hit is not a finding.** One `text-slate-600`, one
+`shadow-sm`, one `rounded-full` on a decorative avatar, on an otherwise coherent surface,
+is clean. Do not write it up. The signal is an unspecified default reached for repeatedly
+and without a point of view, never the presence of any single class.
+
+`important-overuse` additionally never fires on `* { transition: none !important }` inside
+a `prefers-reduced-motion` block. That is the correct implementation of WCAG 2.3.3, and
+the only "fix" for flagging it would be an accessibility regression.
+
+Confidence classes, the evidence rules, and the full remediation floor are in
+`confidence-and-evidence.md`.
 
 ## Additional AI Design Tells
 

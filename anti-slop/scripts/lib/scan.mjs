@@ -8,6 +8,7 @@ import {
   DESIGN_PATTERNS,
   CODE_PATTERNS,
   TEXT_CONSTRUCTS,
+  NATIVE_PATTERNS,
   CONTEXT_EXCEPTIONS,
   ESCAPE_HATCH,
   EMDASH_MIN_COUNT,
@@ -15,8 +16,23 @@ import {
   EMOJI_REGEX,
   PROSE_EXTENSIONS,
   CODE_EXTENSIONS,
-  STYLE_EXTENSIONS,
+  WEB_SURFACE_EXTENSIONS,
+  NATIVE_UI_EXTENSIONS,
+  CONCENTRATION,
+  BANNED_WORD_CONFIDENCE,
+  BANNED_PHRASE_CONFIDENCE,
+  EMDASH_CONFIDENCE,
+  EMOJI_CONFIDENCE,
 } from "./rules.mjs";
+
+// ── Concentration gate ──
+// A rule declaring mode CONCENTRATION reports nothing until its match count reaches
+// minCount. Below the threshold the technique was used once, which is a choice, not a
+// pattern -- reporting it is the false positive that trains people to ignore the scanner.
+function meetsThreshold(pat, count) {
+  if (count === 0) return false;
+  return pat.mode === CONCENTRATION ? count >= pat.minCount : true;
+}
 
 // ── Prose noise-stripping: keep only the author's own prose. Blanks fenced code,
 // inline code, double-quoted spans, blockquotes, YAML frontmatter, and any line
@@ -147,6 +163,7 @@ function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle,
       suppressed.push({
         type: "banned-word", word, count,
         severity: lowConf ? "low" : "medium",
+        confidence: BANNED_WORD_CONFIDENCE,
         desc: `Banned AI-tell word "${word}" found ${count}x`,
         suppressed: true, suppressedBy: "escape-hatch",
       });
@@ -170,6 +187,7 @@ function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle,
       suppressed.push({
         type: "banned-phrase", phrase, line: lineNum, count,
         severity: "medium",
+        confidence: BANNED_PHRASE_CONFIDENCE,
         desc: `Banned phrase "${phrase}" found ${count}x (first at line ${lineNum})`,
         suppressed: true, suppressedBy: "escape-hatch",
       });
@@ -179,10 +197,11 @@ function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle,
   if (isStyle) {
     for (const pat of DESIGN_PATTERNS) {
       const count = countLinePatternOnEscapedLines(lines, pat);
-      if (count > 0) {
+      if (meetsThreshold(pat, count)) {
         suppressed.push({
           type: "design-tell", name: pat.name, count,
           severity: resolveSeverity(pat.severity, count),
+          confidence: pat.confidence, mode: pat.mode,
           desc: `${pat.desc} (${count}x)`,
           suppressed: true, suppressedBy: "escape-hatch",
         });
@@ -198,6 +217,7 @@ function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle,
         suppressed.push({
           type: "code-pattern", name: pat.name, count,
           severity: resolveSeverity(pat.severity, count),
+          confidence: pat.confidence,
           desc: `${pat.desc} (${count}x)`,
           suppressed: true, suppressedBy: "escape-hatch",
         });
@@ -222,6 +242,7 @@ function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle,
       suppressed.push({
         type: "banned-word", word, count,
         severity: lowConf ? "low" : "medium",
+        confidence: BANNED_WORD_CONFIDENCE,
         desc: `Banned AI-tell word "${word}" found ${count}x`,
         suppressed: true, suppressedBy: "allowed-words",
       });
@@ -241,7 +262,12 @@ export function scanContent(content, filePath, opts = {}) {
   const ext = extname(filePath).toLowerCase();
   const isProse = PROSE_EXTENSIONS.has(ext);
   const isCode = CODE_EXTENSIONS.has(ext);
-  const isStyle = STYLE_EXTENSIONS.has(ext) || isCode;
+  // Design tells run on web surfaces only and native tells on Apple surfaces only. Before
+  // this split every code extension got the web table, so a .swift or .py file was being
+  // matched against Tailwind class names -- harmless while no rule happened to collide,
+  // and a guaranteed false positive as soon as one did.
+  const isStyle = WEB_SURFACE_EXTENSIONS.has(ext);
+  const isNative = NATIVE_UI_EXTENSIONS.has(ext);
   // Test/fixture files carry fake creds, example.com, and innerHTML scaffolding -- skip the
   // security / dummy-data patterns there so real findings are not drowned in test noise.
   const isTestFile = /\.(test|spec)\.[mc]?[jt]sx?$|(^|\/)(__tests__|__mocks__|fixtures|e2e)\/|\.stories\.[mc]?[jt]sx?$/i.test(filePath);
@@ -271,6 +297,7 @@ export function scanContent(content, filePath, opts = {}) {
         word,
         count,
         severity: lowConf ? "low" : "medium",
+        confidence: BANNED_WORD_CONFIDENCE,
         desc: `Banned AI-tell word "${word}" found ${count}x`,
       });
     }
@@ -297,6 +324,7 @@ export function scanContent(content, filePath, opts = {}) {
         line: lineNum,
         count,
         severity: "medium",
+        confidence: BANNED_PHRASE_CONFIDENCE,
         desc: `Banned phrase "${phrase}" found ${count}x (first at line ${lineNum})`,
       });
     }
@@ -312,6 +340,7 @@ export function scanContent(content, filePath, opts = {}) {
           name: pat.name,
           count: matches.length,
           severity: pat.severity,
+          confidence: pat.confidence,
           desc: `${pat.desc} (${matches.length}x)`,
         });
       }
@@ -325,6 +354,7 @@ export function scanContent(content, filePath, opts = {}) {
         name: "em-dash-density",
         count: emdashes,
         severity: density >= EMDASH_MIN_DENSITY * 2 ? "medium" : "low",
+        confidence: EMDASH_CONFIDENCE,
         desc: `High em dash density (${emdashes} dashes, ${density.toFixed(1)}/1k words) -- the #1 AI writing tell`,
       });
     }
@@ -337,6 +367,7 @@ export function scanContent(content, filePath, opts = {}) {
       type: "emoji",
       count: emojiMatches.length,
       severity: "low",
+      confidence: EMOJI_CONFIDENCE,
       desc: `${emojiMatches.length} emoji found in ${filePath}`,
     });
   }
@@ -346,12 +377,30 @@ export function scanContent(content, filePath, opts = {}) {
   if (isStyle) {
     for (const pat of DESIGN_PATTERNS) {
       const count = countLinePattern(lines, pat);
-      if (count > 0) {
+      if (meetsThreshold(pat, count)) {
         violations.push({
           type: "design-tell",
           name: pat.name,
           count,
           severity: resolveSeverity(pat.severity, count),
+          confidence: pat.confidence,
+          mode: pat.mode,
+          desc: `${pat.desc} (${count}x)`,
+        });
+      }
+    }
+  }
+  if (isNative) {
+    for (const pat of NATIVE_PATTERNS) {
+      const count = countLinePattern(lines, pat);
+      if (meetsThreshold(pat, count)) {
+        violations.push({
+          type: "native-tell",
+          name: pat.name,
+          count,
+          severity: resolveSeverity(pat.severity, count),
+          confidence: pat.confidence,
+          mode: pat.mode,
           desc: `${pat.desc} (${count}x)`,
         });
       }
@@ -367,6 +416,7 @@ export function scanContent(content, filePath, opts = {}) {
           name: pat.name,
           count,
           severity: resolveSeverity(pat.severity, count),
+          confidence: pat.confidence,
           desc: `${pat.desc} (${count}x)`,
         });
       }

@@ -162,6 +162,15 @@ h1 { font-size: clamp(1.5rem, 1rem + 2vw, 3rem); }
 
 Also: no `max-width: 65ch` for readable line length, no vertical rhythm, px font sizes instead of rem (ignores user's browser font-size preference, an accessibility issue).
 
+**The fix is a fluid ramp, never a fixed size.** A stepped scale is a finding about *how*
+the scale is expressed; being responsive is not the defect. Replacing
+`h1 { font-size: 24px }` + a breakpoint override with a single `font-size: 48px` clears the
+match and leaves the page worse than it started, failing WCAG 1.4.4 Resize Text. The same
+holds for the verbatim Tailwind hero run in `design-patterns.md` entry 9. This is the
+general rule in `confidence-and-evidence.md`: a remediation may never reduce
+responsiveness, keyboard reachability, screen-reader output, contrast, hit-target size, or
+motion-preference handling.
+
 ## Performance Anti-Patterns
 
 ### Full Library Imports

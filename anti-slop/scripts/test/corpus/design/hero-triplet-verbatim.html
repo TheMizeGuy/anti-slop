@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ledger - reconcile before close</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { --ink: oklch(0.22 0.02 60); --paper: oklch(0.97 0.008 85); --signal: oklch(0.55 0.15 45); }
+    body { background: var(--paper); color: var(--ink); font-family: ui-sans-serif, system-ui, sans-serif; }
+    .rule { border-block-end: 2px solid var(--signal); }
+  </style>
+</head>
+<body>
+  <!--
+    Positive control for `tailwind-hero-triplet`.
+
+    Everything on this page is committed on purpose: an ochre signal accent well off the
+    AI purple arc, the platform system stack rather than Inter, a 2px radius token, real
+    copy about a real job. The ONLY planted tell is the h1 class attribute, which carries
+    the unmodified Tailwind hero run verbatim.
+
+    That string is a genericness fingerprint, not a responsive-typography defect. Its
+    remediation is a fluid clamp() ramp -- see responsive-type-clean.html for the version
+    that must stay silent, and design-patterns.md for why deleting the responsive steps
+    would be a WCAG 1.4.4 regression rather than a fix.
+  -->
+  <main class="mx-auto max-w-4xl px-6 py-16">
+    <p class="rule pb-2 text-sm">Close period 12, ends Friday</p>
+
+    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
+      Eleven accounts still disagree with the bank
+    </h1>
+
+    <p class="mt-6 max-w-prose text-lg">
+      Reconciliation ran at 04:12. Nine of the breaks are timing differences that clear
+      on Monday. Two are not, and both sit in the same merchant account.
+    </p>
+
+    <dl class="mt-10 grid gap-6 sm:grid-cols-3">
+      <div>
+        <dt class="text-sm">Unmatched</dt>
+        <dd class="text-2xl" style="font-variant-numeric: tabular-nums">11</dd>
+      </div>
+      <div>
+        <dt class="text-sm">Value at risk</dt>
+        <dd class="text-2xl" style="font-variant-numeric: tabular-nums">4,182.60</dd>
+      </div>
+      <div>
+        <dt class="text-sm">Oldest break</dt>
+        <dd class="text-2xl" style="font-variant-numeric: tabular-nums">6 days</dd>
+      </div>
+    </dl>
+
+    <a href="/breaks" class="mt-10 inline-block bg-[var(--signal)] px-5 py-3 text-white"
+       style="border-radius: 2px">Open the break list</a>
+  </main>
+</body>
+</html>

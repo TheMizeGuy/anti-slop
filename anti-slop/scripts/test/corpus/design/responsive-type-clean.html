@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ledger - break detail</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --ink: oklch(0.22 0.02 60);
+      --paper: oklch(0.97 0.008 85);
+      --signal: oklch(0.55 0.15 45);
+      /* Fluid ramp: every viewport width in the range gets a size chosen for it, rather
+         than the size of the nearest breakpoint down. This is the remediation for the
+         verbatim Tailwind hero run, and it must never produce a finding. */
+      --step-0: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+      --step-3: clamp(2rem, 1.2rem + 3.2vw, 4.5rem);
+    }
+    body { background: var(--paper); color: var(--ink); font-family: ui-sans-serif, system-ui, sans-serif; }
+    h1 { font-size: var(--step-3); letter-spacing: -0.025em; line-height: 1.05; }
+    p  { font-size: var(--step-0); }
+    .shell { width: min(100% - 3rem, 64rem); margin-inline: auto; padding-block: clamp(2rem, 1rem + 4vw, 5rem); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: clamp(1rem, 0.5rem + 1.5vw, 2rem); }
+    a:focus-visible { outline: 3px solid var(--signal); outline-offset: 3px; }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <!--
+    Clean control for the responsive-typography doctrine, and the guard against the
+    failure this release exists to stop.
+
+    Two type scales are present and BOTH must stay silent:
+      1. the fluid clamp() ramp in --step-*, which is what the catalogue prescribes;
+      2. a stepped Tailwind ramp on other steps with tuned tracking (below), which is a
+         responsive scale that is NOT the verbatim default run.
+
+    A run that flags either has read the hero rule as a ban on responsive type rather than
+    on one copy-pasted string, and would "fix" it by deleting fluid scaling -- which makes
+    the page worse and breaks WCAG 1.4.4 Resize Text.
+
+    The reduced-motion block is also deliberate: `* { transition: none !important }` inside
+    a prefers-reduced-motion query is the correct WCAG 2.3.3 implementation, and
+    important-overuse must not fire on it.
+  -->
+  <main class="shell">
+    <h1>Merchant account 8841 has drifted for six days</h1>
+
+    <h2 class="text-3xl md:text-5xl xl:text-7xl font-semibold tracking-tighter">
+      Two breaks, one cause
+    </h2>
+
+    <p>
+      Both unmatched lines are settlement fees posted gross by the processor and net by
+      the ledger. The difference is the fee, every time, so the rule that splits them was
+      never applied to this account.
+    </p>
+
+    <div class="grid">
+      <section>
+        <h3>What the bank says</h3>
+        <p>Two credits, 2,431.10 and 1,751.50, each already net of the processor fee.</p>
+      </section>
+      <section>
+        <h3>What the ledger says</h3>
+        <p>Two credits at the gross amount, with no matching fee expense posted.</p>
+      </section>
+    </div>
+
+    <a href="/rules/fee-split" style="border-radius: 2px" class="mt-8 inline-block bg-[var(--signal)] px-5 py-3 text-white">
+      Apply the fee-split rule to 8841
+    </a>
+  </main>
+</body>
+</html>

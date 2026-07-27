@@ -99,17 +99,29 @@ test("design tells: gradient text, purple-blue gradient, cream/serif, AI purple"
     '<h1 class="bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-blue-500">Hi</h1>',
     "body { background: #faf8f5; font-family: 'Instrument Serif'; }",
     "a { color: #6366f1; }",
+    ".cta { background: #7c3aed; }",
   ].join("\n");
   const vs = scanContent(css, "page.css");
   assert.ok(named(vs, "gradient-text"), "gradient text");
   assert.ok(named(vs, "purple-blue-gradient"), "purple-blue gradient");
-  assert.ok(named(vs, "cream-serif-default"), "cream/serif default");
-  assert.ok(named(vs, "ai-purple-hex"), "AI purple hex");
+  assert.ok(named(vs, "cream-serif-default"), "cream/serif default (two legs of the combination)");
+  assert.ok(named(vs, "ai-purple-hex"), "AI purple hex (used as the palette, not once)");
 });
 
-test("rounded-everything: pill flagged, small avatar/dot suppressed", () => {
-  const pill = scanContent('<button class="rounded-full px-6 py-3">Go</button>', "a.tsx");
-  assert.ok(named(pill, "rounded-everything"), "pill button flagged");
+// Concentration tells report the density, not the instance. Both directions are pinned
+// here on purpose: a threshold that only ever fires is the presence rule it replaced.
+test("rounded-everything: uniform control radius flagged, one pill and the small avatar are not", () => {
+  const uniform = scanContent(
+    [
+      '<input class="rounded-full border px-4">',
+      '<select class="rounded-full border px-4"></select>',
+      '<button class="rounded-full px-6 py-3">Go</button>',
+    ].join("\n"),
+    "a.tsx",
+  );
+  assert.ok(named(uniform, "rounded-everything"), "same radius on every control flagged");
+  const onePill = scanContent('<button class="rounded-full px-6 py-3">Go</button>', "a.tsx");
+  assert.ok(!named(onePill, "rounded-everything"), "a lone pill is a choice, not a pattern");
   const avatar = scanContent('<span class="rounded-full h-8 w-8 bg-slate-200"></span>', "b.tsx");
   assert.ok(!named(avatar, "rounded-everything"), "small box (h-8 w-8) suppressed");
 });
@@ -127,11 +139,17 @@ test("calculateScore clamps to [0,50] and decreases by severity", () => {
 // ── Regression tests for the completeness-audit port-fidelity fixes ──
 
 test("AI purple is detected as a Tailwind class, not only as hex", () => {
-  assert.ok(named(scanContent('<button class="bg-indigo-600 text-white">Go</button>', "a.tsx"), "ai-purple-class"));
-  assert.ok(named(scanContent('<a class="text-violet-500">x</a>', "a.tsx"), "ai-purple-class"));
+  // The tell is "indigo IS the palette", so the concentration threshold applies: two or
+  // more purple-family utilities, not the first one encountered.
+  const palette = '<button class="bg-indigo-600 text-white">Go</button>\n<a class="text-violet-500">x</a>';
+  assert.ok(named(scanContent(palette, "a.tsx"), "ai-purple-class"));
+  assert.ok(
+    !named(scanContent('<a class="text-indigo-600">Read the changelog</a>', "a.tsx"), "ai-purple-class"),
+    "a lone purple utility is the floor rule, not a finding",
+  );
   // purple-only scoping: blue / slate / below-band shades must NOT fire it
-  assert.ok(!named(scanContent('<button class="bg-blue-600">Go</button>', "a.tsx"), "ai-purple-class"));
-  assert.ok(!named(scanContent('<div class="bg-indigo-100">x</div>', "a.tsx"), "ai-purple-class"));
+  assert.ok(!named(scanContent('<button class="bg-blue-600">Go</button>\n<div class="bg-blue-500">y</div>', "a.tsx"), "ai-purple-class"));
+  assert.ok(!named(scanContent('<div class="bg-indigo-100">x</div>\n<div class="bg-indigo-200">y</div>', "a.tsx"), "ai-purple-class"));
 });
 
 test("raw-CSS linear-gradient purple is detected (the before.html slop control)", () => {
@@ -142,7 +160,17 @@ test("raw-CSS linear-gradient purple is detected (the before.html slop control)"
 test("gradient-text catches unprefixed background-clip; shadcn --radius; Spectral serif", () => {
   assert.ok(named(scanContent("h1{ background-clip:text; color:transparent }", "p.css"), "gradient-text"));
   assert.ok(named(scanContent(":root{ --radius: 0.5rem }", "p.css"), "shadcn-default-card"));
-  assert.ok(named(scanContent("h1{ font-family:'Spectral' }", "p.css"), "cream-serif-default"));
+  // Spectral is one leg of the cream/serif/sage combination. design-patterns.md has always
+  // said the combination is the signal and "one alone may be a real decision"; the rule now
+  // enforces that, so a serif display face on its own is clean.
+  assert.ok(
+    !named(scanContent("h1{ font-family:'Spectral' }", "p.css"), "cream-serif-default"),
+    "a serif display face alone is a choice",
+  );
+  assert.ok(
+    named(scanContent("body{ background:#f5f1e8 }\nh1{ font-family:'Spectral' }", "p.css"), "cream-serif-default"),
+    "cream background plus serif display is the combination",
+  );
 });
 
 test("swallowed-error covers Go and Swift; a Python handler on the next line is clean", () => {
