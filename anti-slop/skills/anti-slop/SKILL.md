@@ -1,6 +1,6 @@
 ---
 name: anti-slop
-version: 1.6.0
+version: 1.7.0
 description: Catches agentic development shortcomings in prose, code, and UI output: security holes, accessibility failures, regressions, banned vocabulary, structural cliches, and AI-default design tells. Applies whenever output is produced or revised. Activates on "write", "create", "build", "implement", "fix", "generate", "review", "refactor", "design", "edit". Context-aware: yields to domain conventions and project requirements.
 ---
 
@@ -20,7 +20,15 @@ Three principles from the corpus data (`references/empirical-rankings.md`) sharp
 
 This plugin catches the documented shortcomings of agentic development: security holes, accessibility failures, performance problems, generic design defaults, and regressions. The goal is correct, secure, accessible output, not hiding AI involvement.
 
-It targets web-centric code (Python, TypeScript, JavaScript, CSS) and general English prose. It has limited coverage of systems languages (Rust, Go, C/C++), mobile platforms (SwiftUI, Jetpack Compose), ML/data science workflows, and non-English contexts. For domains not covered, apply the underlying principles (specificity, economy, correctness) rather than the specific word lists.
+It targets web-centric code (Python, TypeScript, JavaScript, CSS) and general English prose, with a layout and adaptation rule set for Apple platforms (`references/native-ui-patterns.md`). It has limited coverage of systems languages (Rust, Go, C/C++), Jetpack Compose, ML/data science workflows, and non-English contexts. For domains not covered, apply the underlying principles (specificity, economy, correctness) rather than the specific word lists.
+
+**A finding states how sure it is, and a clean result states what it could not see.** Every
+finding carries one of four confidence classes (Hard defect, Quality defect, Pattern smell,
+Taste note), independent of severity; most design tells are Pattern smells, and grading
+them honestly is what stops a tell reading as an accusation. Claims of spatial or numeric
+precision need real geometry, never a screenshot. Anything the evidence could not reach is
+reported NOT ASSESSED rather than clean. All three rules live in
+`references/confidence-and-evidence.md`, which is their single definition.
 
 ## Context Exceptions
 
@@ -122,7 +130,21 @@ The strongest *emerging* design tell is the cream-background + serif-display + s
 
 Every element must serve the design. Forms need error states, validation, and accessible labels. Navigation needs keyboard support. Check color contrast (4.5:1 for normal text, 3:1 for large text and UI components). Design the empty state and error state, not just the populated view. Write specific microcopy. Use design tokens, not magic numbers.
 
-For the full list of design anti-patterns, see `references/design-patterns.md`.
+**A remediation may never remove responsive, accessible, or motion-preference behaviour.**
+Several tells describe the default *expression* of something the interface genuinely needs,
+and for every one of them the cheapest way to stop the tell matching is to delete the
+behaviour. The fix for a stepped type ramp is a fluid `clamp()` ramp, never a fixed size.
+The fix for a default focus ring is a better ring, never `outline: none`. If clearing a
+finding would make the page worse, the finding was matched too widely.
+
+**Waste is a defect, not a preference.** Every other design rule here is a rule against
+excess; a page can pass all of them while using half the window and three times the scroll
+it needs. Waste with a measurement is MEDIUM or HIGH, and without one it is genuinely just
+a taste note (`references/density-and-economy.md`).
+
+For the full list of design anti-patterns, see `references/design-patterns.md`. For SwiftUI
+and UIKit, see `references/native-ui-patterns.md` -- and do not apply the web tells there,
+or the native tells to web files.
 
 ## Quick Self-Check
 

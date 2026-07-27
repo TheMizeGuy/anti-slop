@@ -26,7 +26,7 @@ import { runCli } from "./lib/cli.mjs";
 
 // ── MCP Server ──
 const mcpServer = new Server(
-  { name: "anti-slop-scanner", version: "1.6.0" },
+  { name: "anti-slop-scanner", version: "1.7.0" },
   { capabilities: { tools: {} } }
 );
 

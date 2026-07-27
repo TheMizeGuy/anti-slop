@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Route check</title>
+<style>
+  :root {
+    --ink: oklch(0.22 0.01 240);
+    --paper: oklch(0.98 0.004 250);
+    --rule: oklch(0.88 0.006 250);
+    --harbor: oklch(0.55 0.11 215);
+  }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+         font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; line-height: 1.5; }
+  .app { height: 100vh; display: flex; flex-direction: column; }
+  .scroll { flex: 1 1 auto; overflow-y: auto; padding: clamp(1rem, 0.5rem + 2vw, 2rem); }
+  h1 { font-size: clamp(1.375rem, 1.1rem + 1.2vw, 2rem); letter-spacing: -0.02em; margin: 0 0 1rem; }
+  .stop { border-bottom: 1px solid var(--rule); padding: 0.75rem 0; display: flex; justify-content: space-between; gap: 1rem; }
+  .eta { color: var(--harbor); font-variant-numeric: tabular-nums; }
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 0.75rem;
+    padding: 0.75rem 1rem; background: oklch(0.99 0.003 250); border-top: 1px solid var(--rule); }
+  .bar button { flex: 1 1 auto; padding: 0.75rem 1rem; font: inherit; border-radius: 2px;
+    border: 1px solid var(--harbor); background: var(--harbor); color: oklch(0.99 0.003 250); }
+  .bar button.secondary { background: transparent; color: var(--harbor); }
+  .bar button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="scroll">
+      <h1>Run 118, northbound</h1>
+      <div class="stop"><span>Warehouse 4, dock B</span><span class="eta">06:40</span></div>
+      <div class="stop"><span>Fairview Market</span><span class="eta">07:15</span></div>
+      <div class="stop"><span>Cold store, bay 2</span><span class="eta">08:02</span></div>
+      <div class="stop"><span>Return depot</span><span class="eta">09:30</span></div>
+    </div>
+    <div class="bar">
+      <button class="secondary" type="button">Skip stop</button>
+      <button type="button">Mark delivered</button>
+    </div>
+  </div>
+</body>
+</html>

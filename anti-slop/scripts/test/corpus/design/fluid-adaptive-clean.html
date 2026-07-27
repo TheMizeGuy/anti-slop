@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tide table</title>
+<style>
+  :root {
+    --ink: oklch(0.21 0.014 250);
+    --paper: oklch(0.983 0.004 250);
+    --rule: oklch(0.87 0.008 250);
+    --ochre: oklch(0.68 0.14 75);
+    --radius: 2px;
+    --step-0: clamp(1rem, 0.96rem + 0.2vw, 1.125rem);
+    --step-1: clamp(1.25rem, 1.15rem + 0.5vw, 1.5rem);
+    --step-3: clamp(2rem, 1.4rem + 2.6vw, 3.5rem);
+  }
+  body { margin: 0; background: var(--paper); color: var(--ink); line-height: 1.55;
+    font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif;
+    font-size: var(--step-0); min-height: 100dvh;
+    padding: clamp(1rem, 0.5rem + 2.5vw, 3rem);
+    padding-bottom: max(clamp(1rem, 2.5vw, 3rem), env(safe-area-inset-bottom)); }
+  main { width: min(100%, 68rem); margin: 0 auto; }
+  h1 { font-size: var(--step-3); letter-spacing: -0.025em; font-weight: 650; margin: 0 0 0.5rem; }
+  .lede { color: oklch(0.45 0.016 250); margin: 0 0 clamp(1.5rem, 4vw, 3rem); max-width: 58ch; }
+  .ports { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: clamp(1rem, 2.5vw, 2rem); }
+  .port { container-type: inline-size; border-top: 2px solid var(--rule); padding-top: 0.75rem; }
+  .port h2 { font-size: var(--step-1); font-weight: 600; margin: 0 0 0.25rem; }
+  .port dl { margin: 0; }
+  .port dt { color: oklch(0.45 0.016 250); }
+  .port dd { margin: 0 0 0.5rem; font-variant-numeric: tabular-nums; }
+  .port dd strong { color: var(--ochre); font-weight: 600; }
+  a.more { color: var(--ochre); border-radius: var(--radius); text-decoration: underline; text-underline-offset: 3px; }
+  a.more:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  @container (min-width: 22rem) {
+    .port dl { display: grid; grid-template-columns: 7rem 1fr; column-gap: 1rem; }
+    .port dd { margin-bottom: 0.25rem; }
+  }
+</style>
+</head>
+<body>
+  <main>
+    <h1>Tides for the outer harbour, week of 12 May</h1>
+    <p class="lede">Heights are metres above chart datum, measured at the pier gauge and corrected for the 40-minute lag at the inner basin.</p>
+    <div class="ports">
+      <section class="port">
+        <h2>Pier gauge</h2>
+        <dl>
+          <dt>High water</dt><dd><strong>04:12</strong> at 4.8 m</dd>
+          <dt>Low water</dt><dd>10:38 at 0.9 m</dd>
+        </dl>
+      </section>
+      <section class="port">
+        <h2>Inner basin</h2>
+        <dl>
+          <dt>High water</dt><dd><strong>04:52</strong> at 4.5 m</dd>
+          <dt>Low water</dt><dd>11:18 at 1.1 m</dd>
+        </dl>
+      </section>
+    </div>
+    <p><a class="more" href="/gauge">Read the gauge calibration notes</a></p>
+  </main>
+</body>
+</html>

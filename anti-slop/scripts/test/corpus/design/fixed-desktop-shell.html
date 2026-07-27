@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Freight board</title>
+<style>
+  :root {
+    --ink: oklch(0.24 0.012 60);
+    --paper: oklch(0.985 0.004 90);
+    --rule: oklch(0.88 0.006 80);
+    --signal: oklch(0.58 0.16 40);
+  }
+  body { background: var(--paper); color: var(--ink); margin: 0; line-height: 1.5;
+         font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; }
+  .shell { width: 1200px; margin: 0 auto; padding: 64px 40px; }
+  h1 { font-size: 48px; letter-spacing: -0.025em; font-weight: 650; margin: 0 0 12px; }
+  .lede { font-size: 18px; color: oklch(0.46 0.014 60); margin: 0 0 48px; width: 640px; }
+  .lanes { display: grid; grid-template-columns: repeat(3, 360px); gap: 40px; }
+  .lane { border-top: 2px solid var(--rule); padding-top: 16px; }
+  .lane h2 { font-size: 20px; font-weight: 600; margin: 0 0 8px; }
+  .lane p { margin: 0; color: oklch(0.46 0.014 60); }
+  .rate { color: var(--signal); font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+  <div class="shell">
+    <h1>Chicago to Laredo, priced this morning</h1>
+    <p class="lede">Spot rates refresh at 06:00 CT from 41 broker feeds. Contract lanes settle Friday.</p>
+    <div class="lanes">
+      <div class="lane">
+        <h2>Dry van</h2>
+        <p>1,382 mi &middot; <span class="rate">$2.41/mi</span> &middot; 62 loads posted</p>
+      </div>
+      <div class="lane">
+        <h2>Reefer</h2>
+        <p>1,382 mi &middot; <span class="rate">$2.98/mi</span> &middot; 19 loads posted</p>
+      </div>
+      <div class="lane">
+        <h2>Flatbed</h2>
+        <p>1,410 mi &middot; <span class="rate">$2.66/mi</span> &middot; 8 loads posted</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -36,12 +36,15 @@ Review content for AI coding shortcomings: security holes, accessibility failure
 
 1. Read the content to review (files, diff, or provided text)
 2. Load and check against these reference files from the plugin's skill directory:
+   - `skills/anti-slop/references/confidence-and-evidence.md` (**read first** -- the confidence classes, the geometry evidence rule, the not-assessed rule, the remediation floor)
    - `skills/anti-slop/references/banned-words.md` (vocabulary scan)
    - `skills/anti-slop/references/banned-phrases.md` (phrase scan)
    - `skills/anti-slop/references/writing-patterns.md` (structural patterns)
    - `skills/anti-slop/references/code-patterns.md` (code anti-patterns, if reviewing code)
    - `skills/anti-slop/references/design-patterns.md` (design anti-patterns, if reviewing UI)
    - `skills/anti-slop/references/frontend-patterns.md` (React, CSS, performance, HTML, UX patterns)
+   - `skills/anti-slop/references/native-ui-patterns.md` (SwiftUI/UIKit layout and adaptation tells, if reviewing native UI)
+   - `skills/anti-slop/references/density-and-economy.md` (waste rather than excess -- thresholds and measurement recipes)
    - `skills/anti-slop/references/regression-patterns.md` (regression prevention, if reviewing code changes)
    - `skills/anti-slop/references/self-check.md` (checklists)
    - `skills/anti-slop/references/empirical-rankings.md` (which tells matter most, by corpus data; which to apply with restraint)
@@ -52,11 +55,42 @@ Review content for AI coding shortcomings: security holes, accessibility failure
    - **Authenticity** (3/10: multiple banned words, uniform sentence length, rule-of-three defaults. 8/10: no detectable vocabulary tells, varied rhythm, natural structure.)
    - **Economy** (3/10: every function has JSDoc, try-catch at every layer, summary at the end. 8/10: every word, comment, and element earns its place.)
    - **Soundness** (3/10: code compiles but has N+1 queries, missing error handling, XSS. 8/10: correct logic, proper security, handles edge cases.)
-4. List every violation found with the exact text or code, which rule it violates, and a specific fix.
+4. List every violation found with the exact text or code, which rule it violates, its
+   confidence class, and a specific fix.
+
+## Evidence discipline
+
+Three rules from `confidence-and-evidence.md` govern every finding. They are not optional
+and they are not restated anywhere else.
+
+**Declare the evidence mode first.** The first line of the report states what you could
+actually see and what that leaves unreachable. A review that does not say what it could not
+examine implies it examined everything.
+
+**Geometry needs geometry.** Any claim asserting spatial or numeric precision -- spacing
+values, alignment offsets, target sizes, contrast ratios -- requires DOM bounding boxes,
+element frames, or arithmetic from numeric literals quoted out of the source. **A
+screenshot is never geometry evidence.** A contrast claim needs resolved colour values and
+a computed ratio, never a colour sampled from an image. Without that, write "possible
+issue, measurement needed" rather than asserting the number.
+
+**Report NOT ASSESSED rather than clean.** Anything the evidence could not reach is not
+clean, it is unexamined. Reading one file, you cannot judge cross-file consistency,
+component coherence against a system defined elsewhere, state completeness, task flow, or
+anything needing a rendered frame. Say so; a clean bill on those from static evidence is a
+false negative on exactly the class static evidence cannot contain.
+
+**Never propose a remediation that removes responsive, accessible, or motion-preference
+behaviour.** If the only way to clear a tell is to make one of those worse, the tell was
+matched too widely. The fix for a stepped type ramp is a fluid `clamp()` ramp, never a
+fixed size; the fix for a default focus ring is a better ring, never `outline: none`.
 
 ## Output Format
 
 Produce the report as rendered markdown (not inside a code block):
+
+**Evidence:** [static single-file | static multi-file | screenshot | runtime] -- [what was
+examined]. **Not assessed:** [dimensions this evidence could not reach, or "none"].
 
 ## Review score: [total]/50
 
@@ -74,11 +108,18 @@ Produce the report as rendered markdown (not inside a code block):
 
 1. **Line/Location**: `exact text`
    - **Rule**: Which rule this violates
+   - **Confidence**: Hard defect | Quality defect | Pattern smell | Taste note
    - **Fix**: Specific replacement or removal
+
+Confidence is independent of severity: a Pattern smell can be the costliest finding in the
+file (a possible hardcoded credential), and a Hard defect can be trivial. Most design tells
+are Pattern smells -- "this is the Tailwind default" is a true statement about correlation,
+while "this is wrong" is a claim static evidence cannot support. Grading them honestly is
+what stops a tell reading as an accusation.
 
 ## Verdict
 
-[2-3 sentence assessment of the biggest issues and overall quality. Not a summary of the findings; a judgment call on what matters most.]
+[2-3 sentence assessment of the biggest issues and overall quality. Not a summary of the findings; a judgment call on what matters most. State any dimension you could not assess rather than implying it passed.]
 
 ## Severity Thresholds
 
@@ -124,3 +165,13 @@ For **design/UI** (lead with the regex-blind tells the scanner cannot see -- the
 11. Gratuitous animations without prefers-reduced-motion
 12. Generic microcopy ("Welcome back!", "Get started today!"); marketing hype in functional UI
 13. Component library defaults not customized
+14. Waste, not just excess -- viewport utilisation, page length against content, action-to-object distance, copy in front of controls. Every other item on this list is a rule against too much of something; this is the only one against too little being done with the space. It needs a measurement or it is a taste note (`density-and-economy.md`)
+
+For **native UI** (SwiftUI/UIKit -- see `native-ui-patterns.md`; do NOT apply the web tells here):
+1. Fixed geometry: `.frame(width:)` on content, `UIScreen.main.bounds`, magic numbers. Every one answers the parent's size proposal with a number and survives one context
+2. Device-idiom branching where a size class belongs (the size class changes live under Split View; the idiom never does)
+3. The iPad question: a regular-width screen running the single-column phone layout, centred, with air on both sides
+4. Leftover-sized values -- a label pinned to a fixed width and a value taking whatever remains
+5. `ViewThatFits` whose last candidate also does not fit (the system renders it anyway)
+6. Looping symbol effects and hand-rolled animation with no Reduce Motion gate
+7. The axes a single screenshot cannot show: Dynamic Type to AX5, compact height, Display Zoom, RTL. Report these NOT ASSESSED from static evidence

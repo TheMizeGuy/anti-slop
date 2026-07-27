@@ -35,6 +35,14 @@ export function loadLabels(labelsPath = LABELS_PATH) {
   return JSON.parse(readFileSync(labelsPath, "utf8"));
 }
 
+// An `expected` entry is either a bare rule id or `{ id, severity?, confidence? }`. The
+// harness matches on id alone; severity and confidence ride along so a change in how a
+// rule GRADES a finding shows up in review (and in corpus-contract.test.mjs) instead of
+// passing silently because the rule still fires.
+export function expectedIds(entry) {
+  return (entry.expected || []).map((e) => (typeof e === "string" ? e : e.id));
+}
+
 // ── Compare one labeled file's actual scan against its expected set ──
 function scanLabeled(entry, corpusDir) {
   const absPath = join(corpusDir, entry.file);
@@ -45,7 +53,7 @@ function scanLabeled(entry, corpusDir) {
   // scanner behavior for that sample -- exactly like a real project file would.
   const violations = scanContent(content, entry.file);
   const fired = new Set(violations.map(ruleName));
-  const expected = new Set(entry.expected);
+  const expected = new Set(expectedIds(entry));
   const tp = [...fired].filter((r) => expected.has(r));
   const fp = [...fired].filter((r) => !expected.has(r));
   const fn = [...expected].filter((r) => !fired.has(r));
@@ -72,7 +80,7 @@ export function measure(labels = loadLabels(), corpusDir = CORPUS_DIR) {
   const overall = { tp: 0, fp: 0, fn: 0 };
   const misses = [];
 
-  for (const entry of labels) {
+  for (const entry of labels.fixtures) {
     const { tp, fp, fn } = scanLabeled(entry, corpusDir);
     for (const r of tp) bump(perRule, r, "tp", 1);
     for (const r of fp) bump(perRule, r, "fp", 1);

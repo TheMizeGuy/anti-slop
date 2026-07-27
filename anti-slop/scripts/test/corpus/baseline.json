@@ -74,7 +74,7 @@
     },
     {
       "rule": "cream-serif-default",
-      "tp": 1,
+      "tp": 2,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -82,6 +82,14 @@
     },
     {
       "rule": "delve",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "device-idiom-branch",
       "tp": 1,
       "fp": 0,
       "fn": 0,
@@ -137,6 +145,22 @@
       "recall": 1
     },
     {
+      "rule": "fixed-content-frame",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "fixed-grid-columns",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "frosted-glass-nav",
       "tp": 1,
       "fp": 0,
@@ -170,7 +194,7 @@
     },
     {
       "rule": "generic-font",
-      "tp": 2,
+      "tp": 3,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -186,7 +210,7 @@
     },
     {
       "rule": "gradient-text",
-      "tp": 2,
+      "tp": 3,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -262,14 +286,6 @@
       "fp": 0,
       "fn": 0,
       "precision": 1,
-      "recall": 1
-    },
-    {
-      "rule": "important-overuse",
-      "tp": 0,
-      "fp": 3,
-      "fn": 0,
-      "precision": 0,
       "recall": 1
     },
     {
@@ -353,8 +369,16 @@
       "recall": 1
     },
     {
+      "rule": "repeating-symbol-effect",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "rounded-everything",
-      "tp": 2,
+      "tp": 1,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -401,6 +425,22 @@
       "recall": 1
     },
     {
+      "rule": "tailwind-hero-triplet",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "uiscreen-bounds",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "unlock-potential",
       "tp": 1,
       "fp": 0,
@@ -436,10 +476,18 @@
     },
     {
       "modality": "design",
-      "tp": 22,
-      "fp": 3,
+      "tp": 25,
+      "fp": 0,
       "fn": 0,
-      "precision": 0.88,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "modality": "native",
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
       "recall": 1
     },
     {
@@ -452,10 +500,10 @@
     }
   ],
   "overall": {
-    "tp": 62,
-    "fp": 3,
+    "tp": 70,
+    "fp": 0,
     "fn": 1,
-    "precision": 0.9538461538461539,
-    "recall": 0.9841269841269841
+    "precision": 1,
+    "recall": 0.9859154929577465
   }
 }

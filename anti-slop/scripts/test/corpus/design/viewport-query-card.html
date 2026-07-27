@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kiln log</title>
+<style>
+  :root {
+    --ink: oklch(0.23 0.01 70);
+    --paper: oklch(0.982 0.005 85);
+    --rule: oklch(0.87 0.008 80);
+    --ember: oklch(0.6 0.16 30);
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif;
+    margin: 0;
+    padding: clamp(1rem, 0.5rem + 2vw, 2.5rem);
+    line-height: 1.5;
+  }
+  .page { display: flex; gap: clamp(1rem, 3vw, 2.5rem); width: min(100%, 76rem); margin: 0 auto; }
+  .rail { flex: 0 0 clamp(14rem, 20vw, 18rem); }
+  .main { flex: 1 1 auto; }
+  h1 { font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem); letter-spacing: -0.02em; margin: 0 0 1rem; }
+  .firing { border-top: 2px solid var(--rule); padding-top: 0.75rem; margin-bottom: 1.5rem; }
+  .firing h2 { font-size: 1rem; font-weight: 600; margin: 0 0 0.25rem; }
+  .firing p { margin: 0; color: oklch(0.47 0.012 70); }
+  .peak { color: var(--ember); font-variant-numeric: tabular-nums; }
+  @media (min-width: 60rem) {
+    .firing { display: grid; grid-template-columns: 9rem 1fr; column-gap: 1.5rem; align-items: baseline; }
+    .firing h2 { margin: 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <aside class="rail">
+      <h1>Kiln 2</h1>
+      <div class="firing">
+        <h2>Bisque 04</h2>
+        <p>Held <span class="peak">1945 F</span> for 22 min, cooled overnight.</p>
+      </div>
+    </aside>
+    <section class="main">
+      <div class="firing">
+        <h2>Glaze 06</h2>
+        <p>Held <span class="peak">2232 F</span> for 14 min, three shelves loaded.</p>
+      </div>
+      <div class="firing">
+        <h2>Glaze 05</h2>
+        <p>Held <span class="peak">2185 F</span> for 18 min, one cracked bowl.</p>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

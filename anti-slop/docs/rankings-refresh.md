@@ -133,8 +133,39 @@ Procedure: after the refresh stamp lands here, apply the same delta to the ui-cr
 bump its patch version, and release through the mize-plugins channel. anti-slop remains the
 source of truth for corpus evidence; ui-craft is a downstream distillation.
 
-**Superseded in part, 2026-07-27.** The one-way flow described above no longer
-covers the whole relationship: `ui-craft` 0.3.0 and `apple-ui-craft` 0.3.1
-produced material that flows BACK into this repo, including a correction to a
-rule this repo still ships. See `docs/ui-toolkit-integration.md` for the work
-order and the per-item ownership decisions that section needs.
+### Per-item ownership, settled 2026-07-27 (anti-slop 1.7.0)
+
+The one-way flow above describes the *rankings* correctly and nothing else. `ui-craft`
+0.3.0 and `apple-ui-craft` 0.3.1 produced material that flowed BACK into this repo,
+including a correction to a rule this repo shipped. The work order was
+`docs/ui-toolkit-integration.md`; it is executed, and this table is the durable record.
+
+**A file both repos edit independently is a fork.** Every row below names exactly one
+owner. When a row's subject changes, it changes at the owner and propagates outward; a
+change made only downstream is drift, not a change.
+
+| Subject | Owner | Flow |
+|---|---|---|
+| Empirical rankings, corpus evidence, cleared memes | **anti-slop** | anti-slop -> both toolkits (unchanged) |
+| The labeled corpus and its fixtures (all modalities) | **anti-slop** | anti-slop -> ui-craft. `ui-craft/tests/corpus/` is a downstream VIEW of the shared design fixtures, not a second hand-maintained set |
+| Scanner rules, thresholds, firing modes | **anti-slop** | Local. No toolkit consumes `rules.mjs` |
+| Confidence classes (the four-class enum) | **anti-slop**, adopted from ui-craft | Originated in `ui-craft/references/review/01-universal-rubric.md`; the definition now lives in `references/confidence-and-evidence.md` and the toolkits track it |
+| Presence vs concentration, and the floor rule | **anti-slop**, adopted from ui-craft | Same. Thresholds are anti-slop's because only anti-slop has a machine that enforces them |
+| Geometry evidence rule, not-assessed rule | **shared, defined here** | Adopted from both toolkits' evidence pipelines; `references/confidence-and-evidence.md` is the single definition and the toolkits cite their own copies for their own agents |
+| The remediation floor (a fix never removes responsive/accessible/motion behaviour) | **anti-slop** | Adopted from ui-craft 0.3.0. Both repos found the same defect; the rule is stated once here |
+| Density and economy thresholds | **shared, per surface** | Web thresholds from ui-craft, native from apple-ui-craft, merged into `references/density-and-economy.md`. The toolkits own their own runtime measurement tooling |
+| Native/Apple UI tells | **apple-ui-craft** | apple-ui-craft -> anti-slop. `references/native-ui-patterns.md` is a distillation; apple-ui-craft remains the source of truth for iOS craft |
+| Finding report FORMAT | **each repo owns its own** | Deliberately not shared. This repo emits machine JSON for a dashboard; the toolkits emit human-readable review reports. Only the FIELDS are common |
+| WCAG mapping, review ledgers, CI verdict gates | **the toolkits** | Not ported. Out of scope for a scanner |
+
+Two mechanical guards keep the shared surfaces honest, and both run in `npm test`:
+`test/rule-metadata.test.mjs` fails if the code enum and the doctrine file disagree, and
+`test/corpus-contract.test.mjs` fails if a label's declared grading drifts from what the
+scanner emits.
+
+**What changed in this repo as a result** (all in 1.7.0): the Strongest-10 entry 9 rule was
+narrowed from "any responsive type scale" to the verbatim Tailwind run and given a
+`clamp()` remediation; `important-overuse`, `rounded-everything`, `cream-serif-default` and
+the two AI-purple rules became concentration tells with thresholds; design and native tells
+were split by file extension; the corpus absorbed ui-craft's ten authored fixtures and
+gained a native modality.

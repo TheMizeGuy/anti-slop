@@ -1,37 +1,728 @@
-[
-  { "file": "prose/buzzword-cluster.md", "modality": "prose", "expected": ["delve", "streamline"] },
-  { "file": "prose/context-exception-realm.md", "modality": "prose", "expected": [] },
-  { "file": "prose/context-exception-ml.md", "modality": "prose", "expected": [] },
-  { "file": "prose/context-exception-legal-comprehensive.md", "modality": "prose", "expected": [] },
-  { "file": "prose/antithesis-and-boilerplate.md", "modality": "prose", "expected": ["antithesis-not-just-x-y", "antithesis-not-only-but", "assistant-boilerplate"] },
-  { "file": "prose/closer-opener-hype.md", "modality": "prose", "expected": ["let's dive in", "in today's", "in conclusion", "game-changer", "assistant-offer", "dive-in", "listicle-scaffold", "fast-paced-opener", "unlock-potential", "in-conclusion", "honestly-opener"] },
-  { "file": "prose/hype-marketing-and-hr-divider.md", "modality": "prose", "expected": ["hr-divider", "hype-marketing"] },
-  { "file": "prose/em-dash-density.md", "modality": "prose", "expected": ["em-dash-density"] },
-  { "file": "prose/repeated-phrases.md", "modality": "prose", "expected": ["great question", "hope this helps", "feel free to", "assistant-offer"] },
-  { "file": "prose/quoted-and-fenced-noise.md", "modality": "prose", "expected": [] },
-  { "file": "prose/escape-hatch-note.md", "modality": "prose", "expected": [] },
-  { "file": "prose/clean-migration-note.md", "modality": "prose", "expected": [] },
-
-  { "file": "code/auth-handler.js", "modality": "code", "expected": ["eval-usage", "hardcoded-secret"] },
-  { "file": "code/auth.test.js", "modality": "code", "expected": [] },
-  { "file": "code/clean-utility.ts", "modality": "code", "expected": [] },
-  { "file": "code/dashboard-render.js", "modality": "code", "expected": ["innerhtml-usage", "console-log-emoji", "emoji"] },
-  { "file": "code/data-import-service.js", "modality": "code", "expected": ["full-lodash-import", "full-moment-import"] },
-  { "file": "code/legacy-eval-sandbox.js", "modality": "code", "expected": [] },
-  { "file": "code/legacy-migration.ts", "modality": "code", "expected": ["generic-naming", "boilerplate-marker"] },
-  { "file": "code/network-client.swift", "modality": "code", "expected": ["swallowed-error"] },
-  { "file": "code/payment-webhook.go", "modality": "code", "expected": ["swallowed-error"] },
-  { "file": "code/report-generator.py", "modality": "code", "expected": ["placeholder-comment", "narrating-comment", "swallowed-error", "generic-naming"] },
-  { "file": "code/user-profile-widget.jsx", "modality": "code", "expected": ["img-no-dimensions", "chat-artifact", "useeffect-setstate"] },
-
-  { "file": "design/gradient-hero.html", "modality": "design", "expected": ["purple-blue-gradient", "ai-purple-class", "gradient-text"] },
-  { "file": "design/shadcn-card-kit.html", "modality": "design", "expected": ["shadcn-default-card", "shadow-border-rounded-combo"] },
-  { "file": "design/frosted-nav-neon.html", "modality": "design", "expected": ["icon-in-colored-circle", "frosted-glass-nav", "neon-glow", "rounded-everything", "z-index-escalation"] },
-  { "file": "design/legacy-marketing-page.html", "modality": "design", "expected": ["cream-serif-default", "generic-font", "hype-copy", "stock-illustration"] },
-  { "file": "design/small-avatar-clean.html", "modality": "design", "expected": [] },
-  { "file": "../fixtures/before.html", "modality": "design", "expected": ["emoji", "purple-blue-gradient", "ai-purple-hex", "gradient-text", "neon-glow", "rounded-everything", "generic-font", "hype-copy"] },
-  { "file": "../fixtures/editorial-bold.html", "modality": "design", "expected": [] },
-  { "file": "../fixtures/technical-mono.html", "modality": "design", "expected": [] },
-  { "file": "../fixtures/warm-consumer.html", "modality": "design", "expected": [] },
-  { "file": "../fixtures/utilitarian-fintech.html", "modality": "design", "expected": [] }
-]
+{
+  "meta": {
+    "owner": "anti-slop. This corpus is the single labeled corpus for the anti-slop rule set and its downstream distillations. ui-craft's tests/corpus/ is a DOWNSTREAM VIEW of the shared design fixtures, not a second hand-maintained set: fixtures flow anti-slop -> ui-craft, and a fixture edited only in ui-craft is drift, not a change. Per-item ownership for the wider 1.7.0 integration is recorded in docs/rankings-refresh.md, section 'Downstream sync'.",
+    "purpose": "Ground truth for the precision/recall harness. Each fixture lists the findings a correct scan SHOULD produce, keyed by the scanner's own rule id, plus the severity and confidence the rule carries when it fires.",
+    "schema": "fixtures[]: { file, modality (prose|code|design|native), role (positive|clean-control|coverage-boundary), expected[], maxIncidentalFindings?, note? }. expected[] entries are { id, severity?, confidence? }: id is the rule key (v.name || v.word || v.phrase || v.type), and severity/confidence record what the rule emits. An entry with no severity/confidence is a KNOWN FALSE NEGATIVE -- the label is correct ground truth and the scanner does not currently reach it.",
+    "roles": {
+      "positive": "Plants tells this scanner detects. expected[] is non-empty.",
+      "clean-control": "Uses the prescribed technique CORRECTLY and must stay silent. A clean control is not 'a file with no tells' -- it is a file that exercises the constructs the doctrine recommends, so it catches the mirror failure: a scanner that has learned to match constructs rather than defects. Two of ui-craft's own controls were latent doctrine violations for several releases, so audit these against current doctrine rather than trusting them.",
+      "coverage-boundary": "Plants a real tell this scanner has NO rule for. expected[] is empty, but the file is NOT clean and must never be cited as evidence that the tell is absent. These record the scanner's coverage boundary honestly, and guard against a future over-broad rule firing on them by accident."
+    },
+    "cleanControlRule": "clean-control and coverage-boundary fixtures carry maxIncidentalFindings (default 1): the scan may surface at most that many findings before the control is treated as failed. A tolerance rather than a hard zero, so one incidental note does not fail the suite. Enforced by test/corpus-contract.test.mjs.",
+    "severityIsInformational": "The harness matches on rule id only. severity and confidence are carried so that a change in how a rule GRADES a finding is visible in review and caught by test/corpus-contract.test.mjs, which asserts the labels still match what the scanner emits.",
+    "provenance": {
+      "shared-with-ui-craft": "gradient-hero, shadcn-card-kit, frosted-nav-neon, legacy-marketing-page, small-avatar-clean originated here and were copied downstream. presence-single, cream-serif-sage, token-drift, missing-states, clean-intentional, uncommitted-radius, fluid-adaptive-clean, fixed-desktop-shell, viewport-query-card, vh-bottom-bar were authored in ui-craft during its 0.2.4 and 0.3.0 releases and were imported here in anti-slop 1.7.0, at which point this corpus became the single owner of all of them.",
+      "authored-here-in-1.7.0": "hero-triplet-verbatim, responsive-type-clean, uniform-control-radius, native/FixedGeometryShell, native/AdaptiveShell."
+    }
+  },
+  "fixtures": [
+    {
+      "file": "prose/buzzword-cluster.md",
+      "modality": "prose",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "delve",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "streamline",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        }
+      ]
+    },
+    {
+      "file": "prose/context-exception-realm.md",
+      "modality": "prose",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 1
+    },
+    {
+      "file": "prose/context-exception-ml.md",
+      "modality": "prose",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 1
+    },
+    {
+      "file": "prose/context-exception-legal-comprehensive.md",
+      "modality": "prose",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 1
+    },
+    {
+      "file": "prose/antithesis-and-boilerplate.md",
+      "modality": "prose",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "antithesis-not-just-x-y",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "antithesis-not-only-but",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "assistant-boilerplate",
+          "severity": "high",
+          "confidence": "Hard defect"
+        }
+      ]
+    },
+    {
+      "file": "prose/closer-opener-hype.md",
+      "modality": "prose",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "let's dive in",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "in today's",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "in conclusion",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "game-changer",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "assistant-offer",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "dive-in",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "listicle-scaffold",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "fast-paced-opener",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "unlock-potential",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "in-conclusion",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "honestly-opener",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        }
+      ]
+    },
+    {
+      "file": "prose/hype-marketing-and-hr-divider.md",
+      "modality": "prose",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "hr-divider",
+          "severity": "low",
+          "confidence": "Taste note"
+        },
+        {
+          "id": "hype-marketing",
+          "severity": "low",
+          "confidence": "Quality defect"
+        }
+      ]
+    },
+    {
+      "file": "prose/em-dash-density.md",
+      "modality": "prose",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "em-dash-density",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        }
+      ]
+    },
+    {
+      "file": "prose/repeated-phrases.md",
+      "modality": "prose",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "great question",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "hope this helps",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "feel free to",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "assistant-offer",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        }
+      ]
+    },
+    {
+      "file": "prose/quoted-and-fenced-noise.md",
+      "modality": "prose",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 1
+    },
+    {
+      "file": "prose/escape-hatch-note.md",
+      "modality": "prose",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 1
+    },
+    {
+      "file": "prose/clean-migration-note.md",
+      "modality": "prose",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 1
+    },
+    {
+      "file": "code/auth-handler.js",
+      "modality": "code",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "eval-usage",
+          "severity": "high",
+          "confidence": "Hard defect"
+        },
+        {
+          "id": "hardcoded-secret",
+          "severity": "high",
+          "confidence": "Pattern smell"
+        }
+      ]
+    },
+    {
+      "file": "code/auth.test.js",
+      "modality": "code",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 1
+    },
+    {
+      "file": "code/clean-utility.ts",
+      "modality": "code",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 1
+    },
+    {
+      "file": "code/dashboard-render.js",
+      "modality": "code",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "innerhtml-usage",
+          "severity": "high",
+          "confidence": "Hard defect"
+        },
+        {
+          "id": "console-log-emoji",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "emoji",
+          "severity": "low",
+          "confidence": "Quality defect"
+        }
+      ]
+    },
+    {
+      "file": "code/data-import-service.js",
+      "modality": "code",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "full-lodash-import",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "full-moment-import",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        }
+      ]
+    },
+    {
+      "file": "code/legacy-eval-sandbox.js",
+      "modality": "code",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 1
+    },
+    {
+      "file": "code/legacy-migration.ts",
+      "modality": "code",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "generic-naming",
+          "severity": "low",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "boilerplate-marker",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        }
+      ]
+    },
+    {
+      "file": "code/network-client.swift",
+      "modality": "code",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "swallowed-error",
+          "severity": "medium",
+          "confidence": "Hard defect"
+        }
+      ]
+    },
+    {
+      "file": "code/payment-webhook.go",
+      "modality": "code",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "swallowed-error",
+          "severity": "medium",
+          "confidence": "Hard defect"
+        }
+      ]
+    },
+    {
+      "file": "code/report-generator.py",
+      "modality": "code",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "placeholder-comment",
+          "severity": "high",
+          "confidence": "Hard defect"
+        },
+        {
+          "id": "narrating-comment",
+          "severity": "low",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "swallowed-error",
+          "severity": "medium",
+          "confidence": "Hard defect"
+        },
+        {
+          "id": "generic-naming",
+          "severity": "low",
+          "confidence": "Quality defect"
+        }
+      ]
+    },
+    {
+      "file": "code/user-profile-widget.jsx",
+      "modality": "code",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "img-no-dimensions",
+          "severity": "medium",
+          "confidence": "Hard defect"
+        },
+        {
+          "id": "chat-artifact",
+          "severity": "high",
+          "confidence": "Hard defect"
+        },
+        {
+          "id": "useeffect-setstate"
+        }
+      ],
+      "note": "Known false negative: useeffect-setstate matches per line, and this fixture's useEffect sets state a few lines down. Recorded honestly rather than relabelled -- the harness exists to surface rule-tuning candidates, not to hide them."
+    },
+    {
+      "file": "design/gradient-hero.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "purple-blue-gradient",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "ai-purple-class",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "gradient-text",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        }
+      ]
+    },
+    {
+      "file": "design/shadcn-card-kit.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "shadcn-default-card",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "shadow-border-rounded-combo",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        }
+      ]
+    },
+    {
+      "file": "design/frosted-nav-neon.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "icon-in-colored-circle",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "frosted-glass-nav",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "neon-glow",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "z-index-escalation",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "rounded-everything was REMOVED as a label in 1.7.0. The fixture holds exactly one radius hit, a rounded-full icon wrapper, and the tell is 'the same radius on every interactive control'. The floor rule clears a lone utility-class hit, so the old label could only have been reached by a reviewer breaking its own rule. The tell's real home is now uniform-control-radius.html. Found independently by ui-craft 0.2.4 in the copy of this same fixture."
+    },
+    {
+      "file": "design/legacy-marketing-page.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "cream-serif-default",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "generic-font",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "hype-copy",
+          "severity": "low",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "stock-illustration",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        }
+      ]
+    },
+    {
+      "file": "design/small-avatar-clean.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 1,
+      "note": "Clean control: two small avatar pills and one line of real copy. rounded-full on an 8px avatar is a lone utility-class hit, which the floor rule clears."
+    },
+    {
+      "file": "design/hero-triplet-verbatim.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "tailwind-hero-triplet",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        }
+      ],
+      "note": "Item 1 positive control. The only planted tell is the verbatim unmodified Tailwind hero run on the h1; every other decision on the page is committed. Paired with responsive-type-clean.html."
+    },
+    {
+      "file": "design/responsive-type-clean.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 1,
+      "note": "Item 1 clean control, and the guard against the regression this release exists to stop. Carries BOTH a fluid clamp() ramp AND a stepped Tailwind ramp on non-default steps with tuned tracking, plus the canonical prefers-reduced-motion block. A finding against any of them means the hero rule has been read as a ban on responsive type rather than on one copy-pasted string, and the 'fix' would break WCAG 1.4.4 and 2.3.3."
+    },
+    {
+      "file": "design/uniform-control-radius.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "rounded-everything",
+          "severity": "low",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "Concentration positive control for rounded-everything: five interactive controls all at rounded-full with no radius identity stated. This is what the tell actually describes, and it is what frosted-nav-neon.html never contained."
+    },
+    {
+      "file": "design/presence-single.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "gradient-text",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        }
+      ],
+      "note": "Exactly one presence-flaggable fingerprint (gradient text on a hero word) on an otherwise committed editorial page. The gradient is a warm terra-to-amber ramp, so the purple rules must NOT co-fire -- that is the half of presence-vs-concentration a positive-only fixture cannot test."
+    },
+    {
+      "file": "design/cream-serif-sage.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "cream-serif-default",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "generic-font",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        }
+      ],
+      "note": "The tasteful-default combination in full: cream background + Instrument Serif display + sage accent, so all three legs fire the combination rule. generic-font also fires on the Inter button face; ui-craft accepts that as a permitted T1 fallback, anti-slop's rule does not distinguish fallback from primary, and the label records what this scanner actually reports."
+    },
+    {
+      "file": "design/clean-intentional.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 1,
+      "note": "Clean control with a committed point of view (tactical operator: warm-coal surface, single amber accent, square corners, fluid type). Mono appears only inside the log pane, which is genuine machine output; the readouts use tabular-nums on the system sans."
+    },
+    {
+      "file": "design/fluid-adaptive-clean.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 1,
+      "note": "Clean control for the responsive doctrine. Uses every construct the catalogue prescribes -- clamp() ramps, width: min(), auto-fit minmax, container queries, 100dvh, safe-area insets, a visible focus ring -- and must produce ZERO findings."
+    },
+    {
+      "file": "design/uncommitted-radius.html",
+      "modality": "design",
+      "role": "coverage-boundary",
+      "expected": [],
+      "maxIncidentalFindings": 1,
+      "note": "Plants D1 (an uncommitted 8px radius on every control) in CSS custom-property vocabulary. anti-slop's rounded-everything rule keys on rounded-2xl/3xl/full and 999px pills, so it has no rule for a shared --radius default."
+    },
+    {
+      "file": "design/token-drift.html",
+      "modality": "design",
+      "role": "coverage-boundary",
+      "expected": [],
+      "maxIncidentalFindings": 1,
+      "note": "Plants hardcoded off-token colours and off-scale spacing that bypass the file's own token system. anti-slop has no token-drift rule."
+    },
+    {
+      "file": "design/missing-states.html",
+      "modality": "design",
+      "role": "coverage-boundary",
+      "expected": [],
+      "maxIncidentalFindings": 1,
+      "note": "Plants a happy-path-only data UI and a non-functional Refresh control. Both are structural, not lexical: anti-slop cannot see a missing state from one file."
+    },
+    {
+      "file": "design/fixed-desktop-shell.html",
+      "modality": "design",
+      "role": "coverage-boundary",
+      "expected": [],
+      "maxIncidentalFindings": 1,
+      "note": "Plants a fixed-pixel page shell that cannot resize. anti-slop has no web responsive-sizing rule."
+    },
+    {
+      "file": "design/viewport-query-card.html",
+      "modality": "design",
+      "role": "coverage-boundary",
+      "expected": [],
+      "maxIncidentalFindings": 1,
+      "note": "Plants a component laid out by a viewport media query where a container query belongs."
+    },
+    {
+      "file": "design/vh-bottom-bar.html",
+      "modality": "design",
+      "role": "coverage-boundary",
+      "expected": [],
+      "maxIncidentalFindings": 1,
+      "note": "Plants a 100vh surface whose fixed bottom bar ignores dvh and the safe-area inset."
+    },
+    {
+      "file": "../fixtures/before.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "emoji",
+          "severity": "low",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "purple-blue-gradient",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "ai-purple-hex",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "gradient-text",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "neon-glow",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "generic-font",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "hype-copy",
+          "severity": "low",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "rounded-everything was REMOVED as a label in 1.7.0 for the same reason as frosted-nav-neon.html: two border-radius:999px declarations (.btn and .pill) is not maximal rounding on every control. Everything else on this fixture still fires."
+    },
+    {
+      "file": "../fixtures/editorial-bold.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 1
+    },
+    {
+      "file": "../fixtures/technical-mono.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 1
+    },
+    {
+      "file": "../fixtures/warm-consumer.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 1
+    },
+    {
+      "file": "../fixtures/utilitarian-fintech.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 1
+    },
+    {
+      "file": "native/FixedGeometryShell.swift",
+      "modality": "native",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "uiscreen-bounds",
+          "severity": "medium",
+          "confidence": "Hard defect"
+        },
+        {
+          "id": "fixed-content-frame",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "device-idiom-branch",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "fixed-grid-columns",
+          "severity": "low",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "repeating-symbol-effect",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "Native positive control. Plants all five native tells: UIScreen.main.bounds, a fixed content frame, a device-idiom branch, a fixed GridItem array, and an ungated repeating symbol effect."
+    },
+    {
+      "file": "native/AdaptiveShell.swift",
+      "modality": "native",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 1,
+      "note": "Native clean control: the same screen built by negotiation -- intrinsic sizing, a size-class branch, an adaptive grid, a measure cap rather than a leftover-sized value, ViewThatFits with an honest fallback, a one-shot haptic. The native counterpart of responsive-type-clean.html."
+    }
+  ]
+}

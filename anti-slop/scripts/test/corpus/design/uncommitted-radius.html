@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bench intake</title>
+<style>
+  :root {
+    --ink: oklch(0.23 0.012 145);
+    --paper: oklch(0.984 0.004 120);
+    --rule: oklch(0.86 0.008 140);
+    --moss: oklch(0.55 0.13 145);
+  }
+  body { margin: 0; background: var(--paper); color: var(--ink); line-height: 1.5;
+         font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif;
+         padding: clamp(1rem, 0.5rem + 2vw, 2.5rem); }
+  form { width: min(100%, 34rem); margin: 0 auto; display: grid; gap: 1rem; }
+  h1 { font-size: clamp(1.5rem, 1.2rem + 1.4vw, 2.25rem); letter-spacing: -0.02em; margin: 0; }
+  label { display: grid; gap: 0.25rem; }
+  input, select, textarea { font: inherit; padding: 0.5rem 0.75rem; color: inherit;
+    border: 1px solid var(--rule); border-radius: 8px; background: oklch(0.995 0.002 120); }
+  textarea { min-height: 6rem; resize: vertical; }
+  .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .chip { padding: 0.25rem 0.625rem; font: inherit; color: inherit;
+    border: 1px solid var(--rule); border-radius: 8px; background: transparent; }
+  button.submit { justify-self: start; padding: 0.625rem 1.125rem; font: inherit;
+    border: 1px solid var(--moss); border-radius: 8px;
+    background: var(--moss); color: oklch(0.99 0.002 120); }
+  :focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
+</style>
+</head>
+<body>
+  <form action="/intake" method="post">
+    <h1>Log a repair onto the bench</h1>
+    <label>Owner<input name="owner" type="text" autocomplete="name" value="R. Okonkwo"></label>
+    <label>Instrument<select name="kind"><option>Tenor saxophone</option><option>Clarinet</option></select></label>
+    <label>What it is doing<textarea name="fault">Low B key sticks after ten minutes of play.</textarea></label>
+    <div class="chips">
+      <button class="chip" type="button">Pads</button>
+      <button class="chip" type="button">Springs</button>
+      <button class="chip" type="button">Dents</button>
+    </div>
+    <button class="submit" type="submit">Book the bench slot</button>
+  </form>
+</body>
+</html>

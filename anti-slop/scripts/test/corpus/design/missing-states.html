@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Invoices</title>
+<style>
+  body { font-family: system-ui, sans-serif; color: oklch(0.226 0.004 107); margin: 0; padding: 2rem; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 0.6rem 0.75rem; border-bottom: 1px solid oklch(0.943 0.001 90); }
+  th { font-size: 0.8125rem; color: oklch(0.527 0.005 107); font-weight: 600; }
+  .status.paid { color: oklch(0.49 0.085 158); }
+  button { padding: 0.5rem 1rem; border: 1px solid oklch(0.869 0.003 107); background: oklch(0.985 0.004 90); border-radius: 6px; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Invoices</h1>
+    <button onclick="/* TODO: wire refresh */">Refresh</button>
+  </header>
+  <table>
+    <thead>
+      <tr><th>Client</th><th>Amount</th><th>Due</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Northwind</td><td>$4,200</td><td>Feb 12, 2026</td><td class="status paid">Paid</td></tr>
+      <tr><td>Acme Freight</td><td>$1,850</td><td>Feb 18, 2026</td><td class="status paid">Paid</td></tr>
+      <tr><td>Harbor Labs</td><td>$9,010</td><td>Feb 24, 2026</td><td class="status paid">Paid</td></tr>
+    </tbody>
+  </table>
+</body>
+</html>

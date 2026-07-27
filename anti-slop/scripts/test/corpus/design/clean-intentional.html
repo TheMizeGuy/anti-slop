@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relay status</title>
+<style>
+  :root {
+    --coal: oklch(0.16 0.008 60);
+    --paper: oklch(0.92 0.01 80);
+    --dim: oklch(0.62 0.01 80);
+    --signal: oklch(0.72 0.16 60);
+    --line: oklch(0.28 0.01 60);
+  }
+  body { background: var(--coal); color: var(--paper); margin: 0; line-height: 1.45;
+         font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif;
+         padding: clamp(1.25rem, 0.75rem + 2.5vw, 2.5rem); }
+  main { width: min(100%, 44rem); margin: 0 auto; }
+  h1 { font-size: clamp(1rem, 0.95rem + 0.4vw, 1.25rem); font-weight: 600; letter-spacing: 0.01em; margin: 0 0 1.5rem; }
+  .row { display: flex; justify-content: space-between; gap: 1rem; padding: 0.6rem 0;
+         border-bottom: 1px solid var(--line); border-radius: 0; }
+  .label { color: var(--dim); }
+  .val { color: var(--paper); font-variant-numeric: tabular-nums; }
+  .val.hot { color: var(--signal); }
+  pre { margin: 1.5rem 0 0; padding: 0.75rem 1rem; overflow-x: auto; font-size: 0.8125rem;
+        background: oklch(0.2 0.008 60); color: var(--dim);
+        font-family: 'Berkeley Mono', ui-monospace, monospace; }
+  footer { color: var(--dim); margin-top: 1.5rem; font-size: 0.8125rem; }
+</style>
+</head>
+<body>
+  <main>
+    <h1>relay-04 &middot; us-east</h1>
+    <div class="row"><span class="label">uptime</span><span class="val">37d 4h</span></div>
+    <div class="row"><span class="label">queue depth</span><span class="val hot">1,204 msgs</span></div>
+    <div class="row"><span class="label">p99 latency</span><span class="val">82 ms</span></div>
+    <div class="row"><span class="label">last drain</span><span class="val">6 min ago</span></div>
+    <pre>14:02:11 drain start depth=1204
+14:02:11 lease acquired shard=7</pre>
+    <footer>Draining resumes automatically when depth clears 500.</footer>
+  </main>
+</body>
+</html>

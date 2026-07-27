@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Settings</title>
+<style>
+  :root {
+    --brand: oklch(0.49 0.085 158);
+    --ink: oklch(0.226 0.004 107);
+    --surface: oklch(0.985 0.004 90);
+    --space-100: 4px;
+    --space-200: 8px;
+    --space-300: 12px;
+    --radius: 6px;
+  }
+  body { font-family: system-ui, sans-serif; color: var(--ink); margin: 0; padding: var(--space-300); }
+  .panel {
+    background: var(--surface);
+    border: 1px solid oklch(0.918 0.003 107);
+    border-radius: var(--radius);
+    padding: var(--space-300);
+  }
+  /* The token system above is defined but the block below bypasses it. */
+  .save {
+    background: oklch(0.587 0.104 159);
+    color: oklch(0.985 0.004 90);
+    padding: 11px 17px;
+    border-radius: 5px;
+    border: none;
+  }
+  .save:hover { background: oklch(0.639 0.11 160); }
+  .hint { color: oklch(0.578 0.006 107); margin-top: 9px; font-size: 13px; }
+</style>
+</head>
+<body>
+  <div class="panel">
+    <h2>Billing email</h2>
+    <input type="email" value="ops@northwind.co">
+    <button class="save">Save changes</button>
+    <p class="hint">We send receipts here on the first of each month.</p>
+  </div>
+</body>
+</html>

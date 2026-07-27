@@ -7,15 +7,41 @@ already does).
 
 ## Layout
 
-- `prose/`, `code/`, `design/` -- sample files. Design samples may live here OR reference the
-  shared UI fixtures in `../fixtures/*.html` (do not duplicate or edit those files -- they are
-  owned by `scanner.test.mjs`).
-- `labels.json` -- an array of `{ file, modality, expected }` records. `file` is a path
-  relative to this directory (so `../fixtures/before.html` is valid). `expected` is the list
-  of rule names a correct scan of that file should produce -- `[]` means "must scan clean".
-  Rule names use the same key convention as the dashboard: `v.name || v.word || v.phrase ||
-  v.type` (e.g. a banned word's name IS the word itself, a banned phrase's name IS the phrase,
-  everything else uses its rule `name`).
+- `prose/`, `code/`, `design/`, `native/` -- sample files. Design samples may live here OR
+  reference the shared UI fixtures in `../fixtures/*.html` (do not duplicate or edit those
+  files -- they are owned by `scanner.test.mjs`).
+- `labels.json` -- `{ meta, fixtures }`. Each fixture is
+  `{ file, modality, role, expected[], maxIncidentalFindings?, note? }`. `file` is a path
+  relative to this directory (so `../fixtures/before.html` is valid). `expected[]` entries are
+  `{ id, severity?, confidence? }`, where `id` is the rule key -- the same convention as the
+  dashboard, `v.name || v.word || v.phrase || v.type` (a banned word's id IS the word, a
+  banned phrase's id IS the phrase, everything else uses its rule `name`). `severity` and
+  `confidence` record what the rule emits when it fires; an entry carrying neither is a KNOWN
+  FALSE NEGATIVE, where the label is correct ground truth the scanner does not reach.
+
+### Fixture roles
+
+| Role | Means | `expected` |
+|---|---|---|
+| `positive` | Plants tells this scanner detects | non-empty |
+| `clean-control` | Uses the prescribed technique CORRECTLY and must stay silent | empty |
+| `coverage-boundary` | Plants a real tell this scanner has NO rule for | empty |
+
+A `coverage-boundary` fixture is **not clean**, and must never be cited as evidence that the
+tell it plants is absent. The role exists so the scanner's coverage limit is recorded rather
+than implied, and so a future over-broad rule that starts firing on one is caught.
+
+**A clean control is not "a file with no tells".** It is a file that exercises the constructs
+the doctrine recommends, which is what catches the mirror failure: a scanner that has learned
+to match constructs rather than defects. `responsive-type-clean.html` carries a fluid
+`clamp()` ramp, a non-default stepped ramp, and the canonical `prefers-reduced-motion` block
+precisely so that a rule which cannot tell those from the Tailwind default fails here.
+Two of ui-craft's own controls were latent doctrine violations for several releases, so
+audit these against current doctrine rather than trusting them.
+
+Clean controls and coverage boundaries carry `maxIncidentalFindings` (a tolerance, not a hard
+zero, so one incidental note does not fail the suite). `corpus-contract.test.mjs` enforces it,
+along with label/scanner grading drift and the scorer's own arithmetic.
 - `baseline.json` -- a committed snapshot of `node measure.mjs --format json`'s `rules`,
   `modalities`, and `overall` fields, captured against the scanner at the time the baseline was
   last regenerated. This is an honest MEASUREMENT, not a target: if the scanner has false
@@ -39,9 +65,10 @@ overall and per modality.
 1. Write the file under `prose/`, `code/`, or `design/` (or point at `../fixtures/*.html` for
    design). Use realistic, self-authored, or rule-derived content -- never copy real
    third-party text or a real secret.
-2. Add an entry to `labels.json` with the modality and your best honest guess at
-   `expected` -- the rule names a careful human reviewer would say this file legitimately
-   trips (or `[]` for a clean file).
+2. Add an entry to `labels.json` with the modality, the role, and your best honest guess at
+   `expected` -- the rule ids a careful human reviewer would say this file legitimately trips
+   (or `[]` plus a `maxIncidentalFindings` tolerance for a clean control or coverage
+   boundary).
 3. Run `npm run measure -- --format json` and check the `misses` array for your new file. If
    the actual scan differs from your guess, decide which is right:
    - If your `expected` was wrong (you mis-predicted a regex, or missed an interaction like
@@ -65,6 +92,14 @@ Two path traps worth knowing:
   multi-line construct (e.g. a `useEffect` whose body sets state a few lines down) can be a
   genuine miss for that reason -- see `code/user-profile-widget.jsx` in `labels.json`, which is
   exactly such a case and is recorded as a known false negative in `baseline.json`.
+
+## Ownership
+
+This corpus is the SINGLE labeled corpus for the anti-slop rule set and its downstream
+distillations. `ui-craft/tests/corpus/` is a downstream VIEW of the shared design fixtures,
+not a second hand-maintained set: fixtures flow anti-slop -> ui-craft, and a fixture edited
+only downstream is drift rather than a change. Per-item ownership across the three repos is
+recorded in `docs/rankings-refresh.md`, section "Downstream sync".
 
 ## Regenerating the baseline
 
