@@ -1,6 +1,6 @@
 ---
 name: anti-slop
-version: 1.7.0
+version: 2.0.0
 description: Catches agentic development shortcomings in prose, code, and UI output: security holes, accessibility failures, regressions, banned vocabulary, structural cliches, and AI-default design tells. Applies whenever output is produced or revised. Activates on "write", "create", "build", "implement", "fix", "generate", "review", "refactor", "design", "edit". Context-aware: yields to domain conventions and project requirements.
 ---
 

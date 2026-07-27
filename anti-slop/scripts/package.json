@@ -1,5 +1,5 @@
 {
-  "name": "scripts",
+  "name": "anti-slop-scanner",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -10,8 +10,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.28.0"
-  }
+  "description": "Deterministic AI-slop scanner for the anti-slop Claude Code plugin. Zero runtime dependencies.",
+  "private": true
 }

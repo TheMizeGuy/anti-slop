@@ -1,8 +1,46 @@
 # Changelog
 
-All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `anti-slop/.claude-plugin/plugin.json`, the SKILL.md frontmatter, and the MCP Server constructor string in `anti-slop/scripts/slop-scanner.mjs` — all five are bumped together.
+All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `anti-slop/.claude-plugin/plugin.json`, and the SKILL.md frontmatter — all four are bumped together. (It was five until 2.0.0 removed the MCP Server constructor.)
 
-## 1.7.0 (current)
+## 2.0.0 (current)
+
+**Breaking: the MCP server is gone.** The plugin no longer registers
+`anti-slop-scanner`, ships no `.mcp.json`, and exposes no MCP tools. Anything calling
+`scan_file`, `get_dashboard_url`, `get_score_history`, or `get_rule_stats` must move to the
+CLI, which does the same work without a resident server, an SDK, or a tool round-trip.
+
+The protocol was buying nothing. Every tool was a thin wrapper over a synchronous function,
+delivered through a stdio server that had to be running, discovered, and kept alive to
+return output a subprocess hands back directly. It also made the scanner unusable outside
+Claude Code without reimplementing the transport.
+
+No capability was dropped. All four tools have a subcommand:
+
+| Was | Now |
+|---|---|
+| `scan_file` | `slop-scanner.mjs scan [options] <file...>` |
+| `get_score_history` | `slop-scanner.mjs history` |
+| `get_rule_stats` | `slop-scanner.mjs stats` |
+| `get_dashboard_url` | `slop-scanner.mjs dashboard` |
+
+- **Zero runtime dependencies.** `@modelcontextprotocol/sdk` was the only one, and the
+  lockfile is now empty of packages. The scanner runs from a fresh clone or an installed
+  plugin with no `npm install`, which also means a CI gate cannot silently skip it because
+  a dependency failed to resolve.
+- The v1.5.0 dashboard invariant survives intact: nothing opens an HTTP listener except an
+  explicit `dashboard` command, and `.anti-slop/config.json` `{"dashboard": false}` still
+  disables it. `lib/dashboard.mjs` and `lib/stats.mjs` are now dynamically imported so the
+  `scan` path never loads the HTTP module at all.
+- Zero-argument invocation used to start the stdio server and block; it now prints usage
+  and exits 2.
+- `/slop-check` calls the scanner via `Bash(node:*)` instead of an MCP tool, and falls back
+  to the agent when it cannot.
+- Version parity is now four spots, not five. `test/dashboard.test.mjs` A9 enforces it.
+- 11 new tests assert the removal is real rather than dormant: no `.mcp.json`, no SDK
+  import anywhere, no MCP identifier left in the entry point, and no subcommand except
+  `dashboard` opening a port. Suite is 131 tests.
+
+## 1.7.0
 
 Integrates the anti-AI work from the `ui-craft` 0.3.0 and `apple-ui-craft` 0.3.1 releases.
 Both are downstream of this plugin's UI research, and both produced material that flows

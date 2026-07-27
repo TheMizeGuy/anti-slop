@@ -2,7 +2,7 @@
 name: slop-check
 description: Review output, a file, the working diff, or the current PR for AI slop patterns; reports a deterministic scan score and an agent review score with per-finding fixes.
 argument-hint: "[target]"
-allowed-tools: Read, Grep, Glob, Agent, Bash(git diff:*), Bash(gh pr:*)
+allowed-tools: Read, Grep, Glob, Agent, Bash(git diff:*), Bash(gh pr:*), Bash(node:*)
 ---
 
 # Slop Check
@@ -28,12 +28,22 @@ If the diff or PR is empty, inform the user that no changes were found.
 ## Process
 
 1. Identify the content to review
-2. If a file path is provided, first run the `scan_file` MCP tool from the anti-slop-scanner for a fast deterministic check (banned words, text constructs, design tells, code patterns, security issues). The scanner catches surface tells and honors the `anti-slop-allow` / `unslop-ignore` escape hatch; it cannot see the structural tells (sentence rhythm, sycophancy, tutorial-shaped or over-engineered code, hallucinated APIs). Then dispatch to the `slop-detector` agent for that semantic review. For code, verify first -- a build or type-check catches hallucinated APIs that no scanner will.
-3. If the MCP scanner is unavailable, or for non-file targets, dispatch directly to the `slop-detector` agent.
+2. If a file path is provided, first run the scanner for a fast deterministic check (banned words, text constructs, design tells, code patterns, security issues):
+
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/slop-scanner.mjs" scan <file...>
+   ```
+
+   It needs no install: the scanner has zero runtime dependencies. It exits 0 when clean, 1 on findings, 2 on a usage error, and takes `--format json` for machine output and `--record` to log findings for `history` and `stats`. The scanner catches surface tells and honors the `anti-slop-allow` / `unslop-ignore` escape hatch; it cannot see the structural tells (sentence rhythm, sycophancy, tutorial-shaped or over-engineered code, hallucinated APIs). Then dispatch to the `slop-detector` agent for that semantic review. For code, verify first -- a build or type-check catches hallucinated APIs that no scanner will.
+3. For non-file targets (a diff, a PR, the last response), or if the scanner cannot be run, dispatch directly to the `slop-detector` agent.
 4. If the Agent tool also fails, perform the review directly using the rules in the anti-slop skill.
-5. Present the scored report to the user: the MCP tool's scan score (deterministic, `Scan score: N/50`) and the agent's review score (5-dimension judgment, `Review score: N/50`) are different scales measuring different things -- include both, labeled
+5. Present the scored report to the user: the scanner's score (deterministic, `Scan score: N/50`) and the agent's review score (5-dimension judgment, `Review score: N/50`) are different scales measuring different things -- include both, labeled
 6. Offer to fix the identified issues if the user wants
-7. The dashboard is optional and off by default -- offer it only if the user asks or it's contextually useful. If so, call the `get_dashboard_url` MCP tool from the anti-slop-scanner; it starts the dashboard on demand at a per-project address and returns the URL
+7. The dashboard is optional and off by default. Offer it only if the user asks or it's contextually useful; it is the one command that opens a port, and `.anti-slop/config.json` `{"dashboard": false}` disables it:
+
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/slop-scanner.mjs" dashboard
+   ```
 
 ## Usage Examples
 

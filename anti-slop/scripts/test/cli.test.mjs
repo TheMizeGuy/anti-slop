@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import { spawnSync, spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 import { scanContent, calculateScore } from "../lib/scan.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -174,7 +174,7 @@ test("A3: without --record, a CLI scan leaves no .anti-slop directory behind", (
   }
 });
 
-test("A3: --record writes scores.json and scan-log.json exactly as an MCP scan_file call would", () => {
+test("A3: --record writes scores.json and scan-log.json", () => {
   const dir = scratchDir();
   try {
     writeFileSync(join(dir, "slop.md"), SLOP_MD);
@@ -253,18 +253,5 @@ test("A3: an unreadable file aborts before anything is recorded", () => {
   }
 });
 
-// ── A1: zero-arg invocation is unaffected by the new dispatch ──
-
-test("A1: invoking with zero args still starts the MCP stdio server (stays alive, does not exit)", async () => {
-  const dir = scratchDir();
-  try {
-    const child = spawn(process.execPath, [ENTRY_PATH], { cwd: dir, stdio: ["pipe", "ignore", "ignore"] });
-    let exited = false;
-    child.on("exit", () => { exited = true; });
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    assert.equal(exited, false, "zero-arg invocation must start the long-running MCP server, not exit immediately");
-    child.kill();
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-});
+// Zero-arg invocation used to start the MCP stdio server and stay alive. Since 2.0.0 it
+// prints usage and exits 2; that is asserted in no-mcp.test.mjs.

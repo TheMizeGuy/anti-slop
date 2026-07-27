@@ -23,13 +23,13 @@ Rules yield to domain context. Academic writing gets its hedging language. Legal
 | **Skill** (`anti-slop`) | Core rules, activates automatically on writes/edits/builds |
 | **Agent** (`slop-detector`) | Deep semantic review, scores on 5 dimensions (50pt scale) |
 | **Command** (`/slop-check`) | Manual review — point it at a file, diff, or PR |
-| **MCP Server** (`anti-slop-scanner`) | Fast deterministic scanner — regex-based pattern matching for banned words, phrases, design tells, code smells, security issues. Four tools: `scan_file`, `get_dashboard_url`, `get_score_history`, `get_rule_stats` (per-rule active vs deliberately-suppressed counts). Implemented as the `scripts/slop-scanner.mjs` entry point plus `scripts/lib/` modules for rule data, scanning, storage, and the dashboard. The same entry point also runs as a CI-facing CLI (`scan` subcommand) outside the MCP protocol |
-| **Web Dashboard** | Optional, off by default. Nothing starts when the MCP server starts. Calling `get_dashboard_url` starts it on demand at a per-project deterministic port and returns the URL. Shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, recent findings |
+| **Scanner CLI** (`slop-scanner.mjs`) | Fast deterministic scanner — regex-based pattern matching for banned words, phrases, design tells, native UI tells, code smells, security issues. Four subcommands: `scan`, `history`, `stats`, `dashboard`. Zero runtime dependencies, so it runs from a clone or an installed plugin with no `npm install` |
+| **Web Dashboard** | Optional, off by default. Nothing starts on its own; `slop-scanner.mjs dashboard` starts it on demand at a per-project deterministic port and prints the URL. Shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, recent findings |
 | **13 reference files** | ~230 banned words, ~210 banned phrases, plus pattern catalogs for writing, code, design, frontend, native (SwiftUI/UIKit) UI, regressions, density and economy, self-check checklists, empirical rankings, confidence and evidence rules, and choosing-with-intent guidance |
 
-The MCP scanner and the agent serve different purposes. The scanner is fast — it runs regex patterns against file content and returns in milliseconds. The agent is thorough — it reads reference files, understands context, and produces a scored report with specific fixes. The `/slop-check` command runs both: scanner first for a quick pass, then the agent for semantic analysis.
+The scanner and the agent serve different purposes. The scanner is fast — it runs regex patterns against file content and returns in milliseconds. The agent is thorough — it reads reference files, understands context, and produces a scored report with specific fixes. The `/slop-check` command runs both: scanner first for a quick pass, then the agent for semantic analysis.
 
-The two also report different scales, on purpose. **Scan score** (`Scan score: N/50`) is the scanner's deterministic deduction count from `scan_file` or the CLI. **Review score** (`Review score: N/50`) is the `slop-detector` agent's 5-dimension judgment call, and neither implies the other.
+The two also report different scales, on purpose. **Scan score** (`Scan score: N/50`) is the scanner's deterministic deduction count. **Review score** (`Review score: N/50`) is the `slop-detector` agent's 5-dimension judgment call, and neither implies the other.
 
 ## The numbers
 
@@ -66,11 +66,11 @@ The skill activates whenever you write, build, or edit code. For manual review:
 /slop-check pr                           # review current PR
 ```
 
-The dashboard is optional and never starts on its own. Starting the MCP server does not open anything. Call the `get_dashboard_url` MCP tool to start it on demand; it opens at a per-project deterministic port and the tool returns the URL. It shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, and recent findings. Scan and finding data persist in `.anti-slop/` in your project directory (`scan-log.json` for findings, `scores.json` for per-scan records). If you're working across multiple projects, the dashboard shows tabs for all active projects.
+The dashboard is optional and never starts on its own. Run `node scripts/slop-scanner.mjs dashboard` to start it on demand; it opens at a per-project deterministic port and prints the URL. It is the only command that opens a port. It shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, and recent findings. Scan and finding data persist in `.anti-slop/` in your project directory (`scan-log.json` for findings, `scores.json` for per-scan records). If you're working across multiple projects, the dashboard shows tabs for all active projects.
 
 ### CI usage
 
-The same entry point that runs the MCP server also runs as a standalone CLI when given a `scan` subcommand, for pre-commit hooks and CI gates that don't speak MCP (paths below are relative to the plugin root; from a clone of this repo, prefix with `anti-slop/`):
+The scanner is a plain Node CLI with no dependencies, so pre-commit hooks and CI gates can call it directly (paths below are relative to the plugin root; from a clone of this repo, prefix with `anti-slop/`):
 
 ```bash
 node scripts/slop-scanner.mjs scan [options] <file...>
@@ -84,7 +84,7 @@ Options:
 
 - `--format text|json`: output format (default `text`)
 - `--fail-on any|high|medium|low|none`: minimum severity that triggers a nonzero exit (default `any`)
-- `--record`: write findings to `.anti-slop/scan-log.json` and `scores.json`, same as an MCP `scan_file` call. Default is off; a CI scan leaves no trace in your project directory unless you opt in
+- `--record`: write findings to `.anti-slop/scan-log.json` and `scores.json`, which is what `history` and `stats` read back. Default is off; a CI scan leaves no trace in your project directory unless you opt in
 - `--quiet`: suppress all output, exit code only
 
 Exit codes: `0` clean or below the `--fail-on` threshold, `1` findings at or above the threshold, `2` usage error or unreadable file. The CLI takes files only, with no glob or directory recursion, so compose it with your own file list as in the `git diff` example above.
@@ -109,30 +109,31 @@ A worked example, start to finish:
 1. Install the plugin (see Installation above) and open Claude Code in a project.
 2. Ask Claude to write or edit a file. The `anti-slop` skill activates automatically during the write; no command is needed for this pass.
 3. Run a manual review on a specific file: `/slop-check src/components/Header.tsx`.
-4. Claude Code first calls the `scan_file` MCP tool (the deterministic scanner). A finding-bearing file returns output shaped like:
+4. Claude Code first runs the deterministic scanner (`slop-scanner.mjs scan`). A finding-bearing file returns output shaped like:
 
    ```
-   Scan score: 42/50 | SOME | 4 violation(s) in Header.tsx
+   src/components/Header.tsx
+   Scan score: 42/50 | SOME | 4 violation(s)
 
-   [HIGH] Hardcoded API key literal on line 12
-   [MEDIUM] "leverage" (banned word) on line 30
-   [MEDIUM] useEffect missing dependency array on line 44
-   [LOW] em-dash density (3 in 80 words) on lines 50-58
+   [HIGH] Possible hardcoded credential (1x)
+   [MEDIUM] Banned AI-tell word "leverage" found 2x
+   [MEDIUM] useEffect setting state (likely derived state) (1x)
+   [LOW] High em dash density (6 dashes, 5.2/1k words) -- the #1 AI writing tell
    ```
 
-   A clean file returns an empty result — no output, no false "all good" message.
+   A clean file reports `src/components/Header.tsx: clean` and exits 0.
 5. Claude then dispatches the `slop-detector` agent for the semantic pass the scanner cannot do (sentence rhythm, sycophancy, tutorial-shaped code, hallucinated APIs). The agent replies with its own `Review score: N/50` on the five judgment dimensions (directness, specificity, security/a11y awareness, code quality, design quality) plus concrete fixes per finding.
 6. Claude presents both scores together, labeled (`Scan score` and `Review score` measure different things and are not comparable), and offers to apply the fixes.
-7. Optional: ask for the dashboard (`get_dashboard_url`) to see scan counts, severity breakdown, and findings-by-rule for the project over time.
+7. Optional: run `slop-scanner.mjs stats` for per-rule active vs suppressed counts, `history` for recent scores, or `dashboard` for the same over time in a browser.
 
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `/slop-check` runs but no MCP scan output appears | `anti-slop-scanner` MCP server isn't registered or Claude Code hasn't picked up `.mcp.json` | Reinstall/update the plugin from the marketplace, or restart Claude Code; confirm `anti-slop/.mcp.json` exists in the installed plugin directory |
+| `/slop-check` runs but no scan output appears | The command could not run `node`, or the plugin path is wrong | Confirm `node` is on PATH and that `scripts/slop-scanner.mjs` exists in the installed plugin directory; the scanner needs no install step of its own |
 | Every file scans clean even when it clearly has banned words | A `.anti-slop/config.json` in the project lists the word under `allowedWords`, or the line ends in `anti-slop-allow: <reason>` / `unslop-ignore` | Check the project's `.anti-slop/config.json` and inline escape hatches; both are intentional per-project overrides, not bugs |
-| `get_dashboard_url` returns "Dashboard is disabled" | `.anti-slop/config.json` has `"dashboard": false` | Remove the key or set it to `true`, then call `get_dashboard_url` again |
-| `get_dashboard_url` returns "could not be started (no available port)" | No free port in the dashboard's deterministic per-project range | Free up local ports or retry; the dashboard is optional and scan/review still work without it |
+| `dashboard` prints "Dashboard is disabled" | `.anti-slop/config.json` has `"dashboard": false` | Remove the key or set it to `true`, then run the command again |
+| `dashboard` reports "could not be started (no available port)" | No free port in the dashboard's deterministic per-project range | Free up local ports or retry; the dashboard is optional and scan/review still work without it |
 | CI scan exits 2 | A path in the file list is unreadable (often a deleted file from a diff) | Use `--diff-filter=d` on `git diff` before piping into `slop-scanner.mjs scan`, as shown in the CI usage example |
 | `npm test` fails with import errors from files you never wrote | The bare `node --test` runner was used instead of `npm test` | Always run `npm test` from `anti-slop/scripts` — `test/corpus/` intentionally contains samples with broken imports that only the project's own test runner knows to skip |
 

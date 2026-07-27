@@ -46,7 +46,7 @@ after(() => {
   rmSync(scratchProjectDir, { recursive: true, force: true });
 });
 
-// ── A1: starting the MCP server must never open an HTTP port ──
+// ── A1: nothing may open an HTTP port except an explicit `dashboard` command ──
 
 test("A1: importing lib/dashboard.mjs and lib/store.mjs starts no listener", async () => {
   assert.equal(dashboard.DASHBOARD_PORT, null);
@@ -196,13 +196,11 @@ test("A8: dashboard.html passes the plugin's own scanner", async () => {
 
 // ── A9: version bump ──
 
-test("A9: all five version spots agree (entry, both manifests, marketplace, SKILL.md)", () => {
+// Four spots since 2.0.0: the entry point used to carry a fifth as the MCP Server
+// constructor's version string, and that constructor no longer exists.
+test("A9: all four version spots agree (both manifests, marketplace, SKILL.md)", () => {
   const pluginDir = dirname(SCRIPTS_DIR);
   const repoRoot = dirname(pluginDir);
-
-  const entrySrc = readFileSync(ENTRY_PATH, "utf8");
-  const m = entrySrc.match(/version:\s*"([^"]+)"/);
-  assert.ok(m, "entry must declare an MCP server version string");
 
   const pluginManifest = JSON.parse(readFileSync(join(pluginDir, ".claude-plugin", "plugin.json"), "utf8"));
   const rootManifest = JSON.parse(readFileSync(join(repoRoot, ".claude-plugin", "plugin.json"), "utf8"));
@@ -212,7 +210,6 @@ test("A9: all five version spots agree (entry, both manifests, marketplace, SKIL
   assert.ok(skillVersion, "SKILL.md frontmatter must declare a version");
 
   const spots = {
-    "entry MCP Server string": m[1],
     "anti-slop/.claude-plugin/plugin.json": pluginManifest.version,
     ".claude-plugin/plugin.json": rootManifest.version,
     "marketplace.json plugins[0]": marketplace.plugins[0].version,
@@ -222,26 +219,9 @@ test("A9: all five version spots agree (entry, both manifests, marketplace, SKIL
   assert.equal(values.size, 1, `version spots disagree: ${JSON.stringify(spots)}`);
 });
 
-// ── A2 (tool description): get_dashboard_url documents the on-demand behavior ──
-
-test("get_rule_stats tool is wired: listed with a description and handled via computeRuleStats", () => {
-  const entrySrc = readFileSync(ENTRY_PATH, "utf8");
-  const start = entrySrc.indexOf('name: "get_rule_stats"');
-  assert.ok(start !== -1, "get_rule_stats tool block not found in tools list");
-  assert.match(entrySrc.slice(start, start + 400), /active.*suppressed/s, "description must explain active vs suppressed counts");
-  assert.ok(entrySrc.includes('if (name === "get_rule_stats")'), "handler branch missing");
-  assert.ok(entrySrc.includes("computeRuleStats(filterAllowedViolations(loadLog()))"), "handler must aggregate the scan log via computeRuleStats behind the same stale-entry filter the dashboard uses");
-});
-
-test("get_dashboard_url tool description documents on-demand start + disable switch", () => {
-  const entrySrc = readFileSync(ENTRY_PATH, "utf8");
-  const start = entrySrc.indexOf('name: "get_dashboard_url"');
-  const end = entrySrc.indexOf('name: "get_score_history"');
-  assert.ok(start !== -1 && end !== -1 && end > start, "get_dashboard_url tool block not found");
-  const toolBlock = entrySrc.slice(start, end);
-  assert.match(toolBlock, /on demand/i);
-  assert.match(toolBlock, /dashboard.*false/i);
-});
+// The get_dashboard_url and get_rule_stats tool-shape tests lived here until 2.0.0.
+// Their subject was the MCP tool list, which no longer exists; the `dashboard` and `stats`
+// CLI subcommands that replaced them are covered end-to-end in no-mcp.test.mjs.
 
 // ── D6: suppressed-finding capture reaches the dashboard ──
 

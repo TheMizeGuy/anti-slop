@@ -2,7 +2,7 @@
 // per-rule stats: how many times each rule fired live (active) vs. was deliberately
 // suppressed (escape hatch / allowedWords, see scan.mjs opts.collectSuppressed). No
 // I/O here -- callers pass in whatever log entries they already loaded. Consumed by
-// the dashboard and, post-merge, a get_rule_stats MCP tool.
+// the dashboard and the `stats` CLI subcommand.
 
 const SEVERITY_RANK = { high: 3, medium: 2, low: 1 };
 

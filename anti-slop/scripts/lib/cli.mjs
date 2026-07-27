@@ -1,33 +1,39 @@
-// ── CI-facing scan CLI ──
-// `node slop-scanner.mjs scan [options] <file...>` -- a deterministic, side-effect-free
-// (by default) way to run the scanner outside the MCP protocol, for CI gates and
-// pre-commit hooks. Files only: no glob or directory recursion, so callers compose
-// with their own shell tools, e.g. `git diff --name-only | xargs node .../slop-scanner.mjs scan`.
+// ── The scanner CLI ──
+// The plugin's only executable surface. `scan` is the deterministic, side-effect-free
+// (by default) checker for CI gates and pre-commit hooks; `history`, `stats` and
+// `dashboard` read back what `--record` wrote. Files only: no glob or directory
+// recursion, so callers compose with their own shell tools, e.g.
+// `git diff --name-only | xargs node .../slop-scanner.mjs scan`.
 
 import { readFileSync } from "fs";
 import { scanContent, calculateScore, verdict } from "./scan.mjs";
-import { loadLog, saveLog, saveScore } from "./store.mjs";
+import { loadLog, saveLog, saveScore, loadScores } from "./store.mjs";
 
 const PROSE_EXTENSIONS_FOR_VERDICT = new Set([".md", ".mdx", ".txt", ".rst"]);
 const FAIL_ON_LEVELS = ["any", "high", "medium", "low", "none"];
 const SEVERITY_RANK = { high: 3, medium: 2, low: 1 };
 
-const USAGE = `Usage: slop-scanner.mjs scan [options] <file...>
+const USAGE = `Usage: slop-scanner.mjs <command> [options]
 
-Scans one or more files with the anti-slop deterministic scanner. Files only --
-no glob or directory recursion; pipe a file list in, e.g.:
+Commands:
+  scan [options] <file...>   Scan files for anti-slop findings
+  history                    Recent scan scores for this project
+  stats                      Per-rule active vs suppressed counts
+  dashboard                  Start the local dashboard and print its URL
 
-  git diff --name-only --diff-filter=d | xargs node .../slop-scanner.mjs scan
-
-Options:
+Scan options:
   --format text|json   Output format (default: text)
   --fail-on LEVEL      any|high|medium|low|none -- minimum severity that
                        triggers a nonzero exit (default: any)
   --record             Write findings to .anti-slop/scan-log.json and
-                       scores.json, same as an MCP scan_file call
-                       (default: no side effects)
+                       scores.json (default: no side effects). history and
+                       stats read what this writes
   --quiet              Suppress all output; exit code only
   -h, --help           Show this message
+
+Scans take files only -- no glob or directory recursion; pipe a file list in:
+
+  git diff --name-only --diff-filter=d | xargs node .../slop-scanner.mjs scan
 
 Exit codes:
   0  no findings at or above --fail-on threshold
@@ -64,8 +70,8 @@ function parseArgs(argv) {
   return opts;
 }
 
-// Mirrors the isProseFile/word-count logic scan_file uses so the CLI's verdict tier
-// matches the MCP tool's for the same file.
+// Prose files are scored against their word count so a long, lightly flecked document is
+// not over-escalated (the concentration guard in verdict()).
 function classifyVerdict(content, filePath, violations) {
   const ext = (filePath.match(/\.[^./\\]+$/) || [""])[0].toLowerCase();
   const isProseFile = PROSE_EXTENSIONS_FOR_VERDICT.has(ext);
@@ -79,9 +85,8 @@ function meetsThreshold(violations, failOn) {
   return violations.some((v) => (SEVERITY_RANK[v.severity] || 0) >= minRank);
 }
 
-// Writes exactly what an MCP scan_file call would write, so --record output is
-// indistinguishable from data produced through the MCP tool: ALL entries (including
-// suppressed ones, for rule stats) go to the log; the score entry counts active only.
+// ALL entries (including suppressed ones, which rule stats need) go to the log; the score
+// entry counts active findings only.
 function recordScan(filePath, allEntries, score, activeCount) {
   if (allEntries.length > 0) {
     const log = loadLog();
@@ -101,9 +106,75 @@ function formatTextReport(result) {
   return `${result.file}\nScan score: ${result.score}/50 | ${result.verdict} | ${result.violations.length} violation(s)\n\n${report}\n\n`;
 }
 
+// ── history: the scores `scan --record` wrote ──
+function runHistory() {
+  const scores = loadScores();
+  if (!scores.length) {
+    process.stdout.write("No scores recorded yet. Run `scan --record <file...>` first.\n");
+    return 0;
+  }
+  const recent = scores.slice(-10);
+  const lines = recent.map((s) =>
+    `${new Date(s.timestamp).toLocaleString()} | Scan score: ${s.score}/50 | ${s.violations} violations | ${s.file || "scan"}`,
+  );
+  process.stdout.write(`Last ${recent.length} scans:\n${lines.join("\n")}\n`);
+  return 0;
+}
+
+// ── stats: which rules actually fire in this codebase, and which get suppressed ──
+// dashboard.mjs and stats.mjs are imported lazily so the scan path -- the one CI runs on
+// every commit -- never loads the HTTP module at all.
+async function runStats() {
+  const [{ filterAllowedViolations }, { computeRuleStats }] = await Promise.all([
+    import("./dashboard.mjs"),
+    import("./stats.mjs"),
+  ]);
+  const { rules, totals } = computeRuleStats(filterAllowedViolations(loadLog()));
+  if (!rules.length) {
+    process.stdout.write("No findings recorded yet. Run `scan --record <file...>` first.\n");
+    return 0;
+  }
+  const lines = rules.map((r) =>
+    `${r.rule}: ${r.active} active, ${r.suppressed} suppressed, worst=${r.worstSeverity}, ` +
+    `last=${r.lastSeen === null ? "unknown" : new Date(r.lastSeen).toLocaleString()}`,
+  );
+  process.stdout.write(
+    `${totals.active} active / ${totals.suppressed} suppressed across ${rules.length} rules\n\n${lines.join("\n")}\n`,
+  );
+  return 0;
+}
+
+// ── dashboard: the ONLY command permitted to open a port ──
+// The v1.5.0 invariant survives the MCP removal unchanged in spirit: nothing starts an
+// HTTP listener except an explicit request for one, and the config switch still wins.
+async function runDashboard() {
+  const { ensureDashboard } = await import("./dashboard.mjs");
+  const result = await ensureDashboard();
+  if (result.disabled) {
+    process.stdout.write('Dashboard is disabled by .anti-slop/config.json ("dashboard": false).\n');
+    return 0;
+  }
+  if (!result.port) {
+    process.stderr.write("Dashboard could not be started (no available port).\n");
+    return 2;
+  }
+  process.stdout.write(`Dashboard: http://127.0.0.1:${result.port}\n`);
+  return 0;
+}
+
 export async function runCli(argv) {
-  if (argv[0] !== "scan") {
-    process.stderr.write(`Unknown command: ${argv[0] ?? "(none)"}\n\n${USAGE}`);
+  const command = argv[0];
+
+  if (command === "-h" || command === "--help") {
+    process.stdout.write(USAGE);
+    return 0;
+  }
+  if (command === "history") return runHistory();
+  if (command === "stats") return runStats();
+  if (command === "dashboard") return runDashboard();
+
+  if (command !== "scan") {
+    process.stderr.write(`Unknown command: ${command ?? "(none)"}\n\n${USAGE}`);
     return 2;
   }
 
@@ -141,8 +212,8 @@ export async function runCli(argv) {
   const results = [];
   for (const filePath of opts.files) {
     const content = contents.get(filePath);
-    // Suppressed entries (escape hatch / allowedWords) are logged under --record for
-    // rule stats, exactly like scan_file, but never reach output, score, or exit code.
+    // Suppressed entries (escape hatch / allowedWords) are logged under --record for rule
+    // stats, but never reach output, score, or exit code.
     const allEntries = scanContent(content, filePath, { collectSuppressed: true });
     const violations = allEntries.filter((v) => !v.suppressed);
     const score = calculateScore(violations);
