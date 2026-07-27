@@ -132,3 +132,9 @@ changes the UI/design section of `empirical-rankings.md` or the UI tells in
 Procedure: after the refresh stamp lands here, apply the same delta to the ui-craft repo,
 bump its patch version, and release through the mize-plugins channel. anti-slop remains the
 source of truth for corpus evidence; ui-craft is a downstream distillation.
+
+**Superseded in part, 2026-07-27.** The one-way flow described above no longer
+covers the whole relationship: `ui-craft` 0.3.0 and `apple-ui-craft` 0.3.1
+produced material that flows BACK into this repo, including a correction to a
+rule this repo still ships. See `docs/ui-toolkit-integration.md` for the work
+order and the per-item ownership decisions that section needs.
