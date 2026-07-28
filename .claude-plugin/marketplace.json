@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "anti-slop",
-      "description": "Catches AI coding shortcomings in prose, code, and UI output. Includes hooks for active enforcement.",
+      "description": "Catches AI coding shortcomings in prose, code, and UI output.",
       "source": "./anti-slop",
       "version": "2.0.0",
       "category": "development",
