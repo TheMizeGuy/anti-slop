@@ -8,11 +8,12 @@
       "clean-control": "Uses the prescribed technique CORRECTLY and must stay silent. A clean control is not 'a file with no tells' -- it is a file that exercises the constructs the doctrine recommends, so it catches the mirror failure: a scanner that has learned to match constructs rather than defects. Two of ui-craft's own controls were latent doctrine violations for several releases, so audit these against current doctrine rather than trusting them.",
       "coverage-boundary": "Plants a real tell this scanner has NO rule for. expected[] is empty, but the file is NOT clean and must never be cited as evidence that the tell is absent. These record the scanner's coverage boundary honestly, and guard against a future over-broad rule firing on them by accident."
     },
-    "cleanControlRule": "clean-control and coverage-boundary fixtures carry maxIncidentalFindings: the scan may surface at most that many findings before the control is treated as failed. It is 0 on every fixture, because 0 is the policy the suite has always ENFORCED: any finding on a negative fixture is a false positive by construction, and the sibling precision gate in corpus.test.mjs (design tp=26, tolerance 0.02) fails on the first one. A declared tolerance of 1 was strictly dominated -- it could never be the failing assertion, so it was dead metadata that read like slack. Enforced by test/corpus-contract.test.mjs.",
+    "cleanControlRule": "clean-control and coverage-boundary fixtures carry maxIncidentalFindings: the scan may surface at most that many findings before the control is treated as failed. It is 0 on every fixture, because 0 is the policy the suite has always ENFORCED: any finding on a negative fixture is a false positive by construction, and the sibling precision gate in corpus.test.mjs (design tp=49 at 2.1.0, tolerance 0.02) fails on the first one. A declared tolerance of 1 was strictly dominated -- it could never be the failing assertion, so it was dead metadata that read like slack. Enforced by test/corpus-contract.test.mjs.",
     "severityIsInformational": "The harness matches on rule id only. severity and confidence are carried so that a change in how a rule GRADES a finding is visible in review and caught by test/corpus-contract.test.mjs, which asserts the labels still match what the scanner emits.",
     "provenance": {
       "shared-with-ui-craft": "gradient-hero, shadcn-card-kit, frosted-nav-neon, legacy-marketing-page, small-avatar-clean originated here and were copied downstream. presence-single, cream-serif-sage, token-drift, missing-states, clean-intentional, uncommitted-radius, fluid-adaptive-clean, fixed-desktop-shell, viewport-query-card, vh-bottom-bar were authored in ui-craft during its 0.2.4 and 0.3.0 releases and were imported here in anti-slop 1.7.0, at which point this corpus became the single owner of all of them.",
-      "authored-here-in-1.7.0": "hero-triplet-verbatim, responsive-type-clean, uniform-control-radius, native/FixedGeometryShell, native/AdaptiveShell."
+      "authored-here-in-1.7.0": "hero-triplet-verbatim, responsive-type-clean, uniform-control-radius, native/FixedGeometryShell, native/AdaptiveShell.",
+      "authored-here-in-2.1.0": "marketing-defaults, motion-rhythm, gallery-unlabelled, legacy-theme.css, tokens-clean.css, hatched-wordmark, near-miss-controls (design); render-user-card.tsx, ingest_records.py, pasted-snippet.js, hatched-onboarding.js, order-lookup.py, safe-render.tsx, safe-pipeline.py (code); native/LegacyProfileView, native/MeasuredCardStack; plain-register, plain-register-clean (prose). Five design fixtures were also PROMOTED from coverage-boundary to positive in the same release -- uncommitted-radius, token-drift, missing-states, fixed-desktop-shell, vh-bottom-bar -- because 2.1.0 shipped a rule for the tell each of them had been recording as unreachable."
     }
   },
   "fixtures": [
@@ -573,34 +574,59 @@
     {
       "file": "design/uncommitted-radius.html",
       "modality": "design",
-      "role": "coverage-boundary",
-      "expected": [],
-      "maxIncidentalFindings": 0,
-      "note": "Plants D1 (an uncommitted 8px radius on every control) in CSS custom-property vocabulary. anti-slop's rounded-everything rule keys on rounded-2xl/3xl/full and 999px pills, so it has no rule for a shared --radius default."
+      "role": "positive",
+      "expected": [
+        {
+          "id": "uniform-literal-radius",
+          "severity": "low",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "Plants D1, an uncommitted 8px radius on every control, as three LITERAL border-radius declarations with no --radius token anywhere in the file. Promoted from coverage-boundary in 2.1.0: uniform-literal-radius reads exactly that shape, and is silenced on any file that states a radius identity. rounded-everything still does not see it -- that rule keys on rounded-2xl/3xl/full and 999px pills."
     },
     {
       "file": "design/token-drift.html",
       "modality": "design",
-      "role": "coverage-boundary",
-      "expected": [],
-      "maxIncidentalFindings": 0,
-      "note": "Plants hardcoded off-token colours and off-scale spacing that bypass the file's own token system. anti-slop has no token-drift rule."
+      "role": "positive",
+      "expected": [
+        {
+          "id": "token-drift-spacing",
+          "severity": "low",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "Plants hardcoded off-token colours and off-scale spacing that bypass the file's own token system. Promoted from coverage-boundary in 2.1.0 for the spacing half: three --space tokens declared and three off-4px-grid raw values (11px, 17px, 9px). The off-token COLOURS remain unruled and this fixture must not be cited as evidence that they are clean."
     },
     {
       "file": "design/missing-states.html",
       "modality": "design",
-      "role": "coverage-boundary",
-      "expected": [],
-      "maxIncidentalFindings": 0,
-      "note": "Plants a happy-path-only data UI and a non-functional Refresh control. Both are structural, not lexical: anti-slop cannot see a missing state from one file."
+      "role": "positive",
+      "expected": [
+        {
+          "id": "dead-control",
+          "severity": "medium",
+          "confidence": "Hard defect"
+        }
+      ],
+      "note": "Plants a happy-path-only data UI and a non-functional Refresh control. Promoted from coverage-boundary in 2.1.0 for the dead control only: onclick=\"/* TODO: wire refresh */\" is locally decidable from the line. The missing empty/error/loading states stay a permanent coverage boundary -- a single-file regex cannot distinguish a component with no empty state from one whose empty state lives in a sibling file."
     },
     {
       "file": "design/fixed-desktop-shell.html",
       "modality": "design",
-      "role": "coverage-boundary",
-      "expected": [],
-      "maxIncidentalFindings": 0,
-      "note": "Plants a fixed-pixel page shell that cannot resize. anti-slop has no web responsive-sizing rule."
+      "role": "positive",
+      "expected": [
+        {
+          "id": "fixed-page-shell",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "fixed-grid-tracks",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "Plants a fixed-pixel page shell that cannot resize: width: 1200px on the shell, width: 640px on the lede, grid-template-columns: repeat(3, 360px). Promoted from coverage-boundary in 2.1.0 -- the web analogue of the shipped native fixed-content-frame and fixed-grid-columns rules."
     },
     {
       "file": "design/viewport-query-card.html",
@@ -613,10 +639,15 @@
     {
       "file": "design/vh-bottom-bar.html",
       "modality": "design",
-      "role": "coverage-boundary",
-      "expected": [],
-      "maxIncidentalFindings": 0,
-      "note": "Plants a 100vh surface whose fixed bottom bar ignores dvh and the safe-area inset."
+      "role": "positive",
+      "expected": [
+        {
+          "id": "vh-viewport-shell",
+          "severity": "low",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "Plants a 100vh surface whose fixed bottom bar ignores dvh and the safe-area inset. Promoted from coverage-boundary in 2.1.0. The rule is file-scoped rather than line-scoped because the progressive-enhancement idiom writes its fallback on the next line; the missing env(safe-area-inset-bottom) on the bar itself stays unruled."
     },
     {
       "file": "../fixtures/before.html",
@@ -657,9 +688,14 @@
           "id": "hype-copy",
           "severity": "low",
           "confidence": "Quality defect"
+        },
+        {
+          "id": "uniform-literal-radius",
+          "severity": "low",
+          "confidence": "Quality defect"
         }
       ],
-      "note": "rounded-everything was REMOVED as a label in 1.7.0 for the same reason as frosted-nav-neon.html: two border-radius:999px declarations (.btn and .pill) is not maximal rounding on every control. Everything else on this fixture still fires."
+      "note": "rounded-everything was REMOVED as a label in 1.7.0 for the same reason as frosted-nav-neon.html: two border-radius:999px declarations (.btn and .pill) is not maximal rounding on every control. uniform-literal-radius was ADDED in 2.1.0 and is a different claim about the same file: four literal border-radius values and no --radius token to vary from. Everything else on this fixture still fires."
     },
     {
       "file": "../fixtures/editorial-bold.html",
@@ -729,6 +765,320 @@
       "expected": [],
       "maxIncidentalFindings": 0,
       "note": "Native clean control: the same screen built by negotiation -- intrinsic sizing, a size-class branch, an adaptive grid, a measure cap rather than a leftover-sized value, ViewThatFits with an honest fallback, a one-shot haptic. The native counterpart of responsive-type-clean.html."
+    },
+    {
+      "file": "design/marketing-defaults.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "purple-gradient-default",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "ai-purple-class",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "uppercase-overline",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "blur-blob",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "shadcn-stats-magic",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "generic-microcopy",
+          "severity": "low",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "Authored in 2.1.0 to give the documented-fingerprint rules their first positives, and to close the two zero-fixture design rules the coverage sweep found. The gradient is from-indigo-500 to-violet-600 rather than to-blue: that is purple-gradient-default without also being purple-blue-gradient, so the two rules stay separable. ai-purple-class is labelled because the same two class tokens are its concentration threshold -- it is a genuine second finding on one composition, not a duplicate."
+    },
+    {
+      "file": "design/motion-rhythm.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "important-overuse",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "transition-all",
+          "severity": "low",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "uniform-section-padding",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        }
+      ],
+      "note": "Three concentration rules at their thresholds and no further: two transition-all, three py-20/py-24 sections, two !important declarations. The !important pair sits outside any prefers-reduced-motion block, which is what the rule's suppress guard exists to protect -- see design/near-miss-controls.html for the guarded direction."
+    },
+    {
+      "file": "design/gallery-unlabelled.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "outline-none",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "missing-alt",
+          "severity": "medium",
+          "confidence": "Hard defect"
+        },
+        {
+          "id": "img-no-dimensions",
+          "severity": "medium",
+          "confidence": "Hard defect"
+        }
+      ],
+      "note": "Both legs of missing-alt on one page: an img with no alt at all, and an img whose alt is the placeholder word 'photo'. outline: none is on :focus with no :focus-visible rule anywhere in the file, which is the only shape outline-none fires on. The first img carries width/height and the second does not, so img-no-dimensions fires once rather than twice."
+    },
+    {
+      "file": "design/legacy-theme.css",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "fixed-page-shell",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "fixed-grid-tracks",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "vh-viewport-shell",
+          "severity": "low",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "uniform-literal-radius",
+          "severity": "low",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "The corpus had no raw-CSS fixture at all, although several design rules target raw CSS and .css is a web surface. Four geometry rules proven on a stylesheet rather than on markup with a style block. Paired with design/tokens-clean.css, which is the same file rewritten against a stated token system."
+    },
+    {
+      "file": "design/tokens-clean.css",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Raw-CSS clean control, and the correct-idiom twin of design/legacy-theme.css: width: min(), margin-inline, 100dvh, repeat(auto-fit, minmax()), var(--space-*) throughout, var(--radius), a :focus-visible ring, named transition properties, and a prefers-reduced-motion block. It must produce ZERO findings, which is what makes it a control rather than a file that happens to be quiet."
+    },
+    {
+      "file": "design/hatched-wordmark.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Exercises the suppressed-capture path on the design surface, which no corpus fixture reached before 2.1.0. The gradient-text composition is real and is opted out on the line with a stated reason, so the default two-argument scan is silent while scanContent(..., { collectSuppressed: true }) reports one suppressed design-tell. See test/scanner.test.mjs for the assertion in both directions."
+    },
+    {
+      "file": "design/near-miss-controls.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Near-miss control for every rule added in 2.1.0: max-width: 1200px (the lookbehind), a width inside a one-line @media (the suppress), repeat(2, 1fr) and repeat(auto-fit, minmax()), text-xs uppercase tracking-tight, a blur-3xl with no rounded-full sibling, one transition-all, py-20 beside py-12 and py-32, a real currency figure, product-specific copy, a wired onclick, an img with real alt and dimensions, two literal radii, and outline: none silenced by a :focus-visible rule. Each construct sits one token away from a rule and none of them may fire."
+    },
+    {
+      "file": "code/render-user-card.tsx",
+      "modality": "code",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "dangerous-inner-html",
+          "severity": "high",
+          "confidence": "Hard defect"
+        },
+        {
+          "id": "tailwind-dynamic-class",
+          "severity": "medium",
+          "confidence": "Hard defect"
+        },
+        {
+          "id": "suppression-comment",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "async-foreach",
+          "severity": "medium",
+          "confidence": "Hard defect"
+        },
+        {
+          "id": "catch-any",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "The 2.1.0 JS/TS bug-class rules on one realistic component. .tsx is both a code surface and a web surface, so this fixture also proves the design table stays silent on a component that carries no design tell."
+    },
+    {
+      "file": "code/ingest_records.py",
+      "modality": "code",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "shell-injection",
+          "severity": "high",
+          "confidence": "Hard defect"
+        },
+        {
+          "id": "unsafe-deserialize",
+          "severity": "high",
+          "confidence": "Hard defect"
+        },
+        {
+          "id": "deprecated-api",
+          "severity": "low",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "apologetic-comment",
+          "severity": "low",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "deferral-comment",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "banner-comment",
+          "severity": "low",
+          "confidence": "Taste note"
+        }
+      ],
+      "note": "The Python-side security rules plus the three comment-slop rules. apologetic-comment and deferral-comment fire on different comments and never on the same one: the apologetic rule owns 'simplified implementation' and the deferral rule takes only the noun form, so the two cannot double-report. banner-comment counts four lines across two banners, which is its concentration threshold twice over."
+    },
+    {
+      "file": "code/pasted-snippet.js",
+      "modality": "code",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "dead-branch",
+          "severity": "medium",
+          "confidence": "Hard defect"
+        },
+        {
+          "id": "model-tooling-artifact",
+          "severity": "high",
+          "confidence": "Hard defect"
+        }
+      ],
+      "note": "A helper pasted in from an answer: an oaicite citation token in the header comment and an if (true) wrapper nobody removed. model-tooling-artifact is registered in both CODE_PATTERNS and TEXT_CONSTRUCTS; prose/plain-register.md is the other half of its coverage."
+    },
+    {
+      "file": "code/hatched-onboarding.js",
+      "modality": "code",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Exercises three families of the suppressed-capture path on the code surface in one file: a banned word in a hatched comment, a banned phrase in a hatched string literal, and a hatched innerHTML assignment. The default scan is silent; collectSuppressed reports three entries, all suppressedBy escape-hatch."
+    },
+    {
+      "file": "code/order-lookup.py",
+      "modality": "code",
+      "role": "coverage-boundary",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Plants SQL injection by f-string interpolation and by string concatenation. Both are real defects and this scanner has no rule for either: confidence-and-evidence.md lists the injection family as agent territory, because deciding whether a value is attacker-controlled needs the call graph. This file must never be cited as evidence that a scan cleared SQL injection."
+    },
+    {
+      "file": "code/safe-render.tsx",
+      "modality": "code",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Near-miss control for the JS/TS rules added in 2.1.0, using the counter-examples each rule was drafted against: DOMPurify.sanitize inside dangerouslySetInnerHTML, Promise.all over an async .map, catch (error: unknown), @ts-expect-error with a reason, a template literal holding complete class names, a lookup table, while (true), ready === true, a handler whose body has real work after its comment, a decorative alt=\"\" with dimensions, a divider comment carrying content, and Buffer.from."
+    },
+    {
+      "file": "code/safe-pipeline.py",
+      "modality": "code",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "The Python half of the same near-miss set: an argument-list subprocess call, yaml.safe_load, yaml.load with an explicit SafeLoader, json.loads, datetime.now(timezone.utc), a comment referencing a tracked issue by number rather than deferring, and a 'Minimal repro' comment that is not an apology."
+    },
+    {
+      "file": "native/LegacyProfileView.swift",
+      "modality": "native",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "fixed-font-size",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "dispatch-main-async-spam",
+          "severity": "low",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "The two native rules added in 2.1.0. Three hardcoded .font(.system(size:)) calls with no relativeTo: and no @ScaledMetric, and exactly three DispatchQueue.main.async hops, which is where the concentration rule starts: one bridge from a legacy delegate callback is legitimate and stays below it."
+    },
+    {
+      "file": "native/MeasuredCardStack.swift",
+      "modality": "native",
+      "role": "coverage-boundary",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Native coverage boundary. Nested GeometryReaders compute a split that a layout container would give for free, and feed sub-100pt fixed frames. GeometryReader overuse is a documented tell with no rule -- a proposed one was rejected because the legitimate uses outnumber the misuse -- and every frame here is below the >= 100pt threshold fixed-content-frame draws, so the file is honestly silent rather than clean."
+    },
+    {
+      "file": "prose/plain-register.md",
+      "modality": "prose",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "antithesis-not-just-x-y",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        },
+        {
+          "id": "model-tooling-artifact",
+          "severity": "high",
+          "confidence": "Hard defect"
+        },
+        {
+          "id": "plain-aiism-collocation",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        }
+      ],
+      "note": "The prose additions of 2.1.0. The antithesis is the 'not about X, it's about Y' reframe the qualifier set could not previously reach; the collocations are 'quietly building' and 'decisions compound', which is exactly the minCount of 2; the tooling token is a contentReference/oaicite pair. Paired with prose/plain-register-clean.md."
+    },
+    {
+      "file": "prose/plain-register-clean.md",
+      "modality": "prose",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Near-miss control for the prose rules added or widened in 2.1.0: 'Interest compounds annually' (subject outside the collocation list), 'held the space open' (not the bare metaphor), 'The signal that the sensor emits' (not 'sends a signal that'), a single collocation (below minCount), 'It's not about money.' as one clause with no second clause to complete the antithesis, and a [1] footnote, a :::note admonition and an attributedString identifier, none of which is a model tooling token."
     }
   ]
 }

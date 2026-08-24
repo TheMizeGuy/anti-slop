@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Fieldbook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  .legend-swatch { background: oklch(0.62 0.15 25) !important; }
+  .legend-label { color: oklch(0.3 0.02 60) !important; }
+</style>
+</head>
+<body class="bg-white text-slate-900">
+  <section class="mx-auto max-w-4xl px-6 py-20">
+    <h1 class="text-4xl font-semibold">Fieldbook</h1>
+    <p class="mt-3 text-slate-600">Survey notes that stay attached to the plot they came from.</p>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-6 py-20">
+    <h2 class="text-2xl font-semibold">Plots</h2>
+    <button class="mt-4 border border-slate-300 px-4 py-2 transition-all duration-300 hover:border-slate-500">
+      Add a plot
+    </button>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-6 py-24">
+    <h2 class="text-2xl font-semibold">Exports</h2>
+    <a href="/export.csv" class="mt-4 inline-block px-4 py-2 transition-all duration-300 hover:bg-slate-100">
+      Download the season
+    </a>
+  </section>
+</body>
+</html>

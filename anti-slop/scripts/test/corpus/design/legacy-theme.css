@@ -1,0 +1,33 @@
+/* Reporting console theme, carried forward from the 2019 build. */
+
+.app-shell {
+  width: 1180px;
+  margin: 0 auto;
+  height: 100vh;
+  display: grid;
+  grid-template-columns: repeat(4, 260px);
+}
+
+.panel {
+  background: #fbfbfd;
+  border: 1px solid #dcdce4;
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.panel__header {
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.pill {
+  border-radius: 12px;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  background: #ffffff;
+}

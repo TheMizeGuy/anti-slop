@@ -65,7 +65,7 @@ test("every fixture declares a valid role, and the role matches its labels", () 
 // The tolerance is declared per fixture and enforced, not assumed -- and since 2.1.0 it is
 // 0 everywhere, because 0 is what the suite has always enforced. Any finding on a negative
 // fixture is a false positive by construction, so the precision gate in corpus.test.mjs
-// (design tp=26, tolerance 0.02, i.e. fp must be 0) fails on the first one. A declared
+// (design tp=49 at 2.1.0, tolerance 0.02, i.e. fp must be 0) fails on the first one. A declared
 // tolerance of 1 could therefore never be the failing assertion: it was strictly dominated
 // slack that read like real slack, on all 24 negative fixtures.
 

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Quarry</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  .page { max-width: 1200px; margin-inline: auto; }
+  @media (min-width: 900px) { .page { width: 720px; } }
+  .board { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+  .card { border-radius: 10px; }
+  .chip { border-radius: 4px; }
+  a:focus { outline: none; }
+  a:focus-visible { outline: 2px solid oklch(0.55 0.14 250); outline-offset: 2px; }
+</style>
+</head>
+<body class="bg-white text-slate-900">
+  <div class="page">
+    <div class="absolute -z-10 h-64 w-96 bg-[url('/photos/quarry.jpg')] bg-cover blur-3xl opacity-30"></div>
+
+    <section class="px-6 py-20">
+      <p class="text-xs uppercase tracking-tight text-slate-500">Site 4</p>
+      <h1 class="mt-3 text-4xl font-semibold">Quarry</h1>
+      <p class="mt-3 text-slate-600">Your last haul ticket cleared the weighbridge 40 minutes ago.</p>
+      <button type="button" class="mt-4 border border-slate-300 px-4 py-2 transition-all duration-200" onclick="openDrawer()">
+        Open the drawer
+      </button>
+    </section>
+
+    <section class="board px-6 py-12">
+      <div class="card border border-slate-200 p-4">
+        <p class="text-sm text-slate-500">Cleared this week</p>
+        <p class="text-3xl font-semibold">$12,480.00</p>
+        <p class="text-sm text-slate-500">Up 4 loads against the same week last season</p>
+      </div>
+      <figure class="card border border-slate-200 p-4">
+        <img src="/photos/weighbridge.jpg" alt="Weighbridge readout showing 24.6 tonnes" width="360" height="240">
+        <figcaption class="chip mt-2 text-sm text-slate-500">Weighbridge, 06:14</figcaption>
+      </figure>
+    </section>
+
+    <section class="tiles px-6 py-32">
+      <p class="text-slate-600">Ticket history exports as CSV, one row per haul.</p>
+    </section>
+  </div>
+</body>
+</html>

@@ -157,13 +157,18 @@ function hasContextException(lowerWord, contentLower) {
 }
 
 // ── Count regex matches per non-suppressed, non-escaped line ──
+// Three counting shapes, in precedence order: `classAll` (unordered class-token set),
+// `count` (a per-line predicate for tells whose arithmetic a regex cannot state -- see
+// `token-drift-spacing`, which has to know that 13 is off a 4px grid and 16 is not), and
+// the default `pattern` match count.
 function countLinePattern(lines, pat) {
-  const g = pat.classAll ? null : globalize(pat.pattern);
+  const g = pat.classAll || pat.count ? null : globalize(pat.pattern);
   let count = 0;
   for (const line of lines) {
     if (ESCAPE_HATCH.test(line)) continue;
     if (pat.suppress && pat.suppress.test(line)) continue;
     if (pat.classAll) { count += countClassAll(line, pat.classAll); continue; }
+    if (pat.count) { count += pat.count(line); continue; }
     const m = line.match(g);
     if (m) count += m.length;
   }
@@ -205,12 +210,13 @@ function extractEscapeHatchedComments(content) {
 // guard still applies: if it matches, the rule would not have fired even without the
 // escape hatch, so that hit is a rule-internal exclusion, not a suppressed finding.
 function countLinePatternOnEscapedLines(lines, pat) {
-  const g = pat.classAll ? null : globalize(pat.pattern);
+  const g = pat.classAll || pat.count ? null : globalize(pat.pattern);
   let count = 0;
   for (const line of lines) {
     if (!ESCAPE_HATCH.test(line)) continue;
     if (pat.suppress && pat.suppress.test(line)) continue;
     if (pat.classAll) { count += countClassAll(line, pat.classAll); continue; }
+    if (pat.count) { count += pat.count(line); continue; }
     const m = line.match(g);
     if (m) count += m.length;
   }
@@ -298,7 +304,7 @@ function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle,
       if (isTestFile && pat.skipInTests) continue;
       if (!fileGuardOk(pat, content)) continue;
       const count = countLinePatternOnEscapedLines(lines, pat);
-      if (count > 0) {
+      if (meetsThreshold(pat, count)) {
         suppressed.push({
           type: "code-pattern", name: pat.name, count,
           severity: resolveSeverity(pat.severity, count),
@@ -425,14 +431,18 @@ export function scanContent(content, filePath, opts = {}) {
   if (isProse) {
     for (const pat of TEXT_CONSTRUCTS) {
       const matches = proseScan.match(globalize(pat.pattern));
-      if (matches) {
+      const count = matches ? matches.length : 0;
+      // The concentration gate applies here too. Every construct shipped before 2.1.0
+      // declares no mode, for which meetsThreshold is exactly the old `if (matches)`;
+      // a construct that only reads as a tell in bulk (plain-aiism-collocation) needs it.
+      if (meetsThreshold(pat, count)) {
         violations.push({
           type: "text-construct",
           name: pat.name,
-          count: matches.length,
+          count,
           severity: pat.severity,
           confidence: pat.confidence,
-          desc: `${pat.desc} (${matches.length}x)`,
+          desc: `${pat.desc} (${count}x)`,
         });
       }
     }
@@ -509,7 +519,10 @@ export function scanContent(content, filePath, opts = {}) {
       if (isTestFile && pat.skipInTests) continue;
       if (!fileGuardOk(pat, content)) continue;
       const count = countLinePattern(lines, pat);
-      if (count > 0) {
+      // Same gate as the design table: every code rule shipped before 2.1.0 declares no
+      // mode and behaves exactly as the old `count > 0`, while `banner-comment` -- a Taste
+      // note whose whole claim is "this file is divided by ASCII art" -- needs two.
+      if (meetsThreshold(pat, count)) {
         violations.push({
           type: "code-pattern",
           name: pat.name,
