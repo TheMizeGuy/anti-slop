@@ -576,8 +576,8 @@ rows: colors, fonts, radii, spacing. Weight by repetition, and count before flag
 ### Which of these the scanner can actually see
 
 Presence-flaggable and scanner-implemented are different claims, and this section previously
-ran them together under a heading about thresholds. Most of the compositions above have **no
-rule**, so a clean scan of a `.tsx` file says nothing whatsoever about them. They are the
+ran them together under a heading about thresholds. Most of the compositions in this file have
+**no rule**, so a clean scan of a `.tsx` file says nothing whatsoever about them. They are the
 agent's to find, and `empirical-rankings.md` § Coverage matrix states the same boundary
 across every family.
 
@@ -591,8 +591,11 @@ across every family.
 | Tracked-out uppercase overline (Strongest-10 #4) | Yes (`uppercase-overline`) |
 | The verbatim hero type run (Strongest-10 #9) | Yes (`tailwind-hero-triplet`) |
 | The shadcn stats literals | Yes (`shadcn-stats-magic`) |
-| Generic microcopy literals (incl. "Scroll to explore") | Yes (`generic-microcopy`) |
-| Unthemed Bootstrap compiled palette | Yes (`bootstrap-default-blue`) |
+| Generic microcopy literals | Yes (`generic-microcopy`) |
+| Hero scroll-indicator microcopy ("Scroll to explore") | Yes (`hero-scroll-hint`) |
+| Unthemed Bootstrap palette hexes (`#0d6efd` / `#0b5ed7` / `#dee2e6`) | Yes (`bootstrap-default-blue`, and only where the file also carries the primary blue) |
+| Bootstrap's 4px-radius-everywhere | Partly (`uniform-literal-radius`, 3+, and only where the file states no radius identity) |
+| Bootstrap's default shadow, zebra-striped tables | **No** |
 | Keyword easings / scale(0) entrances, cards-in-cards, logo tells | **No** |
 | `w-64` sidebar + `h-16` header (Strongest-10 #3) | **No** |
 | "Most Popular" floating badge (#5) | **No** |
@@ -602,15 +605,20 @@ across every family.
 | 4-column footer (#10) | **No** |
 | Badge pill above the hero, two-button CTA group, alternating L-R sections, wave dividers, testimonial trio, pricing convention, 404 formula, the SaaS page sequence | **No** |
 
-The scanner's concentration thresholds, for the rules that do exist:
+Every design rule that counts before it reports, and the threshold it counts to. All ten are
+listed; a rule absent from this table is presence-flaggable, where one hit is the finding.
 
 | Tell | Fires at | Because |
 |---|--:|---|
 | `rounded-everything` | 3 | "The same radius on every interactive control" is a pattern; one pill is a choice |
+| `uniform-literal-radius` | 3 | Same claim in raw CSS, and silenced entirely on any file that states a radius identity (a `--radius` token, or a `border-radius: var(...)`) |
+| `uniform-section-padding` | 3 | One `py-20` beside a `py-12` and a `py-32` is a rhythm, not a default |
 | `cream-serif-default` | 2 | The combination is the signal -- any two of cream, serif display, warm accent |
 | `ai-purple-hex` / `ai-purple-class` | 2 | The tell is "indigo IS the palette", which one declaration does not establish |
-| `bootstrap-default-blue` | 2 | Same logic, Bootstrap's compiled literals; one hex is a stray, two is the unthemed framework |
+| `bootstrap-default-blue` | 2 | Same logic, Bootstrap's compiled literals. Counting alone was not enough here: the count sums matches, not distinct hexes, so the rule additionally requires the primary blue to be in the file before the border gray counts toward anything |
 | `important-overuse` | 2 | The rule is named *overuse*; one override against a third-party widget is pragmatism |
+| `transition-all` | 2 | One `transition: all` on a single control is laziness; two is the file's default |
+| `token-drift-spacing` | 2 | Needs two off-scale values, and only in a file that declared two `--space` tokens to drift from |
 
 **The floor rule: a lone utility-class hit is not a finding.** One `text-slate-600`, one
 `shadow-sm`, one `rounded-full` on a decorative avatar, on an otherwise coherent surface,
@@ -655,15 +663,15 @@ AI produces pages in this exact order regardless of project type: nav, hero, log
 
 ### The Bootstrap Fingerprint
 
-The Tailwind sections above have a Bootstrap twin. Unthemed Bootstrap ships a recognizable set of compiled literals: primary blue `#0d6efd` (hover `#0b5ed7`), `#dee2e6` borders, the `0 2px 4px rgba(0,0,0,.1)` default shadow, 4px radius on everything, and zebra-striped tables. Any one is unremarkable; two or more together is the framework's palette wearing the product's clothes, the same non-decision as an un-themed shadcn kit. The scanner matches the three hex literals as `bootstrap-default-blue` (concentration, from two occurrences), because those exact values reach shipped CSS only by leaving the theme untouched.
+The Tailwind sections above have a Bootstrap twin. Unthemed Bootstrap ships a recognizable set of compiled literals: primary blue `#0d6efd` (hover `#0b5ed7`), `#dee2e6` borders, the `0 2px 4px rgba(0,0,0,.1)` default shadow, 4px radius on everything, and zebra-striped tables. Any one is unremarkable; two or more together is the framework's palette wearing the product's clothes, the same non-decision as an un-themed shadcn kit. The scanner matches the three hex literals as `bootstrap-default-blue` (concentration, from two occurrences), because those exact values reach shipped CSS only by leaving the theme untouched. The count sums matches rather than distinct hexes, so the rule additionally requires the primary blue to be present in the file: one chosen neutral gray reused across a sheet is a token decision, not an unthemed framework, and the rule has to be able to tell those apart. The trade is stated recall -- a sheet that themed the blue and kept `#dee2e6` is invisible to the scanner and is the agent's to catch.
 
-**Remediation:** theme the framework -- set `$primary`, the border and radius variables, and the shadow scale to project values -- or adopt the project's own tokens. For tables, kill the zebra striping and use a subtle hover row highlight; striping earns its place only on dense reference tables read row-by-row. Swapping `#0d6efd` for another framework's default is the reset-the-clock move, not a fix.
+**Remediation:** theme the framework -- set `$primary`, the border and radius variables, and the shadow scale to project values -- or adopt the project's own tokens. For tables, replace the striping with row rules (a 1px bottom border in the border token) and a row highlight on both `:hover` and `:focus-visible`, so the row boundary survives touch and keyboard rather than becoming pointer-only; striping earns its place on dense reference tables read row-by-row. Swapping `#0d6efd` for another framework's default is the reset-the-clock move, not a fix. Mid-migration is the one file where these literals legitimately sit together in bulk -- a legacy token sheet naming the old values so they can be replaced -- and the escape hatch (`anti-slop-allow:` / `unslop-ignore` on the line) is the designed answer there.
 
 *(This entry and the three below are adapted from [VibeCurb](https://github.com/Yu-369/VibeCurb), MIT, Copyright (c) 2026 Yu-369 -- heuristic provenance, not corpus-ranked; graded accordingly.)*
 
 ### Scroll Indicators in the Hero
 
-"Scroll to explore" with a bouncing chevron at the bottom of a full-viewport hero. A generated page adds it because the hero was built as a poster rather than as the top of a page. The scanner matches the literal as part of `generic-microcopy`.
+"Scroll to explore" with a bouncing chevron at the bottom of a full-viewport hero. A generated page adds it because the hero was built as a poster rather than as the top of a page. The scanner matches the literal as `hero-scroll-hint`, its own rule rather than a sixth string inside `generic-microcopy`: the hint asserts something true about the page, so it is a Pattern smell rather than that rule's Quality defect, and its remediation is structural rather than a copy rewrite. The rule skips any line carrying an `aria-label` or an `alt`, where the remediation below would delete screen-reader output instead of fixing a layout.
 
 **Remediation:** let the layout invite scrolling. Content visibly cut at the fold says "there is more" better than a label does. If the hero genuinely fills the viewport with nothing peeking, that is the thing to fix.
 
@@ -679,6 +687,9 @@ Two motion defaults that mark generated CSS the way keyword colors mark a palett
 
 **Remediation:** name the curves -- a `cubic-bezier()` or spring chosen for the interaction, declared once as a token and reused -- and start entrances at `scale(0.9)`-`scale(0.97)` paired with opacity. Both remediations add intent and remove no motion, so the remediation floor is clear. No scanner rule on either: keyword easings are ubiquitous in human CSS and the corpus has no ranking for them, so this stays an agent judgment weighted the same way as the rest of the animation family (lightly, per `empirical-rankings.md`).
 
+### The "Logo Swap Test"
+The fastest diagnostic for AI-generated design: if you can swap any SaaS logo onto the page and it still makes sense, the design lacks identity. Good design is inseparable from its content and brand.
+
 ## Logo and Brand Mark Tells
 
 Generated logos and brand boards have their own default set, distinct from page-level tells. These apply when reviewing brand output -- logo concepts, identity boards, hero mockups with generated marks. *(Adapted from [VibeCurb](https://github.com/Yu-369/VibeCurb), MIT, Copyright (c) 2026 Yu-369; heuristic provenance.)*
@@ -692,6 +703,3 @@ The recurring defaults, in rough order of frequency:
 - **Hairline-thin strokes** that vanish at favicon scale, and **crests with 4+ elements** (an illustration, not a logo)
 
 **Remediation is reduction, not swapping cliches.** A sound mark passes four tests: constructible from at most 3 geometric primitives; recognizable at 16x16 (the favicon test); describable in one sentence ("two overlapping rounded squares with the intersection removed"); and identical in black-on-white and white-on-black (the inversion test). A mark that fails these is not fixed by picking a different cliche from the list above. No scanner rules here -- image output is outside the scanner's reach; these are the agent's to catch.
-
-### The "Logo Swap Test"
-The fastest diagnostic for AI-generated design: if you can swap any SaaS logo onto the page and it still makes sense, the design lacks identity. Good design is inseparable from its content and brand.

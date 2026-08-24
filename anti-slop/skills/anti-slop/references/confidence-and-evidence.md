@@ -132,7 +132,7 @@ expensive: tell families this catalogue documents in full, with worked examples,
 deterministic rule matches at all. A scan is silent on every one of them, and silence here
 reads exactly like a pass.
 
-As of 2.1.0, after that release added rules for command injection, unsafe deserialization,
+As of 2.2.1, and still after 2.1.0 added rules for command injection, unsafe deserialization,
 `dangerouslySetInnerHTML`, and the comment-slop family, these remain un-ruled:
 
 | Family | Taught in | Why there is no rule |

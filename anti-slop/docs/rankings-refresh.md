@@ -168,3 +168,19 @@ narrowed from "any responsive type scale" to the verbatim Tailwind run and given
 the two AI-purple rules became concentration tells with thresholds; design and native tells
 were split by file extension; the corpus absorbed ui-craft's ten authored fixtures and
 gained a native modality.
+
+### Parallel authoring from a shared upstream, 2.2.x
+
+The 2.2.0 UI tells did not travel down the one-way flow above. Both repos absorbed the same
+third-party MIT catalogue ([VibeCurb](https://github.com/Yu-369/VibeCurb), Copyright (c)
+2026 Yu-369) in the same release wave: they landed here as `design-patterns.md` entries plus
+the `bootstrap-default-blue` and `hero-scroll-hint` scanner rules, and in ui-craft as new
+reference files rather than as a delta applied to `references/catalogue/01-ai-tells.md`.
+The substance agrees across both -- the `scale(0.9)`-`scale(0.97)` entrance range and the
+logo ban list are the same wording -- so this is a record correction, not content drift.
+
+**Ownership is unchanged: anti-slop owns the UI tells.** A future refresh applies its delta
+here first and propagates outward, per the table above. Two known asymmetries stand as
+deliberate omissions rather than pending work: ui-craft's own files carry the material in
+its house voice rather than as a verbatim mirror, and the hero scroll-indicator tell has no
+ui-craft catalogue entry -- fleet coverage for it comes from this scanner's rule.

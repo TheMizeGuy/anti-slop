@@ -176,7 +176,7 @@ Sources (accessed 2026-07-03): Wikipedia "Signs of AI writing" (en.wikipedia.org
 
 ## Coverage matrix
 
-The systematic answer to a question this catalogue documented rules for and never answered: **which tells can a scan reach at all?** Without it the not-assessed rule is aspirational, because nothing says which families a clean scan was silent about. Written against the 2.1.0 rule inventory.
+The systematic answer to a question this catalogue documented rules for and never answered: **which tells can a scan reach at all?** Without it the not-assessed rule is aspirational, because nothing says which families a clean scan was silent about. Written against the 2.2.1 rule inventory.
 
 Read the columns as: **scanner rule** = a deterministic rule exists and fires on one file's text. **Agent-reachable** = the `slop-detector` agent can judge it from source with `Read`/`Grep`/`Glob`. **Needs runtime or build** = neither layer can settle it without a compiler, a browser, or a running app.
 
@@ -199,6 +199,9 @@ Read the columns as: **scanner rule** = a deterministic rule exists and fires on
 | N+1 queries, missing timeouts, unbounded queries, race conditions | **No** | Partly (needs block scope the agent has and the scanner does not) | Sometimes |
 | Hardcoded secrets | Yes (Pattern smell; cannot prove liveness) | Yes | **Yes** to confirm |
 | AI purple, gradients, generic fonts, cream-serif default, frosted nav, gradient text | Yes | Yes | no |
+| Unthemed Bootstrap palette hexes | Yes (2.2.0, narrowed 2.2.1 to require the primary blue) | Yes | no |
+| Bootstrap's default shadow and zebra-striped tables | **No** | Yes | no |
+| Generic microcopy and hero scroll-indicator literals | Yes (`generic-microcopy`, `hero-scroll-hint` 2.2.1) | Yes | no |
 | Strongest-10 entries 3, 5, 6, 8, 10 and most AI Component Fingerprints | **No** | Yes | no |
 | Fixed page shells, fixed grid tracks, `100vh` shells, token drift, uniform radius | Yes (2.1.0) | Yes | no |
 | Missing alt, `outline: none`, dead controls | Yes (2.1.0) | Yes | no |
