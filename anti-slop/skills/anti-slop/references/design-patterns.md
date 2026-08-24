@@ -591,7 +591,9 @@ across every family.
 | Tracked-out uppercase overline (Strongest-10 #4) | Yes (`uppercase-overline`) |
 | The verbatim hero type run (Strongest-10 #9) | Yes (`tailwind-hero-triplet`) |
 | The shadcn stats literals | Yes (`shadcn-stats-magic`) |
-| Generic microcopy literals | Yes (`generic-microcopy`) |
+| Generic microcopy literals (incl. "Scroll to explore") | Yes (`generic-microcopy`) |
+| Unthemed Bootstrap compiled palette | Yes (`bootstrap-default-blue`) |
+| Keyword easings / scale(0) entrances, cards-in-cards, logo tells | **No** |
 | `w-64` sidebar + `h-16` header (Strongest-10 #3) | **No** |
 | "Most Popular" floating badge (#5) | **No** |
 | `bg-primary/10` icon containers (#6) | **No** |
@@ -607,6 +609,7 @@ The scanner's concentration thresholds, for the rules that do exist:
 | `rounded-everything` | 3 | "The same radius on every interactive control" is a pattern; one pill is a choice |
 | `cream-serif-default` | 2 | The combination is the signal -- any two of cream, serif display, warm accent |
 | `ai-purple-hex` / `ai-purple-class` | 2 | The tell is "indigo IS the palette", which one declaration does not establish |
+| `bootstrap-default-blue` | 2 | Same logic, Bootstrap's compiled literals; one hex is a stray, two is the unthemed framework |
 | `important-overuse` | 2 | The rule is named *overuse*; one override against a third-party widget is pragmatism |
 
 **The floor rule: a lone utility-class hit is not a finding.** One `text-slate-600`, one
@@ -649,6 +652,46 @@ CSS `radial-gradient(circle, #e5e7eb 1px, transparent 1px)` with `background-siz
 AI produces pages in this exact order regardless of project type: nav, hero, logo bar, stats row, feature grid, alternating L-R features, testimonials, pricing, FAQ accordion, CTA repeat, footer. A restaurant, portfolio, e-commerce store, and SaaS product all get this same structure.
 
 **Instead:** Let the content determine the page structure. A portfolio leads with work samples. A restaurant leads with the menu or a reservation CTA. An e-commerce site leads with products. The page structure should match what the user came to do.
+
+### The Bootstrap Fingerprint
+
+The Tailwind sections above have a Bootstrap twin. Unthemed Bootstrap ships a recognizable set of compiled literals: primary blue `#0d6efd` (hover `#0b5ed7`), `#dee2e6` borders, the `0 2px 4px rgba(0,0,0,.1)` default shadow, 4px radius on everything, and zebra-striped tables. Any one is unremarkable; two or more together is the framework's palette wearing the product's clothes, the same non-decision as an un-themed shadcn kit. The scanner matches the three hex literals as `bootstrap-default-blue` (concentration, from two occurrences), because those exact values reach shipped CSS only by leaving the theme untouched.
+
+**Remediation:** theme the framework -- set `$primary`, the border and radius variables, and the shadow scale to project values -- or adopt the project's own tokens. For tables, kill the zebra striping and use a subtle hover row highlight; striping earns its place only on dense reference tables read row-by-row. Swapping `#0d6efd` for another framework's default is the reset-the-clock move, not a fix.
+
+*(This entry and the three below are adapted from [VibeCurb](https://github.com/Yu-369/VibeCurb), MIT, Copyright (c) 2026 Yu-369 -- heuristic provenance, not corpus-ranked; graded accordingly.)*
+
+### Scroll Indicators in the Hero
+
+"Scroll to explore" with a bouncing chevron at the bottom of a full-viewport hero. A generated page adds it because the hero was built as a poster rather than as the top of a page. The scanner matches the literal as part of `generic-microcopy`.
+
+**Remediation:** let the layout invite scrolling. Content visibly cut at the fold says "there is more" better than a label does. If the hero genuinely fills the viewport with nothing peeking, that is the thing to fix.
+
+### Cards Inside Cards Inside Cards
+
+A bordered, rounded, shadowed container holding another bordered, rounded, shadowed container holding a third. Each wrapper was generated in isolation, so each brought its own elevation. The nesting reads as bureaucracy: three frames, one piece of content.
+
+**Remediation:** one container level carries the elevation; inner groupings use spacing, rules, or background shifts. Judgment call, no scanner rule -- Pattern smell, and grade by depth (two levels can be a real hierarchy; three almost never are).
+
+### The Unchosen Easing and the scale(0) Entrance
+
+Two motion defaults that mark generated CSS the way keyword colors mark a palette. First: every `transition` and `animation` in the file runs on CSS keyword easings (`ease`, `ease-in-out`, `linear`) -- the browser's "nobody decided" curves. A keyword easing is fine when chosen; a file where no curve was ever named is a file where no motion was ever designed. Second: entrance animations from `scale(0)`, growing elements out of nothingness. Nothing physical appears from zero; the generated look is a rendering glitch played on purpose.
+
+**Remediation:** name the curves -- a `cubic-bezier()` or spring chosen for the interaction, declared once as a token and reused -- and start entrances at `scale(0.9)`-`scale(0.97)` paired with opacity. Both remediations add intent and remove no motion, so the remediation floor is clear. No scanner rule on either: keyword easings are ubiquitous in human CSS and the corpus has no ranking for them, so this stays an agent judgment weighted the same way as the rest of the animation family (lightly, per `empirical-rankings.md`).
+
+## Logo and Brand Mark Tells
+
+Generated logos and brand boards have their own default set, distinct from page-level tells. These apply when reviewing brand output -- logo concepts, identity boards, hero mockups with generated marks. *(Adapted from [VibeCurb](https://github.com/Yu-369/VibeCurb), MIT, Copyright (c) 2026 Yu-369; heuristic provenance.)*
+
+The recurring defaults, in rough order of frequency:
+
+- **Brain/neuron network marks** for anything AI-adjacent -- the single most common generated-logo cliche
+- **Globe with a swoosh** (1990s corporate identity), **shield with wings** (the lazy security mark), **interlocking rings**, **infinity symbols**, **sparkle bursts**
+- **Metallic/chrome 3D rendering** -- logos are flat; bevels and reflections mark a mark as generated
+- **Gradient-dependent marks** -- if the shape is unrecognizable in one flat color, the form is weak
+- **Hairline-thin strokes** that vanish at favicon scale, and **crests with 4+ elements** (an illustration, not a logo)
+
+**Remediation is reduction, not swapping cliches.** A sound mark passes four tests: constructible from at most 3 geometric primitives; recognizable at 16x16 (the favicon test); describable in one sentence ("two overlapping rounded squares with the intersection removed"); and identical in black-on-white and white-on-black (the inversion test). A mark that fails these is not fixed by picking a different cliche from the list above. No scanner rules here -- image output is outside the scanner's reach; these are the agent's to catch.
 
 ### The "Logo Swap Test"
 The fastest diagnostic for AI-generated design: if you can swap any SaaS logo onto the page and it still makes sense, the design lacks identity. Good design is inseparable from its content and brand.
