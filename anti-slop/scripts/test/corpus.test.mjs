@@ -47,6 +47,43 @@ test("overall precision/recall have not regressed below baseline - tolerance", (
   );
 });
 
+// ── Per-rule gate ─────────────────────────────────────────────────────────────
+// The aggregate gates above cannot defend a single rule, and the per-modality gates only
+// can while the modality counts stay small: with tolerance T, a bucket of `tp` true
+// positives absorbs a fully broken single-label rule as soon as 1/tp <= T, i.e. at tp=50
+// for T=0.02. The overall bucket is already past that line. Protection is therefore
+// INVERSELY proportional to corpus size, which is the opposite of the intuition -- so the
+// per-rule rows the baseline has always committed (and no test has ever read) are asserted
+// here directly, with no tolerance at all.
+const KNOWN_FALSE_NEGATIVES = new Set([
+  // Labeled ground truth the scanner does not currently reach: the fixture's setState call
+  // sits behind a helper, outside the useEffect body the pattern can see.
+  "useeffect-setstate",
+]);
+
+test("no individual rule has lost a true positive or gained a false positive", () => {
+  const currentByRule = new Map(measure().rules.map((r) => [r.rule, r]));
+  for (const base of baseline.rules) {
+    if (KNOWN_FALSE_NEGATIVES.has(base.rule)) continue;
+    const current = currentByRule.get(base.rule);
+    assert.ok(
+      current,
+      `rule "${base.rule}" scored ${base.tp} true positive(s) in the baseline and now fires on ` +
+        `nothing at all.\n${explain(`Rule "${base.rule}"`, null, base)}`,
+    );
+    assert.ok(
+      current.tp >= base.tp,
+      `rule "${base.rule}" lost true positives (${base.tp} -> ${current.tp}).\n` +
+        explain(`Rule "${base.rule}"`, current, base),
+    );
+    assert.ok(
+      current.fp <= base.fp,
+      `rule "${base.rule}" gained false positives (${base.fp} -> ${current.fp}).\n` +
+        explain(`Rule "${base.rule}"`, current, base),
+    );
+  }
+});
+
 test("per-modality precision/recall have not regressed below baseline - tolerance", () => {
   const result = measure();
   const currentByModality = new Map(result.modalities.map((m) => [m.modality, m]));

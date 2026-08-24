@@ -9,13 +9,15 @@ import {
   CODE_PATTERNS,
   TEXT_CONSTRUCTS,
   NATIVE_PATTERNS,
-  CONTEXT_EXCEPTIONS,
+  CONTEXT_EXCEPTION_REGEXES,
   ESCAPE_HATCH,
   EMDASH_MIN_COUNT,
   EMDASH_MIN_DENSITY,
   EMOJI_REGEX,
+  EMOJI_FILE_GUARD,
+  EMOJI_ESCALATE_COUNT,
   PROSE_EXTENSIONS,
-  CODE_EXTENSIONS,
+  CODE_SURFACE_EXTENSIONS,
   WEB_SURFACE_EXTENSIONS,
   NATIVE_UI_EXTENSIONS,
   CONCENTRATION,
@@ -56,16 +58,84 @@ function stripProseNoise(content) {
   return out.join("\n");
 }
 
-// ── Comment lines only (for scanning code files for prose-style tells) ──
+const LEADING_COMMENT = /^\s*(\/\/|#|\*|\/\*|<!--|--)/;
+const TRAILING_COMMENT = /(?:\/\/|\/\*|<!--|#|--).*$/;
+
+// ── Blank every string literal on a line ──
+// A `//` inside "http://example" is not a comment marker, and a banned word inside a UI
+// copy string is not a comment. Both are handled by removing the literals first.
+function stripStringLiterals(line) {
+  return line
+    .replace(/`(?:\\.|[^`\\])*`/g, "``")
+    .replace(/"(?:\\.|[^"\\])*"/g, '""')
+    .replace(/'(?:\\.|[^'\\])*'/g, "''");
+}
+
+// ── Comment text only (for scanning code files for prose-style tells) ──
+// Both comment shapes count: a whole line whose first token is a marker, and the tail of
+// a line after an unquoted marker. Trailing comments are the most common comment form in
+// real code, and scanning only full-line comments made every one of them invisible.
 function extractComments(content) {
-  return content.split("\n")
-    .filter(l => /^\s*(\/\/|#|\*|\/\*|<!--|--)/.test(l) && !ESCAPE_HATCH.test(l))
-    .join("\n");
+  const out = [];
+  for (const line of content.split("\n")) {
+    if (ESCAPE_HATCH.test(line)) continue;
+    if (LEADING_COMMENT.test(line)) { out.push(line); continue; }
+    const tail = stripStringLiterals(line).match(TRAILING_COMMENT);
+    if (tail) out.push(tail[0]);
+  }
+  return out.join("\n");
 }
 
 // ── Blank any line carrying the escape-hatch marker (preserves line count) ──
 function stripEscapeHatchLines(content) {
   return content.split("\n").map(l => (ESCAPE_HATCH.test(l) ? "" : l)).join("\n");
+}
+
+// ── Mirror of stripEscapeHatchLines that KEEPS only the escape-hatched lines ──
+function extractEscapeHatchedLines(content) {
+  return content.split("\n").map(l => (ESCAPE_HATCH.test(l) ? l : "")).join("\n");
+}
+
+// ── File-scope guards (rules.mjs `requires` / `requiresMinCount` / `unless`) ──
+// Evaluated ONCE per file, before the per-line loop: a rule whose file-level precondition
+// fails never runs at all. A rule declaring neither field is always allowed.
+export function fileGuardOk(pat, content) {
+  if (pat.unless && pat.unless.test(content)) return false;
+  if (pat.requires) {
+    const found = content.match(globalize(pat.requires));
+    if (!found || found.length < (pat.requiresMinCount || 1)) return false;
+  }
+  return true;
+}
+
+// ── Class-attribute token sets ──
+// Utility-class order inside a `class=` attribute is arbitrary, so a fingerprint rule has
+// to match the token SET, not a sequence. Scoped to one attribute value: a whole-line AND
+// would match `class="rounded-xl"` on one element and `class="shadow-sm border"` on the
+// next, which is two elements rather than one fingerprint.
+const CLASS_ATTR = /\b(?:class|className)\s*=\s*(?:"([^"]*)"|'([^']*)'|\{\s*`([^`]*)`\s*\}|\{\s*"([^"]*)"\s*\}|\{\s*'([^']*)'\s*\})/g;
+
+function classTokenSets(line) {
+  const sets = [];
+  const re = globalize(CLASS_ATTR);
+  re.lastIndex = 0;
+  let m;
+  while ((m = re.exec(line)) !== null) {
+    const value = m[1] ?? m[2] ?? m[3] ?? m[4] ?? m[5] ?? "";
+    sets.push(value.split(/\s+/).filter(Boolean));
+  }
+  return sets;
+}
+
+// One hit per class attribute whose token set contains every required token.
+function countClassAll(line, required) {
+  let hits = 0;
+  for (const tokens of classTokenSets(line)) {
+    const complete = required.every((req) =>
+      typeof req === "string" ? tokens.includes(req) : tokens.some((t) => req.test(t)));
+    if (complete) hits += 1;
+  }
+  return hits;
 }
 
 function globalize(re) {
@@ -76,13 +146,24 @@ function resolveSeverity(sev, count) {
   return typeof sev === "function" ? sev(count) : sev;
 }
 
+// ── Domain-context exception ──
+// Word-start anchored (see rules.mjs CONTEXT_EXCEPTION_REGEXES). The old raw
+// `contentLower.includes(entry)` was an unanchored substring test over the whole file, so
+// the word "important" excused a banned word whose exception list contains "port", and
+// "settings" excused one whose list contains "set", in almost every real document.
+function hasContextException(lowerWord, contentLower) {
+  const exceptions = CONTEXT_EXCEPTION_REGEXES.get(lowerWord);
+  return Boolean(exceptions && exceptions.some((re) => re.test(contentLower)));
+}
+
 // ── Count regex matches per non-suppressed, non-escaped line ──
 function countLinePattern(lines, pat) {
-  const g = globalize(pat.pattern);
+  const g = pat.classAll ? null : globalize(pat.pattern);
   let count = 0;
   for (const line of lines) {
     if (ESCAPE_HATCH.test(line)) continue;
     if (pat.suppress && pat.suppress.test(line)) continue;
+    if (pat.classAll) { count += countClassAll(line, pat.classAll); continue; }
     const m = line.match(g);
     if (m) count += m.length;
   }
@@ -124,11 +205,12 @@ function extractEscapeHatchedComments(content) {
 // guard still applies: if it matches, the rule would not have fired even without the
 // escape hatch, so that hit is a rule-internal exclusion, not a suppressed finding.
 function countLinePatternOnEscapedLines(lines, pat) {
-  const g = globalize(pat.pattern);
+  const g = pat.classAll ? null : globalize(pat.pattern);
   let count = 0;
   for (const line of lines) {
     if (!ESCAPE_HATCH.test(line)) continue;
     if (pat.suppress && pat.suppress.test(line)) continue;
+    if (pat.classAll) { count += countClassAll(line, pat.classAll); continue; }
     const m = line.match(g);
     if (m) count += m.length;
   }
@@ -153,8 +235,7 @@ function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle,
       // Allowed words are counted under (b) against the active text; a hatched-only
       // occurrence of an allowed word is deliberately counted nowhere (double-suppressed).
       if (allowedWords.has(lw)) continue;
-      const exceptions = CONTEXT_EXCEPTIONS[lw];
-      if (exceptions && exceptions.some(e => contentLower.includes(e))) continue;
+      if (hasContextException(lw, contentLower)) continue;
       const matches = hatchedText.match(BANNED_WORD_REGEXES.get(word));
       if (!matches) continue;
       const count = matches.length;
@@ -170,8 +251,10 @@ function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle,
     }
   }
 
-  if (isProse) {
-    const hatchedHay = extractEscapeHatchedProse(content).toLowerCase();
+  // Phrases mirror the active path on BOTH surfaces. Guarding this branch on isProse alone
+  // meant an escape-hatched phrase in a code file could not even be reported as suppressed.
+  if (isProse || isCode) {
+    const hatchedHay = (isProse ? extractEscapeHatchedProse(content) : extractEscapeHatchedLines(content)).toLowerCase();
     for (const phrase of BANNED_PHRASES) {
       if (!phrase) continue;
       const firstIdx = hatchedHay.indexOf(phrase);
@@ -196,6 +279,7 @@ function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle,
 
   if (isStyle) {
     for (const pat of DESIGN_PATTERNS) {
+      if (!fileGuardOk(pat, content)) continue;
       const count = countLinePatternOnEscapedLines(lines, pat);
       if (meetsThreshold(pat, count)) {
         suppressed.push({
@@ -212,6 +296,7 @@ function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle,
   if (isCode) {
     for (const pat of CODE_PATTERNS) {
       if (isTestFile && pat.skipInTests) continue;
+      if (!fileGuardOk(pat, content)) continue;
       const count = countLinePatternOnEscapedLines(lines, pat);
       if (count > 0) {
         suppressed.push({
@@ -232,8 +317,7 @@ function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle,
     for (const word of BANNED_WORDS) {
       const lw = word.toLowerCase();
       if (!allowedWords.has(lw)) continue;
-      const exceptions = CONTEXT_EXCEPTIONS[lw];
-      if (exceptions && exceptions.some(e => contentLower.includes(e))) continue;
+      if (hasContextException(lw, contentLower)) continue;
       const matches = textToScan.match(BANNED_WORD_REGEXES.get(word));
       if (!matches) continue;
       const count = matches.length;
@@ -261,7 +345,11 @@ export function scanContent(content, filePath, opts = {}) {
   const violations = [];
   const ext = extname(filePath).toLowerCase();
   const isProse = PROSE_EXTENSIONS.has(ext);
-  const isCode = CODE_EXTENSIONS.has(ext);
+  // Markup-with-script surfaces (.html/.htm/.vue/.svelte/.astro) are code surfaces too:
+  // their <script> blocks are the most common home for the very defects the code table
+  // exists to catch, and <img> -- the whole target syntax of img-no-dimensions -- lives
+  // there and nowhere else.
+  const isCode = CODE_SURFACE_EXTENSIONS.has(ext);
   // Design tells run on web surfaces only and native tells on Apple surfaces only. Before
   // this split every code extension got the web table, so a .swift or .py file was being
   // matched against Tailwind class names -- harmless while no rule happened to collide,
@@ -284,8 +372,7 @@ export function scanContent(content, filePath, opts = {}) {
     for (const word of BANNED_WORDS) {
       const lw = word.toLowerCase();
       if (allowedWords.has(lw)) continue;
-      const exceptions = CONTEXT_EXCEPTIONS[lw];
-      if (exceptions && exceptions.some(e => contentLower.includes(e))) continue;
+      if (hasContextException(lw, contentLower)) continue;
       const matches = textToScan.match(BANNED_WORD_REGEXES.get(word));
       if (!matches) continue;
       const count = matches.length;
@@ -304,8 +391,12 @@ export function scanContent(content, filePath, opts = {}) {
   }
 
   // ── Banned phrases ──
+  // Code scans the WHOLE file, not just comments: assistant boilerplate leaks into UI copy
+  // strings and identifiers as readily as into comments, and an assistant-voice greeting left
+  // in a copy constant ships to a user. Escape-hatched lines are removed on both surfaces --
+  // routing code through the raw content was the one rule family the hatch did not reach.
   if (isProse || isCode) {
-    const hay = (isProse ? proseScan : content).toLowerCase();
+    const hay = (isProse ? proseScan : stripEscapeHatchLines(content)).toLowerCase();
     for (const phrase of BANNED_PHRASES) {
       if (!phrase) continue; // indexOf("") returns 0, which would loop forever below
       const firstIdx = hay.indexOf(phrase);
@@ -361,12 +452,17 @@ export function scanContent(content, filePath, opts = {}) {
   }
 
   // ── Emoji (skips escape-hatch lines so an intentional CLI glyph can opt out) ──
-  const emojiMatches = stripEscapeHatchLines(content).match(EMOJI_REGEX);
+  // The file-scope guard is scoped to PROSE: a document that names emoji is documenting
+  // the tell (this plugin's own writing-patterns.md reference failed its own scanner over
+  // exactly that), whereas a `.emoji` CSS class or an EMOJI_MAP constant is a source file
+  // naming a symbol while shipping the glyphs. Code and markup opt out per line instead.
+  const emojiSilenced = isProse && !fileGuardOk(EMOJI_FILE_GUARD, content);
+  const emojiMatches = emojiSilenced ? null : stripEscapeHatchLines(content).match(EMOJI_REGEX);
   if (emojiMatches) {
     violations.push({
       type: "emoji",
       count: emojiMatches.length,
-      severity: "low",
+      severity: emojiMatches.length > EMOJI_ESCALATE_COUNT ? "medium" : "low",
       confidence: EMOJI_CONFIDENCE,
       desc: `${emojiMatches.length} emoji found in ${filePath}`,
     });
@@ -376,6 +472,7 @@ export function scanContent(content, filePath, opts = {}) {
   const lines = content.split("\n");
   if (isStyle) {
     for (const pat of DESIGN_PATTERNS) {
+      if (!fileGuardOk(pat, content)) continue;
       const count = countLinePattern(lines, pat);
       if (meetsThreshold(pat, count)) {
         violations.push({
@@ -392,6 +489,7 @@ export function scanContent(content, filePath, opts = {}) {
   }
   if (isNative) {
     for (const pat of NATIVE_PATTERNS) {
+      if (!fileGuardOk(pat, content)) continue;
       const count = countLinePattern(lines, pat);
       if (meetsThreshold(pat, count)) {
         violations.push({
@@ -409,6 +507,7 @@ export function scanContent(content, filePath, opts = {}) {
   if (isCode) {
     for (const pat of CODE_PATTERNS) {
       if (isTestFile && pat.skipInTests) continue;
+      if (!fileGuardOk(pat, content)) continue;
       const count = countLinePattern(lines, pat);
       if (count > 0) {
         violations.push({

@@ -22,7 +22,10 @@ const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 const has = (vs, pred) => vs.some(pred);
 const named = (vs, name) => vs.some((v) => v.name === name);
 
-test("module imports without starting the MCP server", () => {
+// Renamed from "module imports without starting the MCP server": the body never tested
+// servers, ports or the event loop, and that claim is asserted for real in no-mcp.test.mjs.
+// What it does check is that the entry point re-exports a populated rule surface.
+test("the entry point re-exports a populated rule surface", () => {
   assert.ok(Array.isArray(BANNED_WORDS) && BANNED_WORDS.length > 10);
   assert.ok(LOW_CONFIDENCE_WORDS.has("utilize"));
   assert.ok(TEXT_CONSTRUCTS.length > 5 && DESIGN_PATTERNS.length > 5 && CODE_PATTERNS.length > 5);
@@ -218,12 +221,145 @@ test("fixture: before.html (slop control) flags a full AI-default page", () => {
   assert.ok(vs.some((v) => v.type === "emoji"));
 });
 
+// The `important-overuse` exclusion this test used to carry was vacuous -- all four
+// fixtures produce zero design tells, so the filter never removed anything, and a dead
+// exclusion masks exactly the regression the test exists to catch. Asserting the whole
+// design-tell set is empty is both stronger and honest about what these fixtures are.
 test("fixture: the four 'after' designs carry no AI-aesthetic tells (escape hatch end-to-end)", () => {
   for (const f of ["editorial-bold.html", "technical-mono.html", "utilitarian-fintech.html", "warm-consumer.html"]) {
     const vs = scanContent(readFileSync(join(FIXTURES, f), "utf8"), f);
-    const aiTells = vs.filter((v) => v.type === "design-tell" && v.name !== "important-overuse");
+    const aiTells = vs.filter((v) => v.type === "design-tell");
     assert.equal(aiTells.length, 0, `${f} should have no AI-aesthetic design tells, got ${aiTells.map((v) => v.name).join(",")}`);
   }
+});
+
+// ── Extension routing (2.1.0) ────────────────────────────────────────────────
+// Which rule FAMILIES an extension gets was decided entirely by set membership and
+// asserted nowhere, in either direction. The omission that hid inside that silence: .html,
+// .vue, .svelte and .astro were web surfaces but not code surfaces, so a <script> block
+// containing eval(), an innerHTML assignment and a hardcoded key scanned completely clean.
+
+const SCRIPT_BODY = [
+  '<img src="hero.png" alt="Q3 revenue by region">',
+  "<script>",
+  'const API_KEY = "sk-live-3f9a2bc7d1e4";',
+  "eval(userExpression);",
+  "el.innerHTML = untrusted;",
+  "</script>",
+].join("\n");
+
+test("routing: markup-with-script surfaces get the code rules", () => {
+  for (const ext of [".html", ".htm", ".vue", ".svelte", ".astro", ".jsx", ".tsx", ".ts", ".js"]) {
+    const found = scanContent(SCRIPT_BODY, `page${ext}`).map((v) => v.name).sort();
+    assert.deepEqual(
+      found,
+      ["eval-usage", "hardcoded-secret", "img-no-dimensions", "innerhtml-usage"],
+      `page${ext} did not receive the code rules`,
+    );
+  }
+});
+
+test("routing: prose and non-web code surfaces are left alone by the other tables", () => {
+  assert.deepEqual(scanContent(SCRIPT_BODY, "notes.md").map((v) => v.name), [], "prose gets no code or design rules");
+  // A Python file is a code surface and not a web surface: the design table must not run.
+  const py = scanContent('el.innerHTML = x\n<div class="rounded-xl shadow-sm border">', "a.py").map((v) => v.name);
+  assert.ok(py.includes("innerhtml-usage"), "code rules run on .py");
+  assert.ok(!py.includes("shadow-border-rounded-combo"), "design tells must not run on .py");
+});
+
+test("routing: a test-shaped path still skips the security and dummy-data rules on the new surfaces", () => {
+  const found = scanContent(SCRIPT_BODY, "src/__tests__/page.html").map((v) => v.name).sort();
+  assert.deepEqual(found, ["eval-usage", "img-no-dimensions"], "skipInTests must apply on markup surfaces too");
+});
+
+// ── Emoji ranges (2.1.0) ─────────────────────────────────────────────────────
+// The range list covered six blocks and not Miscellaneous Technical, which is where every
+// media-control glyph lives -- the pause/play toggle from the recorded incident shipped
+// straight past it. The bare code points below all missed; only their +VS16 presentation
+// forms matched, and only incidentally, because the variation-selector range caught the
+// selector rather than the glyph.
+
+const NOW_EMOJI = [
+  ["pause", "⏸"], ["play", "▶"], ["stop", "⏹"], ["next track", "⏭"],
+  ["fast forward", "⏩"], ["record", "⏺"], ["eject", "⏏"],
+  ["hourglass", "⌛"], ["watch", "⌚"], ["left arrow", "←"], ["black square", "■"],
+];
+
+// Widening to the whole 2000-2BFF block would have swallowed all of these, and the prose
+// rules -- em-dash density above all -- are built on them.
+const NEVER_EMOJI = [
+  ["em dash", "—"], ["curly apostrophe", "’"], ["ellipsis", "…"],
+  ["dagger", "†"], ["en dash", "–"], ["bullet", "•"],
+];
+
+test("emoji: the bare media-control and shape glyphs are emoji, in prose and in code", () => {
+  for (const [name, glyph] of NOW_EMOJI) {
+    for (const path of ["notes.md", "src/player.ts"]) {
+      assert.ok(
+        scanContent(`status ${glyph} here`, path).some((v) => v.type === "emoji"),
+        `${name} (U+${glyph.codePointAt(0).toString(16).toUpperCase()}) is not detected in ${path}`,
+      );
+    }
+  }
+});
+
+test("emoji: typographic punctuation is never an emoji", () => {
+  for (const [name, glyph] of NEVER_EMOJI) {
+    assert.ok(
+      !scanContent(`a ${glyph} b`, "src/copy.ts").some((v) => v.type === "emoji"),
+      `${name} (U+${glyph.codePointAt(0).toString(16).toUpperCase()}) must not be treated as an emoji`,
+    );
+  }
+  // And the em-dash rule that depends on them still works.
+  const dashes = "One — two — three — four — five — six — seven words here.";
+  assert.ok(named(scanContent(dashes, "post.md"), "em-dash-density"));
+});
+
+test("emoji: console-log-emoji tracks the same ranges, never a subset of them", () => {
+  for (const [name, glyph] of NOW_EMOJI) {
+    assert.ok(
+      named(scanContent(`console.log("done ${glyph}");`, "src/run.ts"), "console-log-emoji"),
+      `console-log-emoji missed ${name}, so its range list has drifted from EMOJI_REGEX`,
+    );
+  }
+  assert.ok(!named(scanContent('console.log("done — finally");', "src/run.ts"), "console-log-emoji"));
+});
+
+test("emoji: the count escalates severity the way em-dash density does", () => {
+  const at = (n) => scanContent("\u{1F680}".repeat(n), "src/run.ts").find((v) => v.type === "emoji");
+  assert.equal(at(1).severity, "low", "one stray glyph is not a decorated README");
+  assert.equal(at(5).severity, "low");
+  assert.equal(at(6).severity, "medium");
+  assert.equal(at(6).count, 6);
+});
+
+// ── Edge inputs ──────────────────────────────────────────────────────────────
+// None of these had coverage, and all of them are shapes a real `git diff --name-only`
+// pipeline hands the scanner.
+
+test("edge input: an empty file and an extension-less path are clean, not crashes", () => {
+  assert.deepEqual(scanContent("", "a.md"), []);
+  assert.deepEqual(scanContent("", "a.ts"), []);
+  assert.deepEqual(scanContent(" ", "Makefile"), []);
+  assert.deepEqual(scanContent("We delve into it.", "LICENSE"), [], "no extension routes to no rule family");
+});
+
+test("edge input: every prose extension routes to the prose rules", () => {
+  for (const ext of [".md", ".mdx", ".txt", ".rst"]) {
+    const vs = scanContent("We delve into the tapestry.", `note${ext}`);
+    assert.deepEqual(vs.map((v) => v.word).sort(), ["delve", "tapestry"], `${ext} did not route to prose rules`);
+  }
+});
+
+test("edge input: a lone surrogate and binary-ish bytes do not throw or match", () => {
+  assert.deepEqual(scanContent("\uD83D", "a.md"), [], "an unpaired high surrogate is not an emoji");
+  const binary = Array.from({ length: 512 }, (_, i) => String.fromCharCode(i % 256)).join("");
+  assert.doesNotThrow(() => scanContent(binary, "a.png"));
+});
+
+test("edge input: calculateScore treats an unrecognised severity as the lowest tier", () => {
+  assert.equal(calculateScore([{ severity: "catastrophic" }]), 49, "an unknown severity falls through to -1");
+  assert.equal(calculateScore([{ severity: undefined }]), 49);
 });
 
 // ── Final-review false-positive fixes ──

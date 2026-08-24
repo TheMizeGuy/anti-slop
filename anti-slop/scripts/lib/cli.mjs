@@ -6,10 +6,11 @@
 // `git diff --name-only | xargs node .../slop-scanner.mjs scan`.
 
 import { readFileSync } from "fs";
+import { extname } from "path";
 import { scanContent, calculateScore, verdict } from "./scan.mjs";
-import { loadLog, saveLog, saveScore, loadScores } from "./store.mjs";
+import { PROSE_EXTENSIONS } from "./rules.mjs";
+import { loadLog, saveLog, saveScores, loadScores } from "./store.mjs";
 
-const PROSE_EXTENSIONS_FOR_VERDICT = new Set([".md", ".mdx", ".txt", ".rst"]);
 const FAIL_ON_LEVELS = ["any", "high", "medium", "low", "none"];
 const SEVERITY_RANK = { high: 3, medium: 2, low: 1 };
 
@@ -71,10 +72,12 @@ function parseArgs(argv) {
 }
 
 // Prose files are scored against their word count so a long, lightly flecked document is
-// not over-escalated (the concentration guard in verdict()).
-function classifyVerdict(content, filePath, violations) {
-  const ext = (filePath.match(/\.[^./\\]+$/) || [""])[0].toLowerCase();
-  const isProseFile = PROSE_EXTENSIONS_FOR_VERDICT.has(ext);
+// not over-escalated (the concentration guard in verdict()). PROSE_EXTENSIONS and extname
+// come from the same places the scanner uses them: a second local copy of either meant
+// adding an extension to rules.mjs silently gave it prose RULES but not prose verdict
+// weighting.
+export function classifyVerdict(content, filePath, violations) {
+  const isProseFile = PROSE_EXTENSIONS.has(extname(filePath).toLowerCase());
   return verdict(violations, isProseFile ? (content.match(/\S+/g) || []).length : 0);
 }
 
@@ -85,17 +88,27 @@ function meetsThreshold(violations, failOn) {
   return violations.some((v) => (SEVERITY_RANK[v.severity] || 0) >= minRank);
 }
 
-// ALL entries (including suppressed ones, which rule stats need) go to the log; the score
-// entry counts active findings only.
-function recordScan(filePath, allEntries, score, activeCount) {
-  if (allEntries.length > 0) {
-    const log = loadLog();
-    for (const v of allEntries) {
-      log.push({ ...v, file: filePath, timestamp: new Date().toISOString() });
-    }
-    saveLog(log);
+// ── --record, batched to one load/save cycle per INVOCATION ──
+// Recording per file meant an N-file scan did 2N JSON parse+stringify+write round trips
+// over the whole log, and -- because both retention caps count ENTRIES, not runs -- a
+// CI-sized scan evicted its own rows and every earlier run's before it finished. The log
+// still keeps one row per finding (cap 500, unchanged); scores now keep ONE row per
+// invocation, which is what `history`'s "Last N scans" always claimed to show.
+//
+// The aggregate row reports the WORST file's score, so a single bad file in a large run
+// cannot be averaged away, and the total active findings across the run.
+function recordRun(results, allEntriesByFile) {
+  const logRows = [];
+  const timestamp = new Date().toISOString();
+  for (const [filePath, entries] of allEntriesByFile) {
+    for (const v of entries) logRows.push({ ...v, file: filePath, timestamp });
   }
-  saveScore({ score, file: filePath, violations: activeCount });
+  if (logRows.length > 0) saveLog([...loadLog(), ...logRows]);
+
+  const worst = results.reduce((min, r) => Math.min(min, r.score), 50);
+  const violations = results.reduce((n, r) => n + r.violations.length, 0);
+  const file = results.length === 1 ? results[0].file : `${results.length} files`;
+  saveScores([{ score: worst, file, violations }]);
 }
 
 function formatTextReport(result) {
@@ -104,6 +117,12 @@ function formatTextReport(result) {
   }
   const report = result.violations.map((v) => `[${v.severity.toUpperCase()}] ${v.desc}`).join("\n");
   return `${result.file}\nScan score: ${result.score}/50 | ${result.verdict} | ${result.violations.length} violation(s)\n\n${report}\n\n`;
+}
+
+function formatTotalsLine(totals) {
+  const { high, medium, low } = totals.bySeverity;
+  return `Total: ${totals.violations} violation(s) across ${totals.files} files ` +
+    `(${high} high, ${medium} medium, ${low} low)\n`;
 }
 
 // ── history: the scores `scan --record` wrote ──
@@ -169,9 +188,17 @@ export async function runCli(argv) {
     process.stdout.write(USAGE);
     return 0;
   }
-  if (command === "history") return runHistory();
-  if (command === "stats") return runStats();
-  if (command === "dashboard") return runDashboard();
+  // These three take no options. Dispatching before parseArgs used to mean
+  // `history --format json` silently ran the default text output instead of erroring.
+  if (command === "history" || command === "stats" || command === "dashboard") {
+    if (argv.length > 1) {
+      process.stderr.write(`${command} takes no arguments (got ${argv.slice(1).join(" ")})\n\n${USAGE}`);
+      return 2;
+    }
+    if (command === "history") return runHistory();
+    if (command === "stats") return runStats();
+    return runDashboard();
+  }
 
   if (command !== "scan") {
     process.stderr.write(`Unknown command: ${command ?? "(none)"}\n\n${USAGE}`);
@@ -197,6 +224,10 @@ export async function runCli(argv) {
     return 2;
   }
 
+  // `git diff --name-only` over a range can legitimately emit the same path twice, which
+  // used to scan it twice, record it twice, and double-count it in the totals.
+  opts.files = [...new Set(opts.files)];
+
   // Read everything up front so an unreadable file aborts BEFORE any scan is
   // recorded -- exit 2 must leave no partial --record side effects behind.
   const contents = new Map();
@@ -210,6 +241,7 @@ export async function runCli(argv) {
   }
 
   const results = [];
+  const allEntriesByFile = new Map();
   for (const filePath of opts.files) {
     const content = contents.get(filePath);
     // Suppressed entries (escape hatch / allowedWords) are logged under --record for rule
@@ -218,9 +250,10 @@ export async function runCli(argv) {
     const violations = allEntries.filter((v) => !v.suppressed);
     const score = calculateScore(violations);
     const tier = classifyVerdict(content, filePath, violations);
-    if (opts.record) recordScan(filePath, allEntries, score, violations.length);
+    if (opts.record) allEntriesByFile.set(filePath, allEntries);
     results.push({ file: filePath, score, verdict: tier, violations });
   }
+  if (opts.record) recordRun(results, allEntriesByFile);
 
   const totals = { files: results.length, violations: 0, bySeverity: { high: 0, medium: 0, low: 0 } };
   for (const r of results) {
@@ -239,6 +272,9 @@ export async function runCli(argv) {
       process.stdout.write(`${JSON.stringify({ files: results, totals })}\n`);
     } else {
       for (const r of results) process.stdout.write(formatTextReport(r));
+      // The aggregate was computed and then thrown away in text mode, so a multi-file CI
+      // run printed per-file reports and no total. One file needs no summary of itself.
+      if (results.length > 1) process.stdout.write(formatTotalsLine(totals));
     }
   }
 

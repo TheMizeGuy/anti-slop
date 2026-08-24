@@ -36,6 +36,27 @@ export const EMOJI_CONFIDENCE = CONFIDENCE.QUALITY;
 export const PRESENCE = "presence";
 export const CONCENTRATION = "concentration";
 
+// ── File-scope guards (optional on any table rule) ──
+// `suppress` answers "is THIS LINE a correct use?". Some tells can only be judged against
+// the whole file: the progressive-enhancement pair `height: 100vh; height: 100dvh;` writes
+// its fallback on the NEXT line, and a document that DISCUSSES a tell is not committing it.
+// Two additive fields cover both directions, evaluated once per file before the line loop:
+//   requires / requiresMinCount -- the file must contain the pattern at least N times
+//                                  (default 1) before the rule is allowed to fire
+//   unless                      -- the file matching it silences the rule entirely
+// A rule that declares neither behaves exactly as before.
+
+// ── Emoji code-point ranges ──
+// Shared by EMOJI_REGEX and the console-log-emoji code rule so the two can never drift.
+// Miscellaneous Technical (2300-23FF) carries the media-control glyphs, Arrows (2190-21FF)
+// and Geometric Shapes (25A0-25FF) the rest of the picker output a designer pastes in.
+// Deliberately NOT the whole 2000-2BFF block: that swallows the em dash, the curly
+// apostrophe, the ellipsis and the dagger, which the prose rules are built on.
+const EMOJI_RANGES =
+  "\\u{1F300}-\\u{1F9FF}\\u{2600}-\\u{26FF}\\u{2700}-\\u{27BF}\\u{2B00}-\\u{2BFF}" +
+  "\\u{FE00}-\\u{FE0F}\\u{1F000}-\\u{1FAFF}\\u{2190}-\\u{21FF}\\u{2300}-\\u{23FF}" +
+  "\\u{25A0}-\\u{25FF}";
+
 // ── Banned Words (top 50 highest-signal, prose-only) ──
 export const BANNED_WORDS = [
   "delve", "delving", "leverage", "leveraging", "utilize", "utilizing",
@@ -127,9 +148,15 @@ export const DESIGN_PATTERNS = [
   // minCount 2 is that sentence, enforced: a lone Fraunces heading is a choice.
   { name: "cream-serif-default", severity: "low", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, pattern: /#(faf8f5|f5f1e8|f3eee3|fdfbf7|f7f3ec|faf6ef|f6f1e7|fbf7f0|f4efe4)\b|\bbg-(stone|amber|orange)-(50|100)\b|\b(Instrument\s*Serif|Fraunces|Playfair\s*Display|Cormorant|Spectral|DM\s*Serif)\b/i, desc: "Cream/serif 'tasteful default' (the 2026 tell -- two or more legs of the combination)" },
   { name: "shadcn-default-card", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /rounded-lg\s+border\s+bg-card\s+text-card-foreground\s+shadow-sm|"baseColor"\s*:\s*"(slate|zinc|gray|neutral|stone)"|--radius\s*:\s*0\.5rem/i, desc: "Un-themed shadcn default card kit" },
-  { name: "icon-in-colored-circle", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /rounded-full\s[^"]*bg-[a-z]+-100\s[^"]*p-3/i, desc: "Icon in colored circle background" },
-  { name: "frosted-glass-nav", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /backdrop-blur[^\s]*\s[^"]*bg-white\/[0-9]+\s[^"]*border-b/i, desc: "Frosted glass navigation bar" },
-  { name: "shadow-border-rounded-combo", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /shadow-sm\s[^"]*border\s[^"]*rounded-xl/i, desc: "shadow-sm + border + rounded-xl AI card combo" },
+  // The next three are class-attribute FINGERPRINTS, and utility-class order inside a
+  // `class=` attribute is arbitrary. Encoded as ordered `A\s[^"]*B\s[^"]*C` sequences they
+  // were silent on the exact strings design-patterns.md documents -- including Strongest-10
+  // entry 1 -- and fired only on the order some fixture happened to use. `classAll` matches
+  // the token SET within one attribute value instead, which is order-free and still
+  // attribute-scoped, so it can never span two sibling elements.
+  { name: "icon-in-colored-circle", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, classAll: ["rounded-full", /^bg-[a-z]+-100$/, "p-3"], desc: "Icon in colored circle background" },
+  { name: "frosted-glass-nav", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, classAll: [/^backdrop-blur(-[a-z0-9]+)?$/, /^bg-white\/\d+$/, "border-b"], desc: "Frosted glass navigation bar" },
+  { name: "shadow-border-rounded-combo", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, classAll: ["shadow-sm", /^border(-[a-z]+-\d+)?$/, "rounded-xl"], desc: "shadow-sm + border + rounded-xl AI card combo" },
   { name: "neon-glow", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /shadow-\[0_0_|drop-shadow-\[0_0_|box-shadow\s*:[^;]*\b0\s+0\s+\d{2,}px/i, desc: "Unprompted neon glow (dark-mode tell)" },
   // "Maximal rounding on EVERYTHING": the tell is the uniform treatment across a surface,
   // not any single rounded corner. Below three the floor rule applies -- a lone
@@ -138,7 +165,9 @@ export const DESIGN_PATTERNS = [
   { name: "generic-font", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /font-family\s*:\s*['"]?(Inter|Geist|Roboto)\b|\b(Inter|Geist|Geist_Mono|Roboto)\s*\(/i, desc: "Generic default font (Inter/Geist/Roboto)" },
   { name: "hype-copy", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\bTransform your\b|\bSupercharge\b|\bUnleash\b|\bEffortlessly\b|take your [^.]{0,30}to the next level/i, desc: "Marketing hype copy in UI" },
   { name: "stock-illustration", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /\b(undraw|storyset|drawkit)\b/i, desc: "Generic stock illustration (undraw/storyset)" },
-  { name: "z-index-escalation", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /z-(?:index:\s*|\[)(?:999|9999|99999)/i, desc: "z-index escalation (999+)" },
+  // The JS style-object form (`zIndex: 9999`) is the dominant one on .jsx/.tsx, which are
+  // web surfaces this rule already runs on -- the CSS-only pattern could not see it.
+  { name: "z-index-escalation", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /z-(?:index:\s*|\[)(?:999|9999|99999)|\bzIndex\s*:\s*['"]?(?:999|9999|99999)\b/i, desc: "z-index escalation (999+)" },
   // The rule is named *overuse*. One pragmatic override against a third-party widget is
   // not it, and `* { transition: none !important }` inside a prefers-reduced-motion block
   // is the canonical WCAG 2.3.3 implementation -- flagging it invites a "fix" that deletes
@@ -181,17 +210,33 @@ export const CODE_PATTERNS = [
   // severity high, confidence Pattern smell: if it IS a live credential it is the worst
   // finding in the file, but a regex cannot prove the string is one -- it may be a fixture,
   // a variable name, or a placeholder. This pairing is why the two axes stay separate.
-  { name: "hardcoded-secret", severity: "high", confidence: CONFIDENCE.SMELL, skipInTests: true, pattern: /\b(?:api[_-]?key|password|secret|token)\s*[:=]\s*['"](?!\/|https?:|\.\.?\/|var\(|--|#[0-9a-fA-F])[^'"]{8,}['"]/gi, desc: "Possible hardcoded credential" },
-  { name: "console-log-emoji", severity: "medium", confidence: CONFIDENCE.QUALITY, pattern: /console\.log\s*\(\s*['"][^\n]*[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FAFF}]/gu, desc: "Emoji in console.log" },
+  // The value must also be secret-SHAPED, not merely long: "any 8+ characters" is most
+  // English sentences, and this is the loudest rule in the report. A credential has no
+  // interior spaces AND at least one of {>=3 digits, a -/_ separator joining letters and
+  // digits, a known vendor prefix, >=20 chars of base64/hex}. That keeps every real key
+  // while dropping i18n copy ("Please enter your password"), lexer token kinds
+  // (token: "punctuation"), validation messages, and env-indirection strings.
+  { name: "hardcoded-secret", severity: "high", confidence: CONFIDENCE.SMELL, skipInTests: true, pattern: /\b(?:api[_-]?key|password|secret|token)\s*[:=]\s*['"](?!\/|https?:|\.\.?\/|var\(|--|#[0-9a-fA-F])(?=[^'"\s]{8,}['"])(?:(?=(?:[^'"]*[0-9]){3})|(?=[^'"]*[-_])(?=[^'"]*[A-Za-z])(?=[^'"]*[0-9])|(?=(?:sk-|pk-|ghp_|xox))|(?=[A-Za-z0-9+/=]{20,}['"]))[^'"\s]{8,}['"]/gi, desc: "Possible hardcoded credential" },
+  { name: "console-log-emoji", severity: "medium", confidence: CONFIDENCE.QUALITY, pattern: new RegExp(`console\\.log\\s*\\(\\s*['"][^\\n]*[${EMOJI_RANGES}]`, "gu"), desc: "Emoji in console.log" },
   { name: "img-no-dimensions", severity: "medium", confidence: CONFIDENCE.HARD, pattern: /<img\s(?![^>]*(?:width|height))[^>]*>/gi, desc: "<img> without width/height (causes CLS)" },
   { name: "useeffect-setstate", severity: "medium", confidence: CONFIDENCE.SMELL, pattern: /useEffect\s*\(\s*\(\s*\)\s*=>\s*\{[^}]*set[A-Z]\w*\s*\(/g, desc: "useEffect setting state (likely derived state)" },
   // AI-tell code patterns from the corpus study (high precision when present)
   { name: "chat-artifact", severity: "high", confidence: CONFIDENCE.HARD, pattern: /\bhere'?s the (updated|complete|full|fixed|revised|new) (code|version|implementation|file)\b|\bas an? (ai|a\.i\.) (language )?model\b|\b(good|great) catch!|\byou'?re absolutely right\b|\bi hope this helps\b/gi, desc: "Leftover chat artifact (assistant voice in code)" },
   { name: "placeholder-comment", severity: "high", confidence: CONFIDENCE.HARD, pattern: /(\/\/|#|\/\*|\*|--|<!--)\s*\.{2,}\s*(rest|the rest|your|remaining|existing|previous|other)\b|(\/\/|#|\/\*|\*|--|<!--)\s*(rest|remainder) of (your |the |my )?(code|implementation|logic|function|file)\b|(\/\/|#|\/\*|\*|--|<!--)\s*(your|the) (code|logic|implementation|stuff) (goes )?here\b|(\/\/|#|\/\*|\*|--|<!--)\s*(add|insert|implement|put) (your )?(code|logic|implementation) here\b|(\/\/|#|\/\*|\*|--|<!--)\s*(implementation|code|logic) (goes|go) here\b|(\/\/|#|\/\*|\*|--|<!--)\s*existing code (here|unchanged|stays|remains)\b|(\/\/|#|\/\*|\*|--|<!--)\s*TODO:?\s*(implement|add|fill in|finish)\b/gi, desc: "Placeholder-comment stub (file unfinished -- a bug)" },
-  { name: "narrating-comment", severity: "low", confidence: CONFIDENCE.QUALITY, pattern: /(\/\/|#|\/\*|\*|--)\s*(step\s*\d+\b|now we\b|first,|next,|then,|finally,)|(\/\/|#|\/\*|\*|--)\s*(increment|decrement|initialize|declare|instantiate|loop (over|through)|iterate over|return the|set the|get the|call the)\b|(\/\/|#|\/\*|\*|--)\s*this (function|method|line|loop|variable|class|block) (does|handles|returns|creates)\b|(\/\/|#|\/\*|\*|--)\s*(import|importing) (the |required )?(libraries|modules|dependencies)\b/gi, desc: "Narrating comment (restates the code)" },
+  // The ordinal-adverb leg ("Step 1:", "First,", "Then,") was dropped: a numbered runbook
+  // step in a .sh setup script and an ordered algorithm description in a JSDoc block are
+  // both correct documentation, and the reference catalogue only ever documented the
+  // restates-the-code legs kept below. Those legs now tolerate a short word-only lead-in
+  // ("# first, we loop through the rows"), which is the same finding with a preamble --
+  // the lead-in accepts letters, commas, apostrophes and spaces only, so "# Step 1:" and
+  // "// TODO: get the config" still cannot reach a keyword.
+  { name: "narrating-comment", severity: "low", confidence: CONFIDENCE.QUALITY, pattern: /(\/\/|#|\/\*|\*|--)\s*(?:[A-Za-z,' ]{0,24})?\b(increment|decrement|initialize|declare|instantiate|loop (over|through)|iterate over|return the|set the|get the|call the)\b|(\/\/|#|\/\*|\*|--)\s*this (function|method|line|loop|variable|class|block) (does|handles|returns|creates)\b|(\/\/|#|\/\*|\*|--)\s*(import|importing) (the |required )?(libraries|modules|dependencies)\b/gi, desc: "Narrating comment (restates the code)" },
   { name: "swallowed-error", severity: "medium", confidence: CONFIDENCE.HARD, pattern: /^\s*except\s*:|^\s*except\s+(Exception|BaseException)\s*:\s*(pass|\.\.\.)\s*$|\bcatch\s*\([^)]*\)\s*\{\s*\}|\bcatch\s*\{\s*\}|\bcatch\s*\([^)]*\)\s*\{\s*\/\/[^\n]*\}|\bif\s+err\s*!=\s*nil\s*\{\s*\}|\bif\s+err\s*!=\s*nil\s*\{\s*\/\/[^\n]*\}/g, desc: "Swallowed error (bare except / empty catch / empty Go err block) -- a bug" },
   { name: "generic-naming", severity: "low", confidence: CONFIDENCE.QUALITY, pattern: /\b(def|function|func|fn|fun|sub)\s+(process_?[Dd]ata|handle_?[Dd]ata|do_?[Ss]tuff|do_?[Ss]omething|my_?[Ff]unction|process_?[Ii]tem|process_?[Ii]nput|main_?[Ff]unction)\b/g, desc: "Generic placeholder function name" },
-  { name: "boilerplate-marker", severity: "low", confidence: CONFIDENCE.SMELL, skipInTests: true, pattern: /\blorem ipsum\b|\bYOUR_API_KEY\b|\b(your|my)[-_]?api[-_]?key\b|\bexample\.com\b|\b(John|Jane) (Doe|Smith)\b|['"]sk-(xxx|your|placeholder|123)/gi, desc: "Tutorial/boilerplate marker (dummy data)" },
+  // `example.com` was dropped: RFC 2606 reserves it precisely so production CORS
+  // allowlists, .env.example files and email-validation code can use it, and the remaining
+  // legs (YOUR_API_KEY / lorem ipsum / sk-xxx) are far more precise.
+  { name: "boilerplate-marker", severity: "low", confidence: CONFIDENCE.SMELL, skipInTests: true, pattern: /\blorem ipsum\b|\bYOUR_API_KEY\b|\b(your|my)[-_]?api[-_]?key\b|\b(John|Jane) (Doe|Smith)\b|['"]sk-(xxx|your|placeholder|123)/gi, desc: "Tutorial/boilerplate marker (dummy data)" },
 ];
 
 // ── Text constructs (prose only): regex-detectable sentence/format tells ──
@@ -203,12 +248,20 @@ export const TEXT_CONSTRUCTS = [
   { name: "assistant-boilerplate", severity: "high", confidence: CONFIDENCE.HARD, pattern: /\bas an? (ai|a\.i\.) (language )?model\b|\bas a large language model\b|\bi (cannot|can'?t|am unable to) (assist|help|fulfil|fulfill|comply|provide)\b|\bas of my last (knowledge )?(update|training)\b|\bknowledge cut[- ]?off\b|\bi (do not|don'?t) have (personal|the ability|access|feelings|opinions)\b/gi, desc: "Leftover assistant boilerplate (as-an-AI / refusal / cutoff)" },
   { name: "assistant-offer", severity: "medium", confidence: CONFIDENCE.QUALITY, pattern: /\bwould you like me to\b|\bis there anything else i can\b|\bi hope this (helps|email finds you well)\b/gi, desc: "Trailing assistant offer / sign-off" },
   { name: "dive-in", severity: "low", confidence: CONFIDENCE.SMELL, pattern: /\b(deep dive|dive in(to)?|let'?s dive|diving in|dive deep)\b/gi, desc: '"dive in" / "deep dive" opener' },
-  { name: "listicle-scaffold", severity: "low", confidence: CONFIDENCE.SMELL, pattern: /(^|\s)#{0,4}\s*\d+\s+(ways|tips|signs|reasons|things|steps|tricks|secrets|lessons|mistakes|rules)\b/gi, desc: 'Listicle scaffolding ("N ways to...")' },
+  // Two legs, both anchored: a HEADLINE (line start, optionally a heading or bullet), or
+  // an in-sentence announcement of a list ("here are 5 ways TO speed up"). Unanchored, the
+  // rule fired on "the migration runs in 3 steps" and "there are 4 reasons the cache
+  // misses on cold start", which are ordinary technical sentences -- neither announces a
+  // list, and neither reaches the infinitive that a scaffolded listicle always does.
+  { name: "listicle-scaffold", severity: "low", confidence: CONFIDENCE.SMELL, pattern: /^\s{0,3}(?:[-*+]\s+)?#{0,4}\s*\d+\s+(ways|tips|signs|reasons|things|steps|tricks|secrets|lessons|mistakes|rules)\b|\b\d+\s+(ways|tips|signs|tricks|secrets|lessons|mistakes)\s+to\s+\w/gim, desc: 'Listicle scaffolding ("N ways to...")' },
   { name: "fast-paced-opener", severity: "low", confidence: CONFIDENCE.SMELL, pattern: /\bin today'?s\s+(fast[- ]?paced|digital|ever[- ]?changing|modern|competitive)?\s*(world|age|landscape|era|society|market)\b|\bin (the|this) (modern|digital) (world|age|era)\b/gi, desc: '"In today\'s fast-paced world" opener' },
   { name: "unlock-potential", severity: "low", confidence: CONFIDENCE.SMELL, pattern: /\b(unlock|unleash|tap into)\w*\s+(the\s+|your\s+|its\s+|their\s+|full\s+)*(power|potential|capabilities|secrets)\b/gi, desc: '"unlock the potential" hype' },
   { name: "in-conclusion", severity: "low", confidence: CONFIDENCE.SMELL, pattern: /\bin (conclusion|summary)\b|\bto (summari[sz]e|conclude|wrap (this |it )?up)\b|\bin closing\b/gi, desc: '"In conclusion / In summary" closer' },
   { name: "honestly-opener", severity: "low", confidence: CONFIDENCE.SMELL, pattern: /(^|\n)\s*honestly,\s|\blet'?s be (honest|real)\b/gi, desc: '"Honestly," / "Let\'s be real" opener' },
-  { name: "hr-divider", severity: "low", confidence: CONFIDENCE.TASTE, pattern: /^\s{0,3}(---+|\*\*\*+|___+)\s*$/gm, desc: "Horizontal-rule divider between sections" },
+  // A rule needs a BLANK line above it. `Title` followed by `---` is a Setext H2 -- a
+  // heading, not a divider -- and flagging it asks the author to break their own document
+  // structure. Requiring the blank line keeps every real `\n\n---\n\n` divider.
+  { name: "hr-divider", severity: "low", confidence: CONFIDENCE.TASTE, pattern: /\n[ \t]*\n[ \t]{0,3}(?:---+|\*\*\*+|___+)[ \t]*(?=\n|$)/g, desc: "Horizontal-rule divider between sections" },
   { name: "hype-marketing", severity: "low", confidence: CONFIDENCE.QUALITY, pattern: /\brevolution(ary|i[sz]e)\b|\btransform your (life|business|workflow)\b|\bto the next level\b|\bsupercharge\b|\bsay goodbye to\b|\blook no further\b|\bbuckle up\b|\bwithout further ado\b/gi, desc: "Marketing hype (revolutionary / supercharge)" },
 ];
 
@@ -238,8 +291,41 @@ export const CONTEXT_EXCEPTIONS = {
   "harness": ["test harness", "wiring harness", "cable harness", "playwright", "cypress", "webdriver", "e2e"],
 };
 
+// Exception entries are matched as STEMS anchored at a word START, never as raw
+// substrings. The unanchored `includes()` this replaces meant "port" inside "important",
+// "set" inside "settings", "eth" inside "method" and "gis" inside "register" silently
+// disabled five banned words in nearly every real document -- an over-broad suppressor is
+// a silent recall hole, which is worse than a noisy false positive because nothing
+// surfaces it. The leading \b keeps stemming working ("expir" still excuses "expires" and
+// "expiration"). A few short stems still collide with common English AT a word start
+// ("port" -> "portion", "set" -> "settings", "cache" -> "cachet"); those are matched as
+// whole words, with the common inflections still allowed, instead.
+// test/rule-false-positives.test.mjs fails on any newly substring-collidable entry.
+export const WHOLE_WORD_EXCEPTIONS = new Set(["port", "set", "map", "cache", "seam"]);
+const INFLECTIONS = "(?:s|es|d|ed|ing)?\\b";
+
+function escapeRegExp(source) {
+  return source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export const CONTEXT_EXCEPTION_REGEXES = new Map(
+  Object.entries(CONTEXT_EXCEPTIONS).map(([word, entries]) => [
+    word,
+    entries.map((entry) =>
+      new RegExp(`\\b${escapeRegExp(entry)}${WHOLE_WORD_EXCEPTIONS.has(entry) ? INFLECTIONS : ""}`, "i"),
+    ),
+  ]),
+);
+
 // ── Emoji detection ──
-export const EMOJI_REGEX = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FAFF}]/gu;
+export const EMOJI_REGEX = new RegExp(`[${EMOJI_RANGES}]`, "gu");
+// A file that DISCUSSES emoji (this plugin's own writing-patterns.md reference, a design
+// system's icon guidance) is documenting the tell, not committing it. Same file-scope
+// guard schema the table rules use.
+export const EMOJI_FILE_GUARD = Object.freeze({ unless: /\bemoji\b/i });
+// One stray glyph is not the same finding as a decorated README, so the emoji count
+// escalates the same way em-dash density does.
+export const EMOJI_ESCALATE_COUNT = 5;
 
 // ── File type detection ──
 export const PROSE_EXTENSIONS = new Set([".md", ".mdx", ".txt", ".rst"]);
@@ -255,3 +341,13 @@ export const WEB_SURFACE_EXTENSIONS = new Set([
   ...STYLE_EXTENSIONS, ".js", ".ts", ".mjs", ".cjs", ".astro",
 ]);
 export const NATIVE_UI_EXTENSIONS = new Set([".swift", ".m", ".mm"]);
+
+// Which surfaces the CODE rule family runs on. Markup-with-script formats carry real code
+// in <script> blocks: before they were routed here an .html, .vue or .svelte file with
+// eval(), an innerHTML assignment and a hardcoded key scanned completely clean, and
+// img-no-dimensions -- a CLS rule whose entire target syntax is <img> -- was structurally
+// unable to fire on plain HTML. Kept as a separate set rather than widening
+// CODE_EXTENSIONS, which also feeds the prose/style sibling logic.
+export const CODE_SURFACE_EXTENSIONS = new Set([
+  ...CODE_EXTENSIONS, ".html", ".htm", ".vue", ".svelte", ".astro",
+]);

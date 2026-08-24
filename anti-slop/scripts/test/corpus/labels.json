@@ -8,7 +8,7 @@
       "clean-control": "Uses the prescribed technique CORRECTLY and must stay silent. A clean control is not 'a file with no tells' -- it is a file that exercises the constructs the doctrine recommends, so it catches the mirror failure: a scanner that has learned to match constructs rather than defects. Two of ui-craft's own controls were latent doctrine violations for several releases, so audit these against current doctrine rather than trusting them.",
       "coverage-boundary": "Plants a real tell this scanner has NO rule for. expected[] is empty, but the file is NOT clean and must never be cited as evidence that the tell is absent. These record the scanner's coverage boundary honestly, and guard against a future over-broad rule firing on them by accident."
     },
-    "cleanControlRule": "clean-control and coverage-boundary fixtures carry maxIncidentalFindings (default 1): the scan may surface at most that many findings before the control is treated as failed. A tolerance rather than a hard zero, so one incidental note does not fail the suite. Enforced by test/corpus-contract.test.mjs.",
+    "cleanControlRule": "clean-control and coverage-boundary fixtures carry maxIncidentalFindings: the scan may surface at most that many findings before the control is treated as failed. It is 0 on every fixture, because 0 is the policy the suite has always ENFORCED: any finding on a negative fixture is a false positive by construction, and the sibling precision gate in corpus.test.mjs (design tp=26, tolerance 0.02) fails on the first one. A declared tolerance of 1 was strictly dominated -- it could never be the failing assertion, so it was dead metadata that read like slack. Enforced by test/corpus-contract.test.mjs.",
     "severityIsInformational": "The harness matches on rule id only. severity and confidence are carried so that a change in how a rule GRADES a finding is visible in review and caught by test/corpus-contract.test.mjs, which asserts the labels still match what the scanner emits.",
     "provenance": {
       "shared-with-ui-craft": "gradient-hero, shadcn-card-kit, frosted-nav-neon, legacy-marketing-page, small-avatar-clean originated here and were copied downstream. presence-single, cream-serif-sage, token-drift, missing-states, clean-intentional, uncommitted-radius, fluid-adaptive-clean, fixed-desktop-shell, viewport-query-card, vh-bottom-bar were authored in ui-craft during its 0.2.4 and 0.3.0 releases and were imported here in anti-slop 1.7.0, at which point this corpus became the single owner of all of them.",
@@ -38,21 +38,21 @@
       "modality": "prose",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 1
+      "maxIncidentalFindings": 0
     },
     {
       "file": "prose/context-exception-ml.md",
       "modality": "prose",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 1
+      "maxIncidentalFindings": 0
     },
     {
       "file": "prose/context-exception-legal-comprehensive.md",
       "modality": "prose",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 1
+      "maxIncidentalFindings": 0
     },
     {
       "file": "prose/antithesis-and-boilerplate.md",
@@ -199,21 +199,21 @@
       "modality": "prose",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 1
+      "maxIncidentalFindings": 0
     },
     {
       "file": "prose/escape-hatch-note.md",
       "modality": "prose",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 1
+      "maxIncidentalFindings": 0
     },
     {
       "file": "prose/clean-migration-note.md",
       "modality": "prose",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 1
+      "maxIncidentalFindings": 0
     },
     {
       "file": "code/auth-handler.js",
@@ -237,14 +237,14 @@
       "modality": "code",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 1
+      "maxIncidentalFindings": 0
     },
     {
       "file": "code/clean-utility.ts",
       "modality": "code",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 1
+      "maxIncidentalFindings": 0
     },
     {
       "file": "code/dashboard-render.js",
@@ -290,7 +290,7 @@
       "modality": "code",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 1
+      "maxIncidentalFindings": 0
     },
     {
       "file": "code/legacy-migration.ts",
@@ -472,15 +472,21 @@
           "id": "stock-illustration",
           "severity": "low",
           "confidence": "Pattern smell"
+        },
+        {
+          "id": "img-no-dimensions",
+          "severity": "medium",
+          "confidence": "Hard defect"
         }
-      ]
+      ],
+      "note": "The dimensionless <img> was always planted here; it became reachable in 2.1.0, when .html joined the code surfaces. Before that, img-no-dimensions -- a CLS rule whose entire target syntax is <img> -- could not fire on plain HTML at all."
     },
     {
       "file": "design/small-avatar-clean.html",
       "modality": "design",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 1,
+      "maxIncidentalFindings": 0,
       "note": "Clean control: two small avatar pills and one line of real copy. rounded-full on an 8px avatar is a lone utility-class hit, which the floor rule clears."
     },
     {
@@ -501,7 +507,7 @@
       "modality": "design",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 1,
+      "maxIncidentalFindings": 0,
       "note": "Item 1 clean control, and the guard against the regression this release exists to stop. Carries BOTH a fluid clamp() ramp AND a stepped Tailwind ramp on non-default steps with tuned tracking, plus the canonical prefers-reduced-motion block. A finding against any of them means the hero rule has been read as a ban on responsive type rather than on one copy-pasted string, and the 'fix' would break WCAG 1.4.4 and 2.3.3."
     },
     {
@@ -553,7 +559,7 @@
       "modality": "design",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 1,
+      "maxIncidentalFindings": 0,
       "note": "Clean control with a committed point of view (tactical operator: warm-coal surface, single amber accent, square corners, fluid type). Mono appears only inside the log pane, which is genuine machine output; the readouts use tabular-nums on the system sans."
     },
     {
@@ -561,7 +567,7 @@
       "modality": "design",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 1,
+      "maxIncidentalFindings": 0,
       "note": "Clean control for the responsive doctrine. Uses every construct the catalogue prescribes -- clamp() ramps, width: min(), auto-fit minmax, container queries, 100dvh, safe-area insets, a visible focus ring -- and must produce ZERO findings."
     },
     {
@@ -569,7 +575,7 @@
       "modality": "design",
       "role": "coverage-boundary",
       "expected": [],
-      "maxIncidentalFindings": 1,
+      "maxIncidentalFindings": 0,
       "note": "Plants D1 (an uncommitted 8px radius on every control) in CSS custom-property vocabulary. anti-slop's rounded-everything rule keys on rounded-2xl/3xl/full and 999px pills, so it has no rule for a shared --radius default."
     },
     {
@@ -577,7 +583,7 @@
       "modality": "design",
       "role": "coverage-boundary",
       "expected": [],
-      "maxIncidentalFindings": 1,
+      "maxIncidentalFindings": 0,
       "note": "Plants hardcoded off-token colours and off-scale spacing that bypass the file's own token system. anti-slop has no token-drift rule."
     },
     {
@@ -585,7 +591,7 @@
       "modality": "design",
       "role": "coverage-boundary",
       "expected": [],
-      "maxIncidentalFindings": 1,
+      "maxIncidentalFindings": 0,
       "note": "Plants a happy-path-only data UI and a non-functional Refresh control. Both are structural, not lexical: anti-slop cannot see a missing state from one file."
     },
     {
@@ -593,7 +599,7 @@
       "modality": "design",
       "role": "coverage-boundary",
       "expected": [],
-      "maxIncidentalFindings": 1,
+      "maxIncidentalFindings": 0,
       "note": "Plants a fixed-pixel page shell that cannot resize. anti-slop has no web responsive-sizing rule."
     },
     {
@@ -601,7 +607,7 @@
       "modality": "design",
       "role": "coverage-boundary",
       "expected": [],
-      "maxIncidentalFindings": 1,
+      "maxIncidentalFindings": 0,
       "note": "Plants a component laid out by a viewport media query where a container query belongs."
     },
     {
@@ -609,7 +615,7 @@
       "modality": "design",
       "role": "coverage-boundary",
       "expected": [],
-      "maxIncidentalFindings": 1,
+      "maxIncidentalFindings": 0,
       "note": "Plants a 100vh surface whose fixed bottom bar ignores dvh and the safe-area inset."
     },
     {
@@ -619,7 +625,7 @@
       "expected": [
         {
           "id": "emoji",
-          "severity": "low",
+          "severity": "medium",
           "confidence": "Quality defect"
         },
         {
@@ -660,28 +666,28 @@
       "modality": "design",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 1
+      "maxIncidentalFindings": 0
     },
     {
       "file": "../fixtures/technical-mono.html",
       "modality": "design",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 1
+      "maxIncidentalFindings": 0
     },
     {
       "file": "../fixtures/warm-consumer.html",
       "modality": "design",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 1
+      "maxIncidentalFindings": 0
     },
     {
       "file": "../fixtures/utilitarian-fintech.html",
       "modality": "design",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 1
+      "maxIncidentalFindings": 0
     },
     {
       "file": "native/FixedGeometryShell.swift",
@@ -721,7 +727,7 @@
       "modality": "native",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 1,
+      "maxIncidentalFindings": 0,
       "note": "Native clean control: the same screen built by negotiation -- intrinsic sizing, a size-class branch, an adaptive grid, a measure cap rather than a leftover-sized value, ViewThatFits with an honest fallback, a one-shot haptic. The native counterpart of responsive-type-clean.html."
     }
   ]

@@ -26,7 +26,7 @@ export let DASHBOARD_PORT = null;
 // or allowedWords, see scan.mjs opts.collectSuppressed) and is never "stale" the way an
 // old ACTIVE banned-word entry becomes once its word is added to allowedWords.
 export function filterAllowedViolations(log) {
-  const config = loadProjectConfig();
+  const config = loadProjectConfig({ fresh: true });
   const allowedWords = new Set((config.allowedWords || []).map(w => w.toLowerCase()));
   return log.filter(v => {
     if (v.suppressed === true) return true;
@@ -79,7 +79,7 @@ function startDashboard(port) {
 let startPromise = null;
 
 export async function ensureDashboard() {
-  const config = loadProjectConfig();
+  const config = loadProjectConfig({ fresh: true });
   if (config.dashboard === false) {
     return { disabled: true, port: null };
   }

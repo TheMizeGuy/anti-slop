@@ -62,8 +62,24 @@ test("every fixture declares a valid role, and the role matches its labels", () 
 });
 
 // ── The clean-control contract (item 5) ──────────────────────────────────────
-// A tolerance rather than a hard zero, so one incidental note does not fail the suite --
-// but the tolerance is declared per fixture and enforced, not assumed.
+// The tolerance is declared per fixture and enforced, not assumed -- and since 2.1.0 it is
+// 0 everywhere, because 0 is what the suite has always enforced. Any finding on a negative
+// fixture is a false positive by construction, so the precision gate in corpus.test.mjs
+// (design tp=26, tolerance 0.02, i.e. fp must be 0) fails on the first one. A declared
+// tolerance of 1 could therefore never be the failing assertion: it was strictly dominated
+// slack that read like real slack, on all 24 negative fixtures.
+
+test("no negative fixture declares a tolerance the precision gate would not allow", () => {
+  for (const entry of labels.fixtures) {
+    if (entry.role === "positive") continue;
+    assert.equal(
+      entry.maxIncidentalFindings, 0,
+      `${entry.role} ${entry.file} declares a tolerance of ${entry.maxIncidentalFindings}, which the ` +
+        "sibling precision gate would fail on first. Either set it to 0, or exclude tolerated " +
+        "fixtures from the precision computation so the declared slack is real.",
+    );
+  }
+});
 
 test("clean controls stay within their incidental-findings tolerance", () => {
   for (const entry of labels.fixtures) {

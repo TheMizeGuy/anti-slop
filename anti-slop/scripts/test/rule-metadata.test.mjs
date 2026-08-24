@@ -13,7 +13,7 @@ import {
   TEXT_CONSTRUCTS,
   NATIVE_PATTERNS,
 } from "../lib/rules.mjs";
-import { scanContent } from "../lib/scan.mjs";
+import { scanContent, fileGuardOk } from "../lib/scan.mjs";
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const DOCTRINE = join(REPO, "skills", "anti-slop", "references", "confidence-and-evidence.md");
@@ -77,14 +77,89 @@ test("every design and native tell declares presence or concentration", () => {
 
 // Severity and confidence are independent axes. If every high-severity rule were also a
 // Hard defect the enum would be a second name for severity and would carry no information.
+// Both diagonals are asserted: one direction alone leaves the axes free to collapse
+// everywhere else and still pass.
 test("severity and confidence are independent axes", () => {
-  const highSmell = ALL_TABLE_RULES.filter(
-    (r) => r.severity === "high" && r.confidence === CONFIDENCE.SMELL,
-  );
+  const grade = (r) => (typeof r.severity === "function" ? r.severity(1) : r.severity);
+  const highSmell = ALL_TABLE_RULES.filter((r) => grade(r) === "high" && r.confidence === CONFIDENCE.SMELL);
   assert.ok(
     highSmell.length > 0,
     "expected at least one high-severity Pattern smell (a costly finding the scanner cannot prove)",
   );
+  // The other diagonal, stated as the property rather than as one hand-picked rule:
+  // neither axis may determine the other. So some severity must carry more than one
+  // confidence class, AND some confidence class must carry more than one severity.
+  const byGrade = new Map();
+  const byConfidence = new Map();
+  for (const rule of ALL_TABLE_RULES) {
+    if (!byGrade.has(grade(rule))) byGrade.set(grade(rule), new Set());
+    byGrade.get(grade(rule)).add(rule.confidence);
+    if (!byConfidence.has(rule.confidence)) byConfidence.set(rule.confidence, new Set());
+    byConfidence.get(rule.confidence).add(grade(rule));
+  }
+  assert.ok(
+    [...byGrade.values()].some((s) => s.size > 1),
+    `severity determines confidence: ${JSON.stringify([...byGrade].map(([k, v]) => [k, [...v]]))}`,
+  );
+  assert.ok(
+    [...byConfidence.values()].some((s) => s.size > 1),
+    `confidence determines severity: ${JSON.stringify([...byConfidence].map(([k, v]) => [k, [...v]]))}`,
+  );
+});
+
+// ── File-scope guards (2.1.0) ────────────────────────────────────────────────
+// `requires` / `requiresMinCount` / `unless` are evaluated once per file, before the line
+// loop. They are optional, so the only thing to pin is the shape: a guard declared as a
+// string would silently never match, and a requiresMinCount without a requires is a
+// declaration that does nothing.
+test("file-scope guards, where declared, carry the right types", () => {
+  for (const rule of ALL_TABLE_RULES) {
+    if (rule.requires !== undefined) {
+      assert.ok(rule.requires instanceof RegExp, `rule "${rule.name}" declares a non-RegExp requires`);
+    }
+    if (rule.unless !== undefined) {
+      assert.ok(rule.unless instanceof RegExp, `rule "${rule.name}" declares a non-RegExp unless`);
+    }
+    if (rule.requiresMinCount !== undefined) {
+      assert.ok(
+        Number.isInteger(rule.requiresMinCount) && rule.requiresMinCount >= 1,
+        `rule "${rule.name}" needs an integer requiresMinCount >= 1, got ${JSON.stringify(rule.requiresMinCount)}`,
+      );
+      assert.ok(rule.requires, `rule "${rule.name}" sets requiresMinCount with no requires to count`);
+    }
+  }
+});
+
+test("a file-scope guard silences the whole rule, and its absence leaves it firing", () => {
+  const guarded = { name: "probe", pattern: /needle/g, unless: /haystack/i };
+  const requiring = { name: "probe", pattern: /needle/g, requires: /token/gi, requiresMinCount: 2 };
+  assert.equal(fileGuardOk(guarded, "a needle here"), true);
+  assert.equal(fileGuardOk(guarded, "a needle in a haystack"), false, "unless must silence the rule file-wide");
+  assert.equal(fileGuardOk(requiring, "needle, token"), false, "one occurrence is below requiresMinCount");
+  assert.equal(fileGuardOk(requiring, "needle, token, token"), true);
+  assert.equal(fileGuardOk({ name: "probe", pattern: /needle/g }, "a needle"), true, "no guard means always allowed");
+});
+
+// End to end through scanContent, not just against the guard function: the point of the
+// schema is that a guarded rule never reaches the line loop for a file it does not apply
+// to. The probe rule is appended to the live table and removed again in a finally.
+test("a guarded rule is skipped end to end by scanContent", () => {
+  const probe = {
+    name: "guard-probe", severity: "low", confidence: CONFIDENCE.TASTE, mode: PRESENCE,
+    pattern: /height\s*:\s*100vh/gi, unless: /100dvh/i,
+    desc: "probe rule for the file-scope guard",
+  };
+  DESIGN_PATTERNS.push(probe);
+  try {
+    const fired = (css) => scanContent(css, "app.css").some((v) => v.name === "guard-probe");
+    assert.equal(fired(".app { height: 100vh; }"), true, "unguarded content must still fire");
+    assert.equal(
+      fired(".app { height: 100vh;\n         height: 100dvh; }"), false,
+      "the progressive-enhancement fallback on the NEXT line must silence the rule, which a per-line suppress cannot see",
+    );
+  } finally {
+    DESIGN_PATTERNS.pop();
+  }
 });
 
 test("every emitted violation carries a confidence class", () => {

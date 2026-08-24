@@ -1,5 +1,5 @@
 import { createConnection } from "net";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, unlinkSync } from "fs";
 import { join, basename } from "path";
 import { createHash } from "crypto";
 import { homedir } from "os";
@@ -30,6 +30,22 @@ export function checkPort(port) {
   });
 }
 
+// ── Atomic JSON write ──
+// A pre-commit hook and a CI run (or two dashboards racing) can interleave a plain
+// writeFileSync. Every reader here swallows the resulting JSON.parse throw and returns an
+// empty collection, so a torn write is silent total data loss rather than a crash. Write
+// to a sibling temp file and rename, which is atomic within a filesystem.
+function writeJsonAtomic(file, value) {
+  const tmp = `${file}.tmp`;
+  try {
+    writeFileSync(tmp, JSON.stringify(value, null, 2));
+    renameSync(tmp, file);
+  } catch (err) {
+    try { if (existsSync(tmp)) unlinkSync(tmp); } catch { /* nothing left to clean up */ }
+    throw err;
+  }
+}
+
 export function loadRegistry() {
   if (!existsSync(REGISTRY_DIR)) mkdirSync(REGISTRY_DIR, { recursive: true });
   if (!existsSync(REGISTRY_FILE)) return {};
@@ -38,7 +54,7 @@ export function loadRegistry() {
 
 export function saveRegistry(registry) {
   if (!existsSync(REGISTRY_DIR)) mkdirSync(REGISTRY_DIR, { recursive: true });
-  writeFileSync(REGISTRY_FILE, JSON.stringify(registry, null, 2));
+  writeJsonAtomic(REGISTRY_FILE, registry);
 }
 
 export function registerProject(port) {
@@ -86,37 +102,54 @@ const SCORE_FILE = join(DATA_DIR, "scores.json");
 
 const CONFIG_FILE = join(DATA_DIR, "config.json");
 
+export const LOG_LIMIT = 500;
+export const SCORE_LIMIT = 100;
+
 export function ensureDataDir() {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 }
 
-export function loadProjectConfig() {
-  if (!existsSync(CONFIG_FILE)) return {};
-  try { return JSON.parse(readFileSync(CONFIG_FILE, "utf8")); } catch { return {}; }
+// `scan` reads the config once per FILE, and scanContent is also called directly by
+// embedders, so this was an existsSync + readFileSync + JSON.parse in the hot path. A
+// one-shot CLI run cannot see the config change underneath it, so memoize per process.
+// The dashboard is the exception -- it is a long-lived server whose user may edit the
+// config while it serves -- and passes { fresh: true }.
+let configCache = null;
+export function loadProjectConfig({ fresh = false } = {}) {
+  if (!fresh && configCache !== null) return configCache;
+  let value = {};
+  if (existsSync(CONFIG_FILE)) {
+    try { value = JSON.parse(readFileSync(CONFIG_FILE, "utf8")); } catch { value = {}; }
+  }
+  configCache = value;
+  return value;
 }
 
+// The read paths never create `.anti-slop/`. `history` and `stats` on a project that has
+// never recorded anything are pure reads, and the README promises a scan leaves no trace
+// in the project directory unless the user opts in with --record.
 export function loadLog() {
-  ensureDataDir();
   if (!existsSync(LOG_FILE)) return [];
   try { return JSON.parse(readFileSync(LOG_FILE, "utf8")); } catch { return []; }
 }
 
 export function saveLog(log) {
   ensureDataDir();
-  const trimmed = log.slice(-500);
-  writeFileSync(LOG_FILE, JSON.stringify(trimmed, null, 2));
+  writeJsonAtomic(LOG_FILE, log.slice(-LOG_LIMIT));
 }
 
 export function loadScores() {
-  ensureDataDir();
   if (!existsSync(SCORE_FILE)) return [];
   try { return JSON.parse(readFileSync(SCORE_FILE, "utf8")); } catch { return []; }
 }
 
-export function saveScore(score) {
+// One load/trim/write cycle for a whole run, called once per invocation. The per-file
+// `saveScore` it replaces made an N-file scan do N read-modify-write round trips over the
+// whole score file -- and, because the cap counts rows rather than runs, evicted its own
+// rows before the run had finished.
+export function saveScores(batch) {
+  if (!batch.length) return;
   ensureDataDir();
-  const scores = loadScores();
-  scores.push({ ...score, timestamp: new Date().toISOString() });
-  const trimmed = scores.slice(-100);
-  writeFileSync(SCORE_FILE, JSON.stringify(trimmed, null, 2));
+  const stamped = batch.map((s) => ({ ...s, timestamp: new Date().toISOString() }));
+  writeJsonAtomic(SCORE_FILE, [...loadScores(), ...stamped].slice(-SCORE_LIMIT));
 }
