@@ -169,6 +169,13 @@ export const DESIGN_PATTERNS = [
   // which one stray declaration does not establish.
   { name: "ai-purple-hex", severity: "low", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, pattern: /#(6366f1|4f46e5|818cf8|7c3aed|6d28d9|8b5cf6|a855f7|9333ea|7e22ce|c026d3|d946ef)\b/i, desc: "AI purple (indigo/violet hex as brand color)" },
   { name: "ai-purple-class", severity: "medium", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, pattern: /\b(bg|text|from|via|to|border|ring|fill|stroke|decoration|outline)-(indigo|violet|purple|fuchsia)-(400|500|600|700|800)\b/i, desc: "AI purple as primary (Tailwind indigo/violet/purple class)" },
+  // Same "unchosen palette" logic, different framework: these three hexes are Bootstrap 5's
+  // COMPILED literals ($primary #0d6efd, its hover darken #0b5ed7, $gray-300 border
+  // #dee2e6). They reach shipped CSS only by leaving Bootstrap unthemed, and two of them
+  // together is a framework default wearing a product's clothes. Adapted from VibeCurb
+  // (github.com/Yu-369/VibeCurb, MIT) and graded to this repo's classes: heuristic
+  // provenance, not corpus-ranked, hence smell + concentration.
+  { name: "bootstrap-default-blue", severity: "low", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, pattern: /#(0d6efd|0b5ed7|dee2e6)\b/i, desc: "Unthemed Bootstrap compiled defaults (primary blue / gray-300 border)" },
   { name: "gradient-text", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /bg-clip-text\s[^"]*text-transparent|text-transparent\s[^"]*bg-clip-text|-webkit-background-clip\s*:\s*text|\bbackground-clip\s*:\s*text/i, desc: "Gradient text on heading (strong AI tell)" },
   // design-patterns.md has always said "the signal is the combination -- any two of
   // {cream background, serif display, sage green}. One alone may be a real decision."
@@ -266,7 +273,7 @@ export const DESIGN_PATTERNS = [
   // user-facing figure is wrong regardless of how it looks. Near-100% precision -- those
   // exact strings come from one shadcn example and reach product UI only by copy-paste.
   { name: "shadcn-stats-magic", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\$45,?231\.89|\+20\.1%\s+from last month/gi, desc: "shadcn dashboard example literals shipping as product figures" },
-  { name: "generic-microcopy", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\bWelcome back!|\bGet started today\b|\bJoin thousands of\b|\bStay in the loop\b|\bWe['’]re here to help\b/gi, desc: "Generic microcopy literal (says nothing about the product)" },
+  { name: "generic-microcopy", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\bWelcome back!|\bGet started today\b|\bJoin thousands of\b|\bStay in the loop\b|\bWe['’]re here to help\b|\bScroll to explore\b/gi, desc: "Generic microcopy literal (says nothing about the product)" },
 
   // ── Motion and rhythm defaults ──
   // transition-all animates every animatable property, layout ones included, which

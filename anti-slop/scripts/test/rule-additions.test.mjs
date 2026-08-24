@@ -507,3 +507,30 @@ test("suppressed capture: removing the markers restores exactly those findings",
   const code = names(strip(corpus("code/hatched-onboarding.js")), "code/hatched-onboarding.js");
   assert.ok(code.includes("innerhtml-usage"), `expected innerhtml-usage once unhatched, got ${JSON.stringify(code)}`);
 });
+
+// ── 2.2.0 additions (VibeCurb-derived, heuristic provenance) ─────────────────
+
+test("bootstrap-default-blue: two Bootstrap compiled literals are a finding", () => {
+  assert.ok(fires("bootstrap-default-blue", ".btn { background: #0d6efd; } .btn:hover { background: #0b5ed7; }", "app.css"));
+  assert.ok(fires("bootstrap-default-blue", ".card { border: 1px solid #dee2e6; } a { color: #0d6efd; }", "app.css"));
+});
+
+test("bootstrap-default-blue: one literal is below the concentration floor", () => {
+  assert.ok(!fires("bootstrap-default-blue", ".btn { background: #0d6efd; }", "app.css"));
+});
+
+test("bootstrap-default-blue: a themed blue is NOT a finding", () => {
+  assert.ok(!fires("bootstrap-default-blue", ".btn { background: #1a56db; } .btn:hover { background: #1648b8; } .card { border: 1px solid #d8d2c4; }", "app.css"));
+});
+
+test("bootstrap-default-blue: design rules stay off native surfaces", () => {
+  assert.ok(!fires("bootstrap-default-blue", "// #0d6efd #0b5ed7 in a comment", "View.swift"));
+});
+
+test("generic-microcopy: 'Scroll to explore' hero literal is a finding", () => {
+  assert.ok(fires("generic-microcopy", '<span class="hint">Scroll to explore</span>', "Hero.tsx"));
+});
+
+test("generic-microcopy: product-specific scroll copy is NOT a finding", () => {
+  assert.ok(!fires("generic-microcopy", '<span class="hint">Scroll for the 2019-2026 price history</span>', "Hero.tsx"));
+});
