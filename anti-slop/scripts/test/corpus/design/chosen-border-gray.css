@@ -1,0 +1,45 @@
+/* Trailhead field guide -- editorial sheet with a committed warm palette.
+   Clean control for the bootstrap-default-blue file gate. One neutral border gray is
+   chosen and reused across the sheet, and nothing else here came from a framework: the
+   ink, the brand red, the tint and the radius are all stated decisions. Reusing a single
+   neutral consistently is what a token layer is FOR, which is why the rule now requires
+   the compiled primary blue in the file before the gray counts toward anything. */
+
+:root {
+  --ink: #2b2118;
+  --brand: #7a2e1d;
+  --brand-tint: #f5e9dc;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --radius: 3px;
+}
+
+.entry {
+  border-bottom: 1px solid #dee2e6;
+  padding-block: var(--space-3);
+  color: var(--ink);
+}
+
+.entry__aside {
+  border: 1px solid #dee2e6;
+  border-radius: var(--radius);
+  background: var(--brand-tint);
+  padding: var(--space-3);
+}
+
+.entry__marker {
+  color: var(--brand);
+  font-variant-numeric: tabular-nums;
+}
+
+.guide {
+  width: min(100%, 62rem);
+  margin-inline: auto;
+  padding-inline: var(--space-4);
+}
+
+a:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}

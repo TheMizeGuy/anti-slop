@@ -89,6 +89,14 @@
       "recall": 1
     },
     {
+      "rule": "bootstrap-default-blue",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "catch-any",
       "tp": 1,
       "fp": 0,
@@ -346,6 +354,14 @@
     },
     {
       "rule": "hardcoded-secret",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "hero-scroll-hint",
       "tp": 1,
       "fp": 0,
       "fn": 0,
@@ -732,7 +748,7 @@
     },
     {
       "modality": "design",
-      "tp": 49,
+      "tp": 51,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -756,10 +772,10 @@
     }
   ],
   "overall": {
-    "tp": 113,
+    "tp": 115,
     "fp": 0,
     "fn": 1,
     "precision": 1,
-    "recall": 0.9912280701754386
+    "recall": 0.9913793103448276
   }
 }

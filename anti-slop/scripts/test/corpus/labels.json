@@ -13,7 +13,8 @@
     "provenance": {
       "shared-with-ui-craft": "gradient-hero, shadcn-card-kit, frosted-nav-neon, legacy-marketing-page, small-avatar-clean originated here and were copied downstream. presence-single, cream-serif-sage, token-drift, missing-states, clean-intentional, uncommitted-radius, fluid-adaptive-clean, fixed-desktop-shell, viewport-query-card, vh-bottom-bar were authored in ui-craft during its 0.2.4 and 0.3.0 releases and were imported here in anti-slop 1.7.0, at which point this corpus became the single owner of all of them.",
       "authored-here-in-1.7.0": "hero-triplet-verbatim, responsive-type-clean, uniform-control-radius, native/FixedGeometryShell, native/AdaptiveShell.",
-      "authored-here-in-2.1.0": "marketing-defaults, motion-rhythm, gallery-unlabelled, legacy-theme.css, tokens-clean.css, hatched-wordmark, near-miss-controls (design); render-user-card.tsx, ingest_records.py, pasted-snippet.js, hatched-onboarding.js, order-lookup.py, safe-render.tsx, safe-pipeline.py (code); native/LegacyProfileView, native/MeasuredCardStack; plain-register, plain-register-clean (prose). Five design fixtures were also PROMOTED from coverage-boundary to positive in the same release -- uncommitted-radius, token-drift, missing-states, fixed-desktop-shell, vh-bottom-bar -- because 2.1.0 shipped a rule for the tell each of them had been recording as unreachable."
+      "authored-here-in-2.1.0": "marketing-defaults, motion-rhythm, gallery-unlabelled, legacy-theme.css, tokens-clean.css, hatched-wordmark, near-miss-controls (design); render-user-card.tsx, ingest_records.py, pasted-snippet.js, hatched-onboarding.js, order-lookup.py, safe-render.tsx, safe-pipeline.py (code); native/LegacyProfileView, native/MeasuredCardStack; plain-register, plain-register-clean (prose). Five design fixtures were also PROMOTED from coverage-boundary to positive in the same release -- uncommitted-radius, token-drift, missing-states, fixed-desktop-shell, vh-bottom-bar -- because 2.1.0 shipped a rule for the tell each of them had been recording as unreachable.",
+      "authored-here-in-2.2.1": "bootstrap-unthemed.css, chosen-border-gray.css, hero-scroll-poster.html (design). The first two are the positive/clean-control pair the 2.2.0 Bootstrap rule shipped without; the third is the positive for hero-scroll-hint, which 2.2.1 split out of generic-microcopy."
     }
   },
   "fixtures": [
@@ -648,6 +649,40 @@
         }
       ],
       "note": "Plants a 100vh surface whose fixed bottom bar ignores dvh and the safe-area inset. Promoted from coverage-boundary in 2.1.0. The rule is file-scoped rather than line-scoped because the progressive-enhancement idiom writes its fallback on the next line; the missing env(safe-area-inset-bottom) on the bar itself stays unruled."
+    },
+    {
+      "file": "design/bootstrap-unthemed.css",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "bootstrap-default-blue",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        }
+      ],
+      "note": "Positive control for bootstrap-default-blue, added in 2.2.1 because the rule shipped in 2.2.0 with no corpus representation at all -- the only design rule the measure table could not see, which made 'corpus precision holds' carry no information about it. Plants the compiled primary and its hover darken alongside the gray-300 borders, so the requires-blue file gate passes and the concentration threshold is reached on the pair the rule is a claim about. Paired with chosen-border-gray.css."
+    },
+    {
+      "file": "design/chosen-border-gray.css",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Clean control for the 2.2.1 requires-blue gate, and the shape that forced it: one neutral border gray reused across a sheet whose palette, radius and spacing are all stated decisions. minCount counts matches rather than distinct alternatives, so before the gate this file reached the threshold on repeats of a single literal and was reported as an unthemed framework -- the inverse of what it is. A finding here means the gate has been removed or the alternation re-widened."
+    },
+    {
+      "file": "design/hero-scroll-poster.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "hero-scroll-hint",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        }
+      ],
+      "note": "Positive control for hero-scroll-hint, split out of generic-microcopy in 2.2.1. Carries the tell twice over: once as the visible hero label, which fires, and once as a gallery button's aria-label, which the suppress guard clears because the stated remediation -- remove the hint -- would delete screen-reader output there. One finding, not two, is the assertion."
     },
     {
       "file": "../fixtures/before.html",

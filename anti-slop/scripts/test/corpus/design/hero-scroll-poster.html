@@ -1,0 +1,58 @@
+<!doctype html>
+<!-- Kiln + Table, a two-page restaurant site whose hero was built as a poster.
+     Positive control for hero-scroll-hint: the visible label is the tell, and the sibling
+     gallery button carries the same phrase as its accessible name, where the remediation
+     would delete screen-reader output and the suppress guard therefore applies. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kiln + Table</title>
+    <style>
+      :root {
+        --ink: #241d17;
+        --ember: #8c3b16;
+        --paper: #f6f1e7;
+        --rule: #d9d0c2;
+        --radius: 2px;
+        --space-3: 12px;
+        --space-5: 24px;
+      }
+      .hero {
+        background: var(--paper);
+        color: var(--ink);
+        padding-block: var(--space-5);
+      }
+      .hero__title {
+        font-size: clamp(2.5rem, 1.8rem + 3vw, 4.5rem);
+        line-height: 0.95;
+      }
+      .hero__hint {
+        color: var(--ember);
+        letter-spacing: 0.02em;
+      }
+      .gallery__next {
+        border: 1px solid var(--rule);
+        border-radius: var(--radius);
+        padding: var(--space-3);
+      }
+      a:focus-visible,
+      button:focus-visible {
+        outline: 2px solid var(--ember);
+        outline-offset: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="hero">
+      <h1 class="hero__title">Wood fire, four nights a week</h1>
+      <p>Tuesday through Friday, one seating at 6.30, twenty-two covers.</p>
+      <span class="hero__hint">Scroll to explore</span>
+    </section>
+    <section class="gallery">
+      <h2>The room</h2>
+      <img src="/room.jpg" width="960" height="640" alt="The dining room at dusk, tables set along the kiln wall" />
+      <button class="gallery__next" aria-label="Scroll to explore the room in more photographs">Next</button>
+    </section>
+  </body>
+</html>
