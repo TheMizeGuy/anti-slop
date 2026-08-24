@@ -93,6 +93,8 @@ AI treats z-index as "higher number = on top" and escalates to z-index: 9999. It
 
 Use a z-index scale with CSS custom properties: `--z-dropdown: 100`, `--z-modal: 200`, `--z-toast: 300`.
 
+`z-index-escalation` matches the escalated value in CSS (`z-index: 9999`), in a Tailwind class (`z-[9999]`), and in a JS or JSX style object (`zIndex: 9999`), since the same defect arrives through all three. **Remediation is the scale above, not a smaller magic number.** Where the element genuinely will not stack, the cause is usually an ancestor's stacking context rather than the value, and raising the number cannot fix that; move the element in the tree, or remove the `transform` / `filter` / `opacity` on the ancestor that created the context.
+
 ### Sticky/Fixed Positioning Bugs
 
 - `position: sticky` without at least one inset property (`top`, `bottom`, `left`, `right`) does nothing
@@ -109,6 +111,8 @@ Use a z-index scale with CSS custom properties: `--z-dropdown: 100`, `--z-modal:
 const colorClasses = { red: 'bg-red-500', blue: 'bg-blue-500' }
 <div className={colorClasses[color]}>
 ```
+
+`tailwind-dynamic-class` matches the interpolated form, **Hard defect**, medium severity: Tailwind scans source text for complete class names at build time, so `bg-${color}-500` produces a class that never enters the stylesheet and an element that silently renders unstyled. It is a defect rather than a smell because the failure is total and invisible in review. **Remediation:** map to complete class strings, as above. `` className={`${base} rounded`} `` interpolates a variable that already holds complete classes and does not match.
 
 Also: @apply abuse (increases bundle, loses co-location; removed entirely in Tailwind v4), arbitrary values `[347px]` bypassing the design system, conflicting classes without tailwind-merge.
 
@@ -295,6 +299,8 @@ AI produces interfaces that look complete but collapse under use. Buttons with e
 
 Test every interactive element for actual functionality, not just visual presence.
 
+The empty-handler leg has a rule: `dead-control` matches `onclick=""`, `onClick={() => {}}`, and `onClick={() => null}`, plus handlers whose only body is a comment. **Hard defect**, medium severity, presence-flagged, because a visible affordance that does not act is wrong on any reading. **Remediation:** wire the handler, or remove the control until it works. A handler with a real body and a comment explaining a deliberate no-op does not match. The other legs of demo-ware (a form that posts nowhere, a toggle that does not persist) need the network or the store and stay agent territory, per the coverage matrix in `empirical-rankings.md`.
+
 ### Modal Overuse
 
 Modals interrupt the user's context. Use them only when the user must complete a task before continuing. For content viewing, navigation, or multi-step workflows, use a page or slide-over instead. When using modals:
@@ -323,6 +329,8 @@ aria-live containers must exist in the DOM at page render (not created dynamical
 ### Hardcoded Values vs Tokens
 
 AI writes `padding: 12px` when the system defines `--space-200: 8px` and `--space-300: 12px`. One project found 418 hardcoded values across 28 files. Use design tokens; audit with automated checks.
+
+`token-drift-spacing` is that automated check, scoped so it can only fire where there is a scale to drift from: it stays silent unless the file itself declares at least two `--space-*` custom properties, and then it wants two or more off-scale raw pixel values before it says anything. **Remediation:** use the nearest existing token, or add a token if the value is genuinely new and name it. Never delete the spacing. A file with no spacing scale, however many raw values it carries, is a different conversation and this rule does not have it.
 
 ### Cross-Session Drift
 

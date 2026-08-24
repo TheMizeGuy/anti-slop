@@ -2,9 +2,16 @@
 
 How sure a finding is, and what has to be true before it can claim a number.
 
-Two rules live here, and nothing else restates them. The scanner's rule table
-(`scripts/lib/rules.mjs`) mirrors the confidence enum below in code, and
-`test/rule-metadata.test.mjs` fails if the two ever carry different classes.
+Six rules live here, and this file defines all of them: the confidence classes, the
+presence/concentration split, the remediation floor, the evidence modes, the geometry rule,
+and the not-assessed rule. Several domain files restate one of them with a local
+specialisation (`design-patterns.md` on presence versus concentration,
+`density-and-economy.md` on the measurement requirement, `frontend-patterns.md` on the
+fluid-ramp form of the remediation floor, `native-ui-patterns.md` on what one Swift file
+cannot show). Those restatements add domain detail; where they appear to differ, this file
+is the definition. The scanner's rule table (`scripts/lib/rules.mjs`) mirrors the confidence
+enum below in code, and `test/rule-metadata.test.mjs` fails if the two ever carry different
+classes.
 
 ## Confidence classes
 
@@ -43,7 +50,7 @@ when repeated, so each one declares which it is:
 
 **The floor rule: a lone utility-class hit is not a finding.** One
 `rounded-full` on an icon wrapper is not "the same radius on every interactive
-control". One cream background is not the cream-serif-sage combination. The
+control". One cream background is not the cream-plus-serif-plus-warm-accent combination. The
 signal is a default reached for repeatedly and without a point of view, never
 the presence of any single class.
 
@@ -117,6 +124,37 @@ time and therefore cannot judge:
 - state completeness (the empty, error, and loading states may live in sibling files)
 - task flow, navigation, and error recovery, which need a sequence, not a file
 - anything requiring a rendered frame or a measurement
+
+### The families the catalogue teaches and the scanner has no rule for
+
+The list above is about what one file cannot show. This one is about something more
+expensive: tell families this catalogue documents in full, with worked examples, that no
+deterministic rule matches at all. A scan is silent on every one of them, and silence here
+reads exactly like a pass.
+
+As of 2.1.0, after that release added rules for command injection, unsafe deserialization,
+`dangerouslySetInnerHTML`, and the comment-slop family, these remain un-ruled:
+
+| Family | Taught in | Why there is no rule |
+|---|---|---|
+| SQL injection by string concatenation | `code-patterns.md` § SQL Injection | The interpolation shape is indistinguishable from safe query building without knowing whether the value is user-controlled |
+| Path traversal | `code-patterns.md` § Path Traversal | Same: the defect is an untrusted source, not a syntax |
+| SSRF | `code-patterns.md` § SSRF | Requires knowing which URLs the caller controls |
+| IDOR / broken access control | `code-patterns.md` § Broken Access Control | The defect is an *absent* ownership check; absence is not matchable in one line |
+| Insecure randomness | `code-patterns.md` § Insecure Randomness | `Math.random()` is correct for most uses; only the security context makes it wrong |
+| N+1 queries | `code-patterns.md` § N+1 Queries | Needs the loop body and the call it makes, which is block scope |
+| Missing HTTP timeouts, unbounded queries, naive retries | `code-patterns.md` § Backend Anti-Patterns | All absence claims |
+| Race conditions in async code | `code-patterns.md` § Race Conditions | Needs interleaving, not text |
+
+Two properties they share: each is bug-class rather than cosmetic, and each is an absence
+or a context claim rather than a shape. That is the honest boundary of a single-line regex,
+not an oversight to be closed by widening a rule until it fires on safe code.
+
+**Consequence for any report built on a scan.** `slop-scanner.mjs scan` on a Python file
+containing `query = f"SELECT * FROM users WHERE id = '{user_id}'"` prints `Scan score:
+50/50 | CLEAN`. A verdict that presents that as the deterministic half of a security review
+is a false negative on the highest-cost class in the catalogue. Name the boundary in the
+report. The coverage matrix in `empirical-rankings.md` states it per family.
 
 A clean scan means "no rule matched in this file", which is a smaller claim than
 "this file is good". Say the smaller thing.

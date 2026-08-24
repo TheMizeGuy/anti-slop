@@ -11,17 +11,21 @@ A corpus study of 3M+ Reddit posts and 3,033 comments (see `empirical-rankings.m
 
 Trust comment share over post share when they disagree (comments are 100% on-topic; post bodies inflate generic words). The deepest cause is upstream of any pattern: an unspecified prompt returns the median of the training data, and everyone's median is identical. The fix is a deliberate choice with a reason; see `choosing-with-intent.md`. The diagnostic that captures it: the **logo-swap test** (below).
 
-## The Tasteful Default (Cream + Serif + Sage)
+## The Tasteful Default (Cream + Serif + a Warm Accent)
 
-The current top emerging tell, and the one most lists miss. A warm cream/beige page background + a serif display font (Instrument Serif, Fraunces, Playfair Display) + a sage or forest-green accent, often with a generated product-screenshot card to the right. This is the look the *previous* wave of anti-AI advice converged on, so it now signals "AI tried to be tasteful." It reacts harder than purple ever did, precisely because it looks like a choice: being told it is a default lands worse than being told purple is.
+The current top emerging tell, and the one most lists miss. A warm cream/beige page background + a serif display font (Instrument Serif, Fraunces, Playfair Display) + a single saturated accent, often with a generated product-screenshot card to the right. This is the look the *previous* wave of anti-AI advice converged on, so it now signals "AI tried to be tasteful." It reacts harder than purple ever did, precisely because it looks like a choice: being told it is a default lands worse than being told purple is.
+
+**The accent leg moved.** Through 2025 the third leg was sage or forest green. By mid-2026 the reporting that named this style names **rusty orange and terracotta** instead, on the same cream ground and with the same serif display. Both are current; the accent is the leg that drifts, and the other two are stable. Treat the family as {cream, serif display, *a warm saturated accent*} rather than pinning the hue, or this section will be one cycle stale again by the next refresh.
 
 **Anti-patterns:**
 - Cream/beige page background: hexes like `#faf8f5`, `#f5f1e8`, `#f3eee3`, `#fdfbf7`, or Tailwind `bg-stone-50` / `bg-amber-50` / `bg-orange-50` used as the page surface
 - Serif display face for headings: Instrument Serif, Fraunces, Playfair Display, Cormorant, Spectral, DM Serif
-- Sage / forest-green as the brand color (`#15573a`, emerald/green 700-900)
+- Accent, either wave: sage / forest green (`#15573a`, emerald/green 700-900), or rusty orange / terracotta (`#b7410e`, `#c2410c`, `#9a3412`, `#a0522d`, Tailwind orange/amber 600-800)
 - The screenshot-card-on-the-right hero that ships with it
 
-**The signal is the combination.** Any two of {cream background, serif display, sage green} together is the strong tell. One alone may be a real decision.
+**The signal is the combination.** Any two of {cream background, serif display, warm accent} together is the strong tell, and that is why `cream-serif-default` is a concentration rule at `minCount: 2`. One alone may be a real decision.
+
+**Judgment note: the false-positive risk on this one is rising and the confidence class must stay Pattern smell.** The same reporting that identifies this as the generated look also records human 2026 design converging on the same palette independently. A warm editorial site built by a person now matches on two legs. Red is deliberately excluded from the accent leg, because including it would fire on every error state on the web, and the 200-level tints are excluded because a single `bg-amber-50` warning banner is not a palette.
 
 **Instead:** this is not "pick a different nice palette" (that just resets the clock). Anchor color and type to the real brand or a reference. If none exists, choose a direction that is specific and uncommon rather than the current tasteful average. If warm-editorial cream-and-serif is a genuine, stated decision, keep it and mark the line `anti-slop-allow: <reason>`. See `choosing-with-intent.md`.
 
@@ -40,6 +44,8 @@ AI defaults to purple/indigo gradients on white backgrounds. This traces directl
 
 **Instead:** Choose colors based on the project's brand and purpose. Use warm colors, unusual combinations, or high-contrast palettes when appropriate. A restaurant website doesn't need tech-purple.
 
+**The default has broadened, not moved.** Framework indigo/violet remains the loudest palette tell in the corpus, and it is the one with scanner rules (`ai-purple-hex`, `ai-purple-class`, `purple-gradient-default`, `purple-blue-gradient`). But 2026 surveys of generated sites put Tailwind `blue-600` (`#2563EB`) ahead of it by raw volume, with an all-`slate` neutral ramp underneath. There is deliberately **no rule for blue**, and there should not be one: blue is the most common legitimate brand colour in software, a concentration rule on it would fire on a large share of correctly branded interfaces, and its remediation ("pick a different colour") is exactly the reset-the-clock move that `empirical-rankings.md` finding 1 warns against. The point is unchanged and is not about any hex. An unchosen primary plus an unchosen neutral ramp is the tell, and swapping indigo for blue changes nothing. The test stays "can I say why this project uses this colour."
+
 ### The Default Typography Problem
 
 AI reaches for Inter, Roboto, or system sans-serif every time. No distinctive pairings. Generic hierarchies.
@@ -52,6 +58,10 @@ AI reaches for Inter, Roboto, or system sans-serif every time. No distinctive pa
 - Identical weight hierarchies (400/600/700)
 
 **Instead:** Pick fonts that match the project's personality. Consider serif fonts, display fonts, monospace for technical products. Use distinctive weight and size hierarchies.
+
+**The default sans has broadened past Inter.** `generic-font` matches the geometric-and-neutral set that generated pages reach for interchangeably: Inter, Geist, Roboto, Space Grotesk, Manrope, Plus Jakarta Sans, Outfit, DM Sans. They are all competent faces and none of them is banned; the tell is that swapping one for another is the move a page makes when nobody chose a typeface. **Remediation is a decision with a source**, not a different entry from the same list: the brand's face if there is one, a pairing (a display face plus a separate body face) if there is not, and a stated reason either way. Note that the rule matches on the family name, so `Inter Tight` matches through `Inter`, which is correct: it is the same family.
+
+The counterpart trap is on the other side. Steering off Inter and landing on Instrument Serif or Fraunces is the tasteful default above, and the same non-decision wearing better clothes.
 
 ### The Default Layout Problem
 
@@ -72,6 +82,10 @@ Three-column grids with icon boxes. Hero section with centered text and CTA. Fea
 One of the most-cited specific complaints: every section is icon-cards and abstract shapes, with no actual images. "Most good websites are like 50% images if not more." AI defaults to icon-in-a-box because an icon needs no asset pipeline, so a generated page often has zero screenshots, photos, or product shots.
 
 **Instead:** Show the real product. A true screenshot, real data, a short demo clip, or real photography carries more than a grid of Lucide icons. If the product is visual, the page should be too.
+
+**Stock illustration is the same defect with an asset attached.** The flat-vector illustration libraries (unDraw, Storyset, DrawKit, Humaaans) are what a generated page reaches for when it is told to add imagery, and they carry the same monochrome-accent, no-faces, floating-limbs house style everywhere they appear. The scanner matches the source URLs and package names as `stock-illustration`, presence-flagged, Pattern smell.
+
+**Remediation:** replace the illustration with the thing it stands in for. A screenshot of the actual screen being described, a photograph of the actual object, a diagram drawn for this specific system. Where an abstract image genuinely belongs, commission or draw one that does not ship with a recognisable house style. Deleting the image and leaving an empty band is not the fix: the section still needs something, and the tell was the stock asset, not the presence of a picture.
 
 ## Visual Design Anti-Patterns
 
@@ -112,6 +126,10 @@ Rounding every corner to the same generous radius. Everything looks like a lozen
 
 **Instead:** Match border radius to the design's personality. Sharp corners feel precise and technical. Gentle rounding (4-6px) works for most UI. Reserve larger radii for specific interactive elements.
 
+**Weight this lightly, on the same grounds as glassmorphism.** In the corpus data "rounded corners / pill buttons everywhere" is 0.8% of comments at **medium** false-positive risk. Rounding is not a defect and most interfaces are rounded. Two rules exist and both are concentration rules for that reason: `rounded-everything` fires at three Tailwind `rounded-2xl` / `rounded-3xl` / `rounded-full` / 999px pills, and `uniform-literal-radius` fires at three literal `border-radius` values in a file that declares no radius token to vary from. A single pill button is a choice, and a file that defines `--radius` and uses it is silenced outright.
+
+**Remediation:** state the radius as a token (`--radius: 8px`) and reference it, or vary it deliberately by control class. The remediation is *stating the decision*, never removing the rounding. A review that ends with square corners nobody asked for was a wrong review.
+
 ### Icon-in-Colored-Circle Pattern
 
 One of the strongest AI design tells. Every feature card gets a generic icon (Zap, Shield, Globe, Sparkles) placed inside a colored oval or circle background (`bg-indigo-100 rounded-full p-3`). The pattern repeats identically across every card in a grid, creating a uniform, template-driven look.
@@ -136,6 +154,53 @@ Hover effects, entrance animations, and transitions on everything. Looks like a 
 - Parallax effects without purpose
 
 **Instead:** Animate to communicate state changes. Micro-interactions: under 200ms. Medium transitions (panels, dropdowns): 200-300ms. Full-screen: up to 400ms. Over 500ms feels sluggish. Respect `prefers-reduced-motion`. For animation performance details (compositor vs layout properties), see `frontend-patterns.md`.
+
+**Weight this lightly. It is the noisiest entry in the whole UI table.** "Too many animations / Framer fade-ins" is 1.1% of comments at **high** false-positive risk, the only `high` in the corpus ranking, because the complaint is usually a taste disagreement rather than a defect. Flag it when the motion has no state change to communicate, when a duration is plainly out of band, or when there is no `prefers-reduced-motion` handling; the last of those is an accessibility finding and stands on its own. Do not write it up as a count of animations.
+
+### `transition-all`
+
+The one motion default that is a defect on its own technical merits rather than as a taste call. `transition-all` animates every animatable property, layout properties included, so a hover that was meant to fade a shadow also interpolates width, height, and position on any state change that touches them. `frontend-patterns.md` § Animation Performance already says not to animate layout properties; this is the shorthand that does it by accident.
+
+**Remediation:** name the properties. `transition-[background-color,box-shadow] duration-150` costs nothing, animates the same visible thing, and removes no motion. The scanner matches it as `transition-all` at low severity, concentration, from two occurrences, because one on a single button is a shortcut rather than a policy. Nothing about the fix touches `prefers-reduced-motion` handling, so the remediation floor is clear.
+
+### Unprompted Neon Glow
+
+Dark background plus a saturated glow bleeding off cards, buttons, and headings: `box-shadow: 0 0 40px rgba(139,92,246,0.5)`, `drop-shadow-[0_0_25px_#a855f7]`, a `text-shadow` halo on a heading. In the corpus this sits at 0.7% of comments with **low** false-positive risk, and the complaint is specific: **the glow, not dark mode.** Dark mode itself is cleared by the data. The glow is what nobody asked for.
+
+It arrives with the purple palette because a saturated hue on near-black is where a glow reads at all, which is why the two so often ship together. The scanner matches it as `neon-glow`.
+
+**Remediation:** carry elevation with a real shadow scale and a lighter surface, the way the platform does. `background: var(--surface-2)` plus `box-shadow: 0 1px 2px rgb(0 0 0 / 0.6)` separates a card from its ground without the halo. Where a glow is genuinely the brand (a synthwave product, a monitoring wall meant to be read across a room), keep it and mark the line, because the rule is about the unchosen default rather than the technique.
+
+### Emoji as Interface
+
+Distinct from emoji in copy, which `writing-patterns.md` § Emoji Abuse covers. This is the interface using a glyph as a control or an indicator: a sparkle on the AI button, a rocket on the "Get started" CTA, a green circle standing in for a status dot, a check mark doing the work of a success icon, emoji as the bullet in a feature list. The corpus rates it 0.5% of comments at medium false-positive risk, and the verdict is explicit: confirmed as a tell **when emoji act as UI**, not when they appear in text a user wrote.
+
+Three reasons it is a defect and not only a tell:
+
+- **Screen readers announce them.** A green circle emoji next to a row reads as "large green circle" and the row's actual state is never stated.
+- **They render differently on every platform.** The same glyph is a different shape, weight, and colour on iOS, Android, Windows, and each browser's fallback font, so the interface has no controlled appearance.
+- **They cannot be styled.** No size token, no colour token, no state variants, no alignment with the icon set beside them.
+
+**Remediation:** an icon component from the project's set, with an accessible name; or a word, which is often better than either. `PASS` / `FAIL` / `WARNING` beats a colour glyph in a log line, and a labelled status pill beats a coloured dot in a table. Where the glyph is the content rather than the control (a user's message, an emoji picker, a reaction), it stays.
+
+### Fixed Geometry: Shells, Tracks, and Viewport Units
+
+The web mirror of the native fixed-frame family in `native-ui-patterns.md`. Each of these answers a question about available space with a number, so the layout survives exactly the window it was authored against.
+
+| Tell | What it looks like | Remediation |
+|---|---|---|
+| **Fixed page shell** (`fixed-page-shell`) | `width: 1200px` or `min-width: 960px` on a content container | `width: min(100%, 75rem); margin-inline: auto;`. The container keeps a maximum and stops having a floor. `max-width` alone is the correct idiom and is deliberately not matched |
+| **Fixed grid tracks** (`fixed-grid-tracks`) | `grid-template-columns: repeat(4, 280px)` | `repeat(auto-fit, minmax(20rem, 1fr))`. Same content, gaining and losing columns with the window, no breakpoint |
+| **`100vh` app shell** (`vh-viewport-shell`) | `height: 100vh` on the shell, with a fixed bottom bar | `100dvh` (or `100svh` where the bar must never be covered), plus `padding-bottom: max(0.75rem, env(safe-area-inset-bottom))` on the bar. On mobile, `100vh` excludes the URL bar and clips the last row |
+| **Token drift** (`token-drift-spacing`) | `padding: 13px` in a file that declares `--space-1` through `--space-8` | Use the nearest existing token, or add one if the value is genuinely new. Never "delete the padding" |
+
+Every remediation above **adds** adaptive behaviour and removes none, which is the test any new geometry rule has to pass. Three of the four are file-scoped: `vh-viewport-shell` stays silent where the file also declares `100dvh` (the progressive-enhancement pair), and `token-drift-spacing` says nothing in a file with no spacing scale to drift from, because there is no drift without a scale.
+
+### Dead Controls
+
+A button, link, or toggle that renders and does nothing: `onclick=""`, `onClick={() => {}}`, `onClick={() => null}`, or a handler whose body is a comment. Demo-ware, and `frontend-patterns.md` § Demo-ware carries the wider case. It is a **Hard defect** rather than a smell, because a visible affordance that does not act is wrong on any reading, and it is the single easiest thing to leave behind when a page was generated to be looked at rather than used.
+
+**Remediation:** wire the handler, or remove the control until it works. A handler with a real body and a comment explaining why it is intentionally inert (`onClick={() => {/* see #221 */ log()}}`) is a decision and does not match. The scanner rule is `dead-control`.
 
 ## CSS Anti-Patterns
 
@@ -275,6 +340,11 @@ AI-generated UI frequently fails accessibility. These are functional defects, no
 
 **Rule:** Check contrast for text AND UI components. Use semantic HTML. Trap focus in modals. Announce dynamic changes. Test with keyboard only.
 
+**Two of these have scanner rules, and both remediations add behaviour rather than removing it.**
+
+- `outline-none` matches `outline: none` / `outline: 0` in a file that defines no `:focus-visible` rule. **Remediation: replace the ring, never remove it.** `:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }` satisfies WCAG 2.4.7 and looks better than the browser default, which is usually why the outline was killed in the first place. A file that already defines `:focus-visible` is silenced, because suppressing the default in favour of a designed ring is the correct pattern.
+- `missing-alt` matches an `<img>` with no `alt` attribute at all, and separately an `alt` whose value is `image`, `photo`, `picture`, `icon`, or `graphic`, which is the placeholder a generated page writes when it has nothing to say. **Remediation: write what the image conveys**, in the context where it sits ("Q3 revenue by region, with EMEA flat"). For a decorative image, `alt=""` is the correct answer and is deliberately not matched. Deleting the `<img>` is never the fix.
+
 ### Mobile-Unfriendly Designs
 
 Designs that look good at desktop width but break on mobile:
@@ -298,6 +368,8 @@ AI generates the same microcopy for every project:
 - "Transform the way you..." (hero sections)
 
 **Instead:** Write microcopy specific to the product and the user's actual context. "Your last report ran 3 hours ago" is better than "Welcome back!"
+
+The scanner matches the recurring literals as `generic-microcopy`, a **Quality defect** rather than a smell: these strings say nothing about the product, so replacing them costs the interface nothing and gains it a sentence. **Remediation: answer the question the user arrived with.** A dashboard greeting becomes the freshness of the data. A CTA becomes the action ("Import your first realm"). A support block becomes the actual channel and its response time. Copy written for one specific product does not match, however warm it is.
 
 ### Marketing Speak in UI
 
@@ -339,6 +411,8 @@ AI disproportionately generates dark mode because dark screenshots look more "mo
 
 **Rule:** If the project needs theming, design both modes intentionally. Neither is a derivative of the other.
 
+The 2026 sources split on which direction the default runs: one names permanent dark mode as the single most common tell, another names light-mode-only with no `dark:` variants anywhere. The disagreement is the evidence. What both describe is the absence of a decision about theming, which is why the rule above is about intent rather than about which mode shipped, and why there is no scanner rule here. Whether a light theme exists is an absence claim about the whole project, and a single file cannot see it.
+
 ## AI Component Fingerprints
 
 These are the specific, repeatable component-level patterns AI produces identically every time. Each can be used when appropriate, but using ALL of them together on one page is what creates the "AI-generated" look. Unless the user requests these specific patterns, vary the approach.
@@ -348,6 +422,12 @@ These are the specific, repeatable component-level patterns AI produces identica
 A small colored pill (`rounded-full px-3 py-1 text-sm bg-primary/10`) above the main headline with "Introducing...", "New", "AI-Powered", or a sparkle icon. Present on nearly every AI hero section.
 
 **Instead:** Skip the badge unless there is a real announcement. If announcing something, use a less formulaic treatment (a colored underline, a sidebar callout, an inline label).
+
+### The Tracked-Out Uppercase Overline
+
+`text-xs uppercase tracking-wider` above a section heading or on a table header. Entry 4 in the Strongest-10 below, and the most-repeated three-class run in generated markup after the hero triplet. The scanner matches it as `uppercase-overline`.
+
+**Instead:** set the overline in the project's own type scale. A distinct size, weight, or colour does the same job of marking a label as subordinate, and does it in the project's voice rather than the framework's. A tuned tracking value (`tracking-tight` on a logotype, a specific `letter-spacing` chosen for the face) is a decision and is deliberately not matched, on the same principle as `tailwind-hero-triplet`: the tell is the untouched default run, not the technique.
 
 ### Gradient Text on Hero Headings
 
@@ -359,7 +439,7 @@ A small colored pill (`rounded-full px-3 py-1 text-sm bg-primary/10`) above the 
 
 `absolute -z-10 w-72 h-72 bg-purple-300 rounded-full blur-3xl opacity-20` scattered behind sections. Purely decorative, adds no information.
 
-**Instead:** Solid color blocks between sections, subtle texture/grain at 2-5% opacity, real photography, or white space. If the background needs visual interest, use something related to the content.
+**Instead:** Solid color blocks between sections, subtle texture/grain at 2-5% opacity, real photography, or white space. If the background needs visual interest, use something related to the content. The scanner matches the composition as `blur-blob`: a `blur-2xl` or `blur-3xl` on the same element as a `rounded-full`, which is the shape nothing else produces. A `blur-3xl` over a real photographic backdrop has no `rounded-full` sibling and does not match.
 
 ### The Frosted Glass Navigation Bar
 
@@ -379,7 +459,9 @@ Always one filled primary button ("Get Started") + one ghost/outline secondary (
 
 **Instead:** Use stats relevant to the actual product. Vary the visual treatment (sparklines, gauges, contextual benchmarks). Skip the percentage change if the number alone tells the story.
 
-### The "Alternating Left-Right" Feature Showcase
+`shadcn-stats-magic` matches the two literals themselves (`$45,231.89` and `+20.1% from last month`) rather than the layout, which makes it one of the highest-precision rules in the set: those exact strings come from one documentation example and appear in shipped product UI only by copy-paste. It is a **Quality defect**, not a smell, because a docs placeholder rendering as a user-facing figure is wrong regardless of how it looks. **Remediation:** wire the real number, or show the empty state until there is one. Any real currency figure is clean.
+
+### The "Alternating Left-Right Feature Showcase"
 
 Feature sections that alternate: text on left + image on right, then image on left + text on right, repeating down the page. Every section is the same structure, just flipped.
 
@@ -408,6 +490,8 @@ SVG wave or curved shape between page sections, usually in a light gray or the p
 AI uses the same spacing values everywhere: `p-6` for card bodies, `gap-8` between cards, `py-20` for section padding, `mt-2`/`mt-4`/`mt-6`/`mt-8` between elements. The mechanical regularity is a tell.
 
 **Instead:** Base spacing on a deliberate scale (4px grid), but vary it by context. Dense data sections use tighter spacing. Spacious hero sections use more generous spacing. The spacing should serve the content, not follow a template.
+
+The section-padding leg of this has a rule: `uniform-section-padding` fires at three `py-20` or `py-24` in one file, which is the point at which the page has stopped deciding and started repeating. **Remediation: vary the vertical rhythm by what the section holds.** A dense table does not want the same air as a hero, and a closing CTA usually wants more than either. One `py-20` beside a `py-12` and a `py-32` is a rhythm and does not match. A deliberate uniform 5rem rhythm is a real design decision, which is why the rule is low severity and needs three hits.
 
 ### Identical Testimonial Cards
 
@@ -487,13 +571,41 @@ that read as generated on sight: the AI Component Fingerprints above, the Strong
 gradient text on a hero word, the frosted sticky nav, the unmodified shadcn card.
 
 **Concentration -- the finding is the density, not the instance.** Most property-level
-rows: colors, fonts, radii, spacing. Weight by repetition, and count before flagging. The
-scanner's thresholds:
+rows: colors, fonts, radii, spacing. Weight by repetition, and count before flagging.
+
+### Which of these the scanner can actually see
+
+Presence-flaggable and scanner-implemented are different claims, and this section previously
+ran them together under a heading about thresholds. Most of the compositions above have **no
+rule**, so a clean scan of a `.tsx` file says nothing whatsoever about them. They are the
+agent's to find, and `empirical-rankings.md` § Coverage matrix states the same boundary
+across every family.
+
+| Tell | Scanner rule? |
+|---|---|
+| Gradient text on a hero word | Yes (`gradient-text`) |
+| Frosted sticky nav | Yes (`frosted-glass-nav`) |
+| Unmodified shadcn card | Yes (`shadcn-default-card`, `shadow-border-rounded-combo`) |
+| Icon in a colored circle | Yes (`icon-in-colored-circle`) |
+| Decorative blur blobs | Yes (`blur-blob`) |
+| Tracked-out uppercase overline (Strongest-10 #4) | Yes (`uppercase-overline`) |
+| The verbatim hero type run (Strongest-10 #9) | Yes (`tailwind-hero-triplet`) |
+| The shadcn stats literals | Yes (`shadcn-stats-magic`) |
+| Generic microcopy literals | Yes (`generic-microcopy`) |
+| `w-64` sidebar + `h-16` header (Strongest-10 #3) | **No** |
+| "Most Popular" floating badge (#5) | **No** |
+| `bg-primary/10` icon containers (#6) | **No** |
+| `animate-pulse` skeletons with fractional widths (#7) | **No** |
+| `bg-black/50` modal overlay with `max-w-md` (#8) | **No** |
+| 4-column footer (#10) | **No** |
+| Badge pill above the hero, two-button CTA group, alternating L-R sections, wave dividers, testimonial trio, pricing convention, 404 formula, the SaaS page sequence | **No** |
+
+The scanner's concentration thresholds, for the rules that do exist:
 
 | Tell | Fires at | Because |
 |---|--:|---|
 | `rounded-everything` | 3 | "The same radius on every interactive control" is a pattern; one pill is a choice |
-| `cream-serif-default` | 2 | The combination is the signal -- any two of cream, serif display, sage |
+| `cream-serif-default` | 2 | The combination is the signal -- any two of cream, serif display, warm accent |
 | `ai-purple-hex` / `ai-purple-class` | 2 | The tell is "indigo IS the palette", which one declaration does not establish |
 | `important-overuse` | 2 | The rule is named *overuse*; one override against a third-party widget is pragmatism |
 
@@ -502,9 +614,16 @@ scanner's thresholds:
 is clean. Do not write it up. The signal is an unspecified default reached for repeatedly
 and without a point of view, never the presence of any single class.
 
-`important-overuse` additionally never fires on `* { transition: none !important }` inside
-a `prefers-reduced-motion` block. That is the correct implementation of WCAG 2.3.3, and
-the only "fix" for flagging it would be an accessibility regression.
+`important-overuse` carries a suppression guard, and it is wider than the reduced-motion
+case it was written for. The guard is a per-line test, so it clears **any** line where the
+`!important` sits on a `transition`, `animation`, or `scroll-behavior` declaration, and any
+line mentioning `prefers-reduced-motion`, wherever in the file that line appears. That
+covers the canonical `* { transition: none !important }` inside a
+`prefers-reduced-motion` block, which is the correct implementation of WCAG 2.3.3 and whose
+only "fix" would be an accessibility regression. It also covers a motion `!important`
+outside such a block, which is deliberate: those overrides are almost always the same
+intent, and firing on them would push a reviewer toward removing motion handling. Know the
+real breadth before reporting a suppressed line as a miss.
 
 Confidence classes, the evidence rules, and the full remediation floor are in
 `confidence-and-evidence.md`.

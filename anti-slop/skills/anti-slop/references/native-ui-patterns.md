@@ -72,10 +72,74 @@ expression. None of them is "pick a different fixed number".
 | `device-idiom-branch` | `UIDevice.current.userInterfaceIdiom` | `@Environment(\.horizontalSizeClass)`. The size class changes live under Split View and Stage Manager; the idiom never does |
 | `fixed-grid-columns` | `GridItem(.fixed(...))` | `GridItem(.adaptive(minimum:maximum:))`, which gains columns as the window grows without a single breakpoint |
 | `repeating-symbol-effect` | `.symbolEffect(..., options: .repeating)` | Gate on `@Environment(\.accessibilityReduceMotion)`, or drop the loop. Looping symbol effects are never auto-gated |
+| `fixed-font-size` | `.font(.system(size: 17))` and friends | `.font(.body)` / `.font(.headline)`, or `.font(.system(size: 17, relativeTo: .body))` where a specific size genuinely matters. Cleared on the same line by `relativeTo:` or `@ScaledMetric` |
+| `dispatch-main-async-spam` | Three or more `DispatchQueue.main.async` in one file | `@MainActor` on the type or the method, and `await MainActor.run { }` for the one-off hop. One bridge from a legacy delegate callback is fine and does not reach the threshold |
 
 The threshold on `fixed-content-frame` is the same discipline as the web tells' floor rule:
 `.frame(width: 44)` on an icon is a correct fixed size, and a rule that cannot tell it from
 a 320pt content shell would be cleared by making the icon worse.
+
+### Fixed point sizes are the type version of a fixed frame
+
+`.font(.system(size: 17))` answers the type-size negotiation with a number, exactly as
+`.frame(width: 320)` answers the layout one. The consequence is larger, though: text set at
+a fixed point size does not grow at all under Dynamic Type, so the app stops responding to
+an accessibility setting rather than merely laying out oddly. It is the tell most
+frequently reported in generated SwiftUI, and it is one of the few in this catalogue whose
+remediation is an outright accessibility improvement.
+
+```swift
+// FIXED -- stops at 17pt, at every Dynamic Type setting including AX5
+Text(title).font(.system(size: 17, weight: .semibold))
+
+// SEMANTIC -- the default that survives, and carries the right weight and leading already
+Text(title).font(.headline)
+
+// SCALED -- when a specific size genuinely matters (a numeric readout, a logotype)
+Text(value).font(.system(size: 17, weight: .semibold, design: .rounded).monospacedDigit())
+    .dynamicTypeSize(...DynamicTypeSize.accessibility3)   // cap it, do not freeze it
+Text(value).font(.system(size: 17, relativeTo: .body))    // or scale it relative to a text style
+@ScaledMetric private var glyph: CGFloat = 24             // for icon geometry, not text
+```
+
+The genuine exception is decorative glyph sizing, where a symbol has to match a fixed
+container. `@ScaledMetric` covers most of that case too, and the `suppress` guard plus the
+escape hatch covers the rest. **Never clear this finding by removing the text style**: a
+review of a SwiftUI screen that ends with less Dynamic Type support than it started with was
+a wrong review (`confidence-and-evidence.md` § The remediation floor).
+
+### `DispatchQueue.main.async` as a blanket concurrency fix
+
+The recognisable shape: a concurrency warning appeared, and the fix applied everywhere was
+to hop to the main queue. Three or more in one file is not a bridge, it is a policy, and the
+policy hides which state actually needs main-actor isolation.
+
+```swift
+// SMELL -- the same hop repeated because it silenced the warning
+func load() {
+    Task {
+        let rows = try await api.fetch()
+        DispatchQueue.main.async { self.rows = rows }
+        DispatchQueue.main.async { self.isLoading = false }
+        DispatchQueue.main.async { self.lastUpdated = .now }
+    }
+}
+
+// INTENDED -- state the isolation once, and the hops disappear
+@MainActor @Observable final class LedgerModel {
+    var rows: [Row] = []; var isLoading = false; var lastUpdated: Date?
+
+    func load() async throws {
+        let rows = try await api.fetch()      // the await already returns on the main actor
+        self.rows = rows; isLoading = false; lastUpdated = .now
+    }
+}
+```
+
+Low severity and a concentration rule at three, because legacy UIKit-era files legitimately
+carry several and one delegate bridge is normal. **Remediation:** annotate the type or the
+method `@MainActor` and delete the hops; use `await MainActor.run { }` for a genuine one-off
+from non-isolated code.
 
 ## Window economy: the iPad question
 
