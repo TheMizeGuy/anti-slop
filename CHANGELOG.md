@@ -2,6 +2,15 @@
 
 All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `anti-slop/.claude-plugin/plugin.json`, and the SKILL.md frontmatter — all four are bumped together. (It was five until 2.0.0 removed the MCP Server constructor.)
 
+## 2.1.1 - 2026-08-24
+
+`dead-branch` now matches Python's colon forms (`if False:`, `elif True:`,
+`while False:`) alongside the parenthesised shapes it shipped with. `while True:`
+stays excluded as the idiomatic event loop, and `if item is True:` still does not
+match. The 2.1.0 rule was JS/TS-shaped only, a scoping recorded at release and closed
+here on request. One corpus fixture gains the Python dead branch, the clean control
+gains a `while True:` near-miss loop, and the reference entry documents both shapes.
+
 ## 2.1.0 - 2026-08-23
 
 The largest detection expansion since 1.4.0, driven by a five-way audit of the whole

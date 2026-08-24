@@ -376,7 +376,7 @@ export const CODE_PATTERNS = [
   // A literal condition is a switch someone flipped and never removed: dead code with the
   // shape of live code. `while (true)` is the idiomatic event loop and is excluded; so are
   // `if (isReady === true)` and `if (1)`, neither of which is a bare literal condition.
-  { name: "dead-branch", severity: "medium", confidence: CONFIDENCE.HARD, skipInTests: true, pattern: /\bif\s*\(\s*(?:true|false)\s*\)|\bwhile\s*\(\s*false\s*\)/g, desc: "Dead branch scaffolding (if (true) / if (false))" },
+  { name: "dead-branch", severity: "medium", confidence: CONFIDENCE.HARD, skipInTests: true, pattern: /\bif\s*\(\s*(?:true|false)\s*\)|\bwhile\s*\(\s*false\s*\)|\b(?:if|elif)\s+(?:True|False)\s*:|\bwhile\s+False\s*:/g, desc: "Dead branch scaffolding (if (true) / if (false) / Python if False:)" },
   // forEach ignores its callback's return value, so the promises are never awaited, errors
   // surface as unhandled rejections, and the line after the loop runs first. `.map` with an
   // async callback is deliberately NOT matched: that is the correct idiom.

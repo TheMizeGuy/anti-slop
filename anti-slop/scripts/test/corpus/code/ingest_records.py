@@ -28,6 +28,8 @@ def ingest(batch_path, archive_cmd):
 
 
 def export(rows, sink):
+    if False:
+        rows = reshape_legacy(rows)
     limit = 500  # for now, cap the batch until the sink reports back-pressure
     for row in rows[:limit]:
         sink.write(row)

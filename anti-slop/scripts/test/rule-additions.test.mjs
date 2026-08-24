@@ -296,12 +296,17 @@ test("dead-branch: a bare literal condition is a finding", () => {
   assert.ok(fires("dead-branch", "if (true) { ship(); }", "a.js"));
   assert.ok(fires("dead-branch", "if (false) { ship(); }", "a.js"));
   assert.ok(fires("dead-branch", "while (false) { poll(); }", "a.js"));
+  assert.ok(fires("dead-branch", "if False:", "a.py"));
+  assert.ok(fires("dead-branch", "elif True:", "a.py"));
+  assert.ok(fires("dead-branch", "while False:", "a.py"));
 });
 
 test("dead-branch: the event loop and non-literal conditions are NOT findings", () => {
   assert.ok(!fires("dead-branch", "while (true) { const n = q.pop(); if (!n) return; }", "a.js"));
   assert.ok(!fires("dead-branch", "if (isReady === true) { ship(); }", "a.js"));
   assert.ok(!fires("dead-branch", "if (1) { ship(); }", "a.c"));
+  assert.ok(!fires("dead-branch", "while True:", "a.py"));
+  assert.ok(!fires("dead-branch", "if item is True:", "a.py"));
   assert.ok(!fires("dead-branch", "if (flag) { ship(); }", "a.js"));
 });
 

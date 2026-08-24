@@ -380,7 +380,13 @@ if (false) { legacyImport(); }         // disabled logic, no record of why
 while (false) { drain(); }
 ```
 
-A literal condition is a switch someone flipped and never removed. It is dead code with the shape of live code, so it survives review, and the branch it disabled is the one nobody tests. `dead-branch` matches the bare-literal forms, **Hard defect**, medium severity. `while (true)` is deliberately excluded: it is the idiomatic event loop. `if (isReady === true)` and `if (1)` do not match either, since neither is a bare literal condition in a language where that means "disabled".
+```python
+# BAD
+if False:
+    rows = reshape_legacy(rows)        # disabled logic, no record of why
+```
+
+A literal condition is a switch someone flipped and never removed. It is dead code with the shape of live code, so it survives review, and the branch it disabled is the one nobody tests. `dead-branch` matches the bare-literal forms in both the parenthesised shape (`if (false)`, `while (false)`) and the Python colon shape (`if False:`, `elif True:`, `while False:`), **Hard defect**, medium severity. `while (true)` and Python's `while True:` are deliberately excluded: each is the idiomatic event loop. `if (isReady === true)`, `if (1)`, and `if item is True:` do not match either, since none is a bare literal condition in a language where that means "disabled".
 
 **Remediation:** delete the branch that cannot run, along with the code inside it. Where the flip needs to stay switchable, make it a real flag with a name and a default, so the condition says what decides it.
 

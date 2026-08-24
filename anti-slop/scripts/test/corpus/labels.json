@@ -969,9 +969,14 @@
           "id": "banner-comment",
           "severity": "low",
           "confidence": "Taste note"
+        },
+        {
+          "id": "dead-branch",
+          "severity": "medium",
+          "confidence": "Hard defect"
         }
       ],
-      "note": "The Python-side security rules plus the three comment-slop rules. apologetic-comment and deferral-comment fire on different comments and never on the same one: the apologetic rule owns 'simplified implementation' and the deferral rule takes only the noun form, so the two cannot double-report. banner-comment counts four lines across two banners, which is its concentration threshold twice over."
+      "note": "The Python-side security rules plus the three comment-slop rules. apologetic-comment and deferral-comment fire on different comments and never on the same one: the apologetic rule owns 'simplified implementation' and the deferral rule takes only the noun form, so the two cannot double-report. banner-comment counts four lines across two banners, which is its concentration threshold twice over. 2.1.1 adds the Python dead branch (if False:), the colon form the rule gained after shipping JS-only in 2.1.0."
     },
     {
       "file": "code/pasted-snippet.js",

@@ -1,6 +1,6 @@
 {
   "name": "anti-slop",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Catches agentic development shortcomings: security holes, accessibility failures, regressions, and generic defaults. Context-aware: yields to domain conventions.",
   "author": {
     "name": "TheMizeGuy",
@@ -9,5 +9,18 @@
   "homepage": "https://github.com/TheMizeGuy/anti-slop",
   "repository": "https://github.com/TheMizeGuy/anti-slop",
   "license": "MIT",
-  "keywords": ["quality", "writing", "code-quality", "anti-slop", "clarity", "style", "frontend", "design", "ui", "accessibility", "security", "regression"]
+  "keywords": [
+    "quality",
+    "writing",
+    "code-quality",
+    "anti-slop",
+    "clarity",
+    "style",
+    "frontend",
+    "design",
+    "ui",
+    "accessibility",
+    "security",
+    "regression"
+  ]
 }

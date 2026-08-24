@@ -28,3 +28,10 @@ def read_payload(payload):
 def stamp(record):
     record["seen_at"] = datetime.now(timezone.utc)
     return record
+
+
+def drain(queue):
+    while True:
+        item = queue.pop()
+        if item is None:
+            return
