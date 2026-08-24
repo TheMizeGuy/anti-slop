@@ -28,7 +28,7 @@ Source: the `vibecoded-design-tells` project by JCarterJohnson (MIT-licensed ana
 
 3. **The loudest tells are structural and a regex cannot see them.** In every domain the top-cited tells are invisible to keyword matching. Writing: uniform sentence rhythm, sycophancy, fluent-but-empty paragraphs, hallucinated citations. Code: tutorial-shaped boilerplate, hallucinated APIs, over-engineering, ignoring the surrounding codebase. A clean scanner pass means the lexical layer is clean, not that the output reads human. The scanner is the cheap second pass; the semantic read (the `slop-detector` agent, or a careful human) is the first.
 
-4. **Banning the old tells creates the new tell (the moving target).** As people learned the 2024 markers, a second default appeared: prose straining not to sound like AI (staccato fragments, forced lowercase, em-dash-dodging contortions, fake typos) and "tasteful" UI (cream background, serif display, sage accent) that now reads as AI just as fast. Apply the rules with judgment; mechanical over-correction is itself detectable.
+4. **Banning the old tells creates the new tell (the moving target).** As people learned the 2024 markers, a second default appeared: prose straining not to sound like AI (staccato fragments, forced lowercase, em-dash-dodging contortions, fake typos) and "tasteful" UI (cream background, serif display, a warm saturated accent) that now reads as AI just as fast. Apply the rules with judgment; mechanical over-correction is itself detectable.
 
 ## Writing: verified ranking
 
@@ -115,7 +115,7 @@ Trust comment share over post share when they diverge (comments are 100% on-topi
 | Emoji as icons / sparkles / rockets | 0.5% | medium | Confirmed (emoji *as UI*, not in copy) |
 | Generic sans (Inter / Geist) | 0.4% | low | Confirmed (share understates it) |
 | Symmetric hero + 3 feature cards + CTA | 0.4% | medium | Confirmed, thin |
-| **Cream + serif + sage "tasteful default"** | rising | n/a | The current top emerging tell; see `design-patterns.md` |
+| **Cream + serif + a warm accent "tasteful default"** | rising | n/a | The current top emerging tell; accent is sage green or rusty orange by wave. See `design-patterns.md` |
 
 ### UI: cleared by the data (do NOT flag)
 
@@ -148,13 +148,68 @@ Bounded drift check of this file's top claims against public discussion from mid
 | Diction cluster (`delve` etc.) as low-confidence only | Confirmed direction; aging out faster | Wikipedia notes `delve` dropped sharply in 2025 as models updated; PubMed-corpus work tracks the vocabulary receding in medical writing. Low-confidence treatment stays right; these are demotion candidates, never promotion. |
 | Loudest tells are structural and regex-blind | Confirmed with new evidence | arXiv 2601.21276 (2026-01) measures AI pull requests ignoring reuse opportunities while reviewers rate them positively: surface plausibility masks exactly the defects a regex cannot see. |
 
-New tells named in current sources that this file does not yet cover:
+Tells named in current sources that this file flagged as uncovered. All six were written up in `writing-patterns.md` for 2.1.0; the status column records where each landed and why.
 
-- First-word fingerprints: model-specific openers ("Certainly!", "Good question", "I'd be happy to") treated as a distinct tell class (vrid 2026-02). Several are already banned phrases here; the class is broader than the current list.
-- Participial sentence openers (`-ing` phrase first) at 2-5x the human rate (vrid 2026-02). Regex-visible; high FP risk; needs corpus measurement before any rule.
-- `From X to Y` sweep construction (vrid 2026-02). Regex-visible; likely high FP.
-- Personification of tools and data ("the data tells a story") (vrid 2026-02). Regex-blind; agent territory.
-- Title case forced onto every heading (Wikipedia). High FP risk against legitimate house styles.
-- Em-dash-avoidance contortions are now themselves cited as a tell, which is finding 4 (the moving target) playing out on schedule.
+| Tell | Where it lives now | Rule? |
+|---|---|---|
+| First-word fingerprints: model-specific openers ("Certainly!", "Good question", "I'd be happy to") as a distinct class (vrid 2026-02) | `writing-patterns.md` § First-Word Fingerprints, with the positional test that generalises past any fixed list | Partly. The named phrases are in `BANNED_PHRASES`; the class is agent territory |
+| Participial sentence openers (`-ing` phrase first) at 2-5x the human rate (vrid 2026-02) | `writing-patterns.md` § Participial Sentence Openers, as a concentration tell | No. A single-occurrence match would be near-total false positives; needs a corpus pass before any rule |
+| `From X to Y` sweep construction (vrid 2026-02) | `writing-patterns.md` § The "From X to Y" Sweep | No. Regex-visible but likely high FP; not measured |
+| Personification of tools and data ("the data tells a story") (vrid 2026-02) | `writing-patterns.md` § False Agency and Personification. `SKILL.md` and `self-check.md` already carried the one-line form; the worked treatment is new | No. Regex-blind, agent territory |
+| Title case forced onto every heading (Wikipedia) | `writing-patterns.md` § Forced Title Case on Every Heading | No, deliberately. The tell is inconsistency with the surrounding document, which a single-file match cannot judge |
+| Em-dash-avoidance contortions cited as a tell in their own right | `writing-patterns.md` § The Over-Corrected Register (already covered at the time of the spot-check) | No. This is finding 4, the moving target, playing out on schedule |
+
+## 2026-08 doctrine update: the em dash splits by vendor
+
+The Economist analysed 1.2M words across 55,940 sentences from ChatGPT, Claude, Gemini and Grok (August 2026) and reported that **only Claude used em dashes more often than the human writers it was compared against**; ChatGPT used "markedly fewer than any other writer examined". The headline that travelled from this ("AI writing is no longer betrayed by em dashes") is true of the field and false of this plugin's traffic.
+
+**What it changes here: nothing about the ranking, and one thing about how to read it.** The em dash stays the top-ranked writing tell, and em-dash density stays load-bearing rather than becoming less so, because the output this plugin is pointed at is predominantly Claude output, which is the one model still above the human rate. A future reader who demotes the em dash on the strength of the headline would be demoting it on evidence drawn from other vendors' output.
+
+Two more results from the same corpus, both currently uncovered:
+
+- **Sparse punctuation.** Models used fewer commas and semicolons than human writers and "hardly any parentheses", with long sentences and paragraphs rarely broken by a short one. That is the inverse of every density metric this plugin measures, and it is measurable with the machinery that already computes em dashes per 1,000 words. It is not shipped as a rule: reference docs, changelogs and terse operator prose all legitimately run comma-light, so the false-positive risk needs a corpus pass (`npm run measure`) before any threshold is set.
+- **"And" is the models' most overused word**, and all four favour polysyllables (`significant`, `increasingly`), rare words (`interdependence`), scientific terms (`parameter`, `methodology`) and nominalisations, with Gemini and Claude most pronounced. The polysyllabic finding confirms the register `banned-words.md` is built on. The `and` finding has no shippable form: it is the most common word in English.
+
+Source (accessed 2026-08-23): The Economist, "How to spot AI writing" (August 2026), via ontimebrief.com summary; independently summarised by Fast Company and Dataconomy.
 
 Sources (accessed 2026-07-03): Wikipedia "Signs of AI writing" (en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing); Kyle Chayka, "The generic style of AI web design", 2026-06-29 (kylechayka.substack.com); Zvi Mowshowitz, "GPT-5.1 Follows Custom Instructions and Glazes", 2025-11-18 (thezvi.wordpress.com); vrid.ai "Signs of AI Writing", 2026-02-11; Ruben Hassid, "It's not [X], it's [Y]" (ruben.substack.com); Milind Nair, dev.to (why-does-ai-keep-saying-its-not-x-its-y); The Register, 2025-08-13 (claude_codes_copious_coddling_confounds); github.com/anthropics/claude-code issue 3382; prg.sh "Why Your AI Keeps Building the Same Purple Gradient Website"; Netcraft, "Excessive Emojis as an AI Indicator"; arXiv 2601.21276 "More Code, Less Reuse", 2026-01-29; PMC12679996 "Delving Into PubMed Records"; github.com/JCarterJohnson/vibecoded-design-tells (upstream corpus, still the original snapshot).
+
+## Coverage matrix
+
+The systematic answer to a question this catalogue documented rules for and never answered: **which tells can a scan reach at all?** Without it the not-assessed rule is aspirational, because nothing says which families a clean scan was silent about. Written against the 2.1.0 rule inventory.
+
+Read the columns as: **scanner rule** = a deterministic rule exists and fires on one file's text. **Agent-reachable** = the `slop-detector` agent can judge it from source with `Read`/`Grep`/`Glob`. **Needs runtime or build** = neither layer can settle it without a compiler, a browser, or a running app.
+
+| Tell family | Scanner rule | Agent-reachable | Needs runtime or build |
+|---|---|---|---|
+| Banned words and phrases | Yes | Yes | no |
+| Em dash density | Yes | Yes | no |
+| Antithesis, listicle scaffold, "in conclusion", fast-paced opener | Yes | Yes | no |
+| Leftover assistant boilerplate, chat artifacts, model tooling tokens | Yes | Yes | no |
+| Emoji in prose, code, logs, UI | Yes | Yes | no |
+| Sentence rhythm, uniform paragraph shape, five-paragraph essay | **No** | Yes | no |
+| Sycophancy in flowing prose, empty fluency, emotional flatness | **No** | Yes | no |
+| Participial openers, "From X to Y", personification, forced title case | **No** | Yes | no |
+| Hallucinated APIs and packages | **No** | **No** | **Yes** (build, type-check, or registry lookup) |
+| Tutorial-shaped code, over-engineering, style ignores the codebase | **No** | Yes (needs the neighbouring files) | no |
+| Swallowed errors, placeholder stubs, dead branches, `forEach(async)` | Yes | Yes | no |
+| Narrating, banner, apologetic, deferral comments | Yes | Yes | no |
+| `eval`, `innerHTML`, `dangerouslySetInnerHTML`, `shell=True`, unsafe deserialize | Yes | Yes | no |
+| SQL injection, path traversal, SSRF, IDOR, insecure randomness | **No** (see `confidence-and-evidence.md` § the families the catalogue teaches) | Yes | no |
+| N+1 queries, missing timeouts, unbounded queries, race conditions | **No** | Partly (needs block scope the agent has and the scanner does not) | Sometimes |
+| Hardcoded secrets | Yes (Pattern smell; cannot prove liveness) | Yes | **Yes** to confirm |
+| AI purple, gradients, generic fonts, cream-serif default, frosted nav, gradient text | Yes | Yes | no |
+| Strongest-10 entries 3, 5, 6, 8, 10 and most AI Component Fingerprints | **No** | Yes | no |
+| Fixed page shells, fixed grid tracks, `100vh` shells, token drift, uniform radius | Yes (2.1.0) | Yes | no |
+| Missing alt, `outline: none`, dead controls | Yes (2.1.0) | Yes | no |
+| Contrast ratios, tap-target sizes, focus order, keyboard reachability | **No** | Partly (arithmetic from source literals only) | **Yes** for any asserted number |
+| Missing empty/error/loading states, cross-file component coherence | **No** | Partly (needs the sibling files) | no |
+| Density and waste: viewport utilisation, page length, action distance | **No** | Taste note only, unless source literals give arithmetic | **Yes** for a graded finding |
+| Native fixed geometry, idiom branching, fixed grid columns, repeating symbol effects, fixed font sizes | Yes | Yes | no |
+| Dynamic Type to AX5, compact height, Display Zoom, RTL, Split View | **No** | **No** | **Yes** |
+
+Three things follow, and they are the reason the table exists:
+
+1. **A clean scan is a statement about the first column only.** Every "No" in it is a family the scan was silent about, not a family it cleared.
+2. **The `slop-detector` agent owns the middle column and cannot reach the third.** Its tool grant is `Read`, `Grep`, `Glob`; the "needs runtime or build" rows are `NOT ASSESSED` on every dispatch unless the dispatcher supplies the output.
+3. **Hallucinated APIs are the only top-five tell that no layer of this plugin reaches.** They rank second among code tells by verified share. Build and type-check before either layer, and pass the result in.

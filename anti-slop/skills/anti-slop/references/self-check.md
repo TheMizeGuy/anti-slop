@@ -1,6 +1,6 @@
 # Self-Check Checklists
 
-Run through the relevant checklist before finalizing output. These catch the most common AI tells. The Quick Pass at the bottom covers the minimum; use the full checklist for thorough review. Not every item applies to every output. Applying all rules mechanically creates its own detectable pattern.
+Run through the relevant checklist before finalizing output. These catch the most common AI tells. The minimum check lives in `SKILL.md` § Quick Self-Check; use the checklists here for a thorough review. Not every item applies to every output. Applying all rules mechanically creates its own detectable pattern.
 
 Two framing rules. Judge most word and phrase tells by **concentration** — a lone hit is usually clean (see `empirical-rankings.md`) — and honor the **escape hatch**: a deliberate choice marked `anti-slop-allow:` / `unslop-ignore` is not a tell. The highest-signal tells (sentence rhythm, sycophancy, empty fluency, hallucinated APIs and citations, codebase-fit) are invisible to a word scan; read for them rather than relying on the lists.
 
@@ -8,22 +8,27 @@ Two framing rules. Judge most word and phrase tells by **concentration** — a l
 
 ### Vocabulary
 
-- [ ] No words from the banned words list? (Check `banned-words.md`. Highest priority: delve, leverage, utilize, pivotal, seamless, multifaceted, landscape, tapestry, testament, showcase, foster, harness, ensure, crucial, enhance)
-- [ ] No promotional adjectives? (vibrant, groundbreaking, cutting-edge, transformative, unprecedented)
-- [ ] No unnecessary adverbs? (really, just, literally, fundamentally, inherently, crucially)
-- [ ] No fancy verb substitutes for "is" or "has"? (serves as, stands as, features, boasts)
+The banned-words list splits in two, and a self-check should split with it. The first group is flagged on a single hit. The second is the high-frequency set that people use normally, flagged only at two or more and at low severity. The split is `BANNED_WORDS` minus `LOW_CONFIDENCE_WORDS` in `scripts/lib/rules.mjs`; `empirical-rankings.md` § Writing: do NOT flag on a lone hit carries the corpus numbers behind it. `ensure`, `crucial`, and `enhance` are on neither list. They carry legal and technical weight, `banned-words.md` marks them domain-conditional, and treating them as top-priority tells produces exactly the over-correction this file warns about.
+
+- [ ] No single-hit words? (`delve`, `elevate`, `embark`, `unveil`, `showcase`, `spearhead`, `orchestrate`, `galvanize`, `transcend`, `pivotal`, `cutting-edge`, `groundbreaking`, `transformative`, `unprecedented`, `unparalleled`, `multifaceted`, `landscape`, `tapestry`, `synergy`, `testament`, `interplay`, `paradigm`)
+- [ ] Fewer than two from the low-confidence set? (`utilize`, `leverage`, `harness`, `seamless`, `foster`, `facilitate`, `streamline`, `comprehensive`, `robust`, `navigate`, `nuanced`, `meticulous`, `realm`, `holistic`, `myriad`, `plethora`, `paramount`, `intricate`, `vibrant`, `captivating`, `profound`, `empower`, `cultivate`)
+- [ ] No promotional adjectives? (`vibrant`, `groundbreaking`, `cutting-edge`, `transformative`, `unprecedented`)
+- [ ] No unnecessary adverbs? (`really`, `just`, `literally`, `fundamentally`, `inherently`, `crucially`)
+- [ ] No fancy verb substitutes for "is" or "has"? (`serves as`, `stands as`, `features`, `boasts`)
+- [ ] Fewer than two 2026 plain-word collocations? (`quietly building`, `why this matters`, `earn the right to`, `decisions compound`, `built different`)
 
 ### Phrases
 
-- [ ] No sycophantic opener? (Great question, Absolutely, Certainly, I'd be happy to)
-- [ ] No sycophantic closer? (Hope this helps, Feel free to, Let me know if you have questions)
-- [ ] No throat-clearing? (Here's the thing, The truth is, Let me be clear)
-- [ ] No filler phrases? (It's worth noting, At the end of the day, When it comes to, In today's)
-- [ ] No meta-commentary? (Let me walk you through, In this section, As we'll see, Key takeaways)
-- [ ] No emphasis crutches? (Let that sink in, Full stop, Make no mistake)
-- [ ] No journey metaphors? (embark on, navigate the landscape, pave the way)
-- [ ] No significance inflation? (pivotal moment, watershed moment, paradigm shift)
-- [ ] No vague declaratives? (The implications are significant, The stakes are high)
+- [ ] No sycophantic opener? (`Great question`, `Absolutely`, `Certainly`, `I'd be happy to`)
+- [ ] No sycophantic closer? (`Hope this helps`, `Feel free to`, `Let me know if you have questions`)
+- [ ] No throat-clearing? (`Here's the thing`, `The truth is`, `Let me be clear`)
+- [ ] No filler phrases? (`It's worth noting`, `At the end of the day`, `When it comes to`, `In today's`)
+- [ ] No meta-commentary? (`Let me walk you through`, `In this section`, `As we'll see`, `Key takeaways`)
+- [ ] No emphasis crutches? (`Let that sink in`, `Full stop`, `Make no mistake`)
+- [ ] No journey metaphors? (`embark on`, `navigate the landscape`, `pave the way`)
+- [ ] No significance inflation? (`pivotal moment`, `watershed moment`, `paradigm shift`)
+- [ ] No vague declaratives? (`The implications are significant`, `The stakes are high`)
+- [ ] No leaked model tooling tokens? (`oaicite`, `contentReference`, `turn0search0`, `[cite: 1]`, `grok_card`)
 
 ### Structure
 
@@ -40,17 +45,19 @@ Two framing rules. Judge most word and phrase tells by **concentration** — a l
 
 ### Rhythm
 
-- [ ] Sentence lengths vary? (No three consecutive similar-length sentences)
-- [ ] Some short sentences mixed with longer ones?
-- [ ] Paragraph lengths vary? (Not all the same size)
-- [ ] Some paragraphs end abruptly without transitions?
+Every item here is countable on purpose. Rhythm is the second most-cited tell and the one a word scan cannot reach, so a checkbox that cannot be failed is worse here than anywhere else in this file.
+
+- [ ] Sentence lengths vary? (No three consecutive sentences within three words of each other)
+- [ ] At least one sentence under 10 words and one over 25, in any passage longer than five sentences?
+- [ ] Paragraph lengths vary? (No three consecutive paragraphs with the same sentence count)
+- [ ] Fewer than half the paragraphs end on a transition into the next one? (A paragraph that lands its last point and stops is normal human prose; a transition on every one is the template.)
 
 ### Punctuation
 
-- [ ] Em dashes used sparingly? (Count them. High density is the top AI tell.)
+- [ ] Em dashes below the scanner's threshold? (It fires at five or more in the document AND four per 1,000 words, both conditions, counted after code and quotes are stripped. Correct at lower counts; do not contort the prose to go lower still.)
 - [ ] Exclamation marks rare? (Max one per 1000 words)
 - [ ] No ellipsis abuse?
-- [ ] Semicolons and colons used naturally where appropriate?
+- [ ] No colon standing in for an em dash? (Swapping every dash for a colon is the documented over-correction, and readers now name it as its own tell.)
 
 ### Voice
 
@@ -93,7 +100,8 @@ Two framing rules. Judge most word and phrase tells by **concentration** — a l
 - [ ] No helper functions used exactly once?
 - [ ] No configuration objects for trivial fixed values?
 - [ ] Code matches the codebase's existing patterns and conventions?
-- [ ] No premature generalization?
+- [ ] No parameter, option, or config key that takes the same value at every call site today?
+- [ ] No `if (true)` / `if (false)` dead branch left from scaffolding?
 
 ### Error Handling
 
@@ -109,11 +117,12 @@ Two framing rules. Judge most word and phrase tells by **concentration** — a l
 - [ ] No commented-out code?
 - [ ] No debugging residue files?
 - [ ] No redundant type annotations the compiler infers?
-- [ ] Concise where possible without sacrificing readability?
+- [ ] No over-correction into performed seniority? (a defensive check for a state the types make impossible, a type annotation on every local, a layer with one caller, a docstring on a one-line function). This is the code mirror of the prose checklist's over-corrected register: told to write "clean code", a model adds ceremony rather than removing it. Match the level of the surrounding file.
 
 ### Verification
 
 - [ ] Built / type-checked / ran it to catch hallucinated APIs? (the loudest code bug, invisible to any scanner -- verify before scanning)
+- [ ] Did the "clean code" instinct add ceremony rather than remove it? (Re-read the diff for the over-correction items in § Hygiene above.)
 - [ ] All API methods verified to exist?
 - [ ] All packages verified to exist in the registry?
 - [ ] No deprecated APIs used unknowingly?
@@ -192,7 +201,7 @@ Two framing rules. Judge most word and phrase tells by **concentration** — a l
 ### Visual Design
 
 - [ ] No purple-to-blue gradient as default?
-- [ ] No cream-background + serif-display + sage-green "tasteful default" combination? (the current top emerging tell)
+- [ ] No cream-background + serif-display + warm-accent "tasteful default" combination? (the current top emerging tell; the accent is sage green or rusty orange depending on the wave)
 - [ ] Font choice is intentional, not default Inter/Roboto?
 - [ ] Color palette matches the project's brand/purpose?
 - [ ] Layout responds to content, not a template?
@@ -244,16 +253,6 @@ Two framing rules. Judge most word and phrase tells by **concentration** — a l
 
 ## Quick Pass (Minimum Check)
 
-If pressed for time, check at minimum:
+The minimum check is the canonical list in `SKILL.md` § Quick Self-Check. Run that when pressed for time, and the relevant checklist above when reviewing properly.
 
-- [ ] First word of the response: is it sycophantic? ("Great", "Absolutely", "Certainly")
-- [ ] Count em dashes: more than two in the response? (the #1 tell)
-- [ ] Any "It's not just X, it's Y" antithesis? (the #1 sentence tell)
-- [ ] Scan for "delve", "leverage", "utilize", "pivotal", "landscape", "ensure", "crucial"
-- [ ] Any lists forced to exactly three items?
-- [ ] Summary at the end that restates the content?
-- [ ] In code: comments that restate the code?
-- [ ] In code: unnecessary abstractions for single-use cases?
-- [ ] In code: SQL injection, XSS, hardcoded secrets?
-- [ ] In UI: missing focus states, missing alt text, poor contrast?
-- [ ] Any emoji in output (prose, code, commits, logs)?
+One copy is deliberate. This file previously carried a second quick list, and the two drifted: one counted em dashes at a threshold the scanner does not use, and one named three words that are not on the banned list at all. A minimum check that disagrees with itself is worse than no minimum check.

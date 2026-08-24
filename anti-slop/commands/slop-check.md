@@ -1,8 +1,8 @@
 ---
 name: slop-check
-description: Review output, a file, the working diff, or the current PR for AI slop patterns; reports a deterministic scan score and an agent review score with per-finding fixes.
+description: Review output, a file, the working diff, or the current PR for AI slop patterns; reports an agent review score with per-finding fixes, plus a deterministic scan score wherever the target resolves to files on disk.
 argument-hint: "[target]"
-allowed-tools: Read, Grep, Glob, Agent, Bash(git diff:*), Bash(gh pr:*), Bash(node:*)
+allowed-tools: Read, Grep, Glob, Agent, Bash(git diff:*), Bash(gh pr:*), Bash(node:*), Bash(xargs:*)
 ---
 
 # Slop Check
@@ -15,31 +15,44 @@ Review content for AI coding shortcomings and produce a scored report.
 
 ## What to Review
 
-Determine the target from $ARGUMENTS:
-- If a file path is provided, review that file
-- If "last response" or similar, review the most recent output
-- If "diff" or "changes", run `git diff` and review unstaged changes
-- If "pr" or "pull request", run `gh pr diff` for the current branch's PR
-- If no target specified, review the most recent long output
-- If the target does not match any of these, inform the user and list the valid options
+Determine the target from $ARGUMENTS. Every target below except "last response" resolves to a list of files, so the scanner runs on all of them.
 
-If the diff or PR is empty, inform the user that no changes were found.
+| $ARGUMENTS | Target | File list for the scanner |
+|---|---|---|
+| A file path | That file | The path itself |
+| A directory or a glob | The matching files | Expand with `Glob`; keep source and markdown files, drop `node_modules`, build output, lockfiles, and binaries; cap at 50 files and tell the user if the cap trimmed the set |
+| `diff` or `changes` | Unstaged working changes | `git diff --name-only --diff-filter=d` |
+| `pr` or `pull request` | The current branch's PR | `gh pr diff --name-only` for the PR on the branch named in § Context above (`gh` resolves it from that branch; if the branch has no PR, say so and stop) |
+| `last response` or empty | The assistant's most recent message, in full | none -- agent review only |
+| Anything else | Not a target | Tell the user and list the options above |
+
+"Last response" means the assistant's last message in this conversation, not a tool result and not the last code block inside it. If there is no prior assistant message (a fresh session), say so and ask for a target. This is also the no-argument default, and it is the only path that produces one score rather than two.
+
+If the diff or PR is empty, tell the user that no changes were found.
 
 ## Process
 
-1. Identify the content to review
-2. If a file path is provided, first run the scanner for a fast deterministic check (banned words, text constructs, design tells, code patterns, security issues):
+1. Identify the content to review and build the file list from the table above.
+2. If the file list is non-empty, run the scanner on it for a fast deterministic check (banned words, text constructs, design tells, code patterns, security issues):
 
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/slop-scanner.mjs" scan <file...>
    ```
 
-   It needs no install: the scanner has zero runtime dependencies. It exits 0 when clean, 1 on findings, 2 on a usage error, and takes `--format json` for machine output and `--record` to log findings for `history` and `stats`. The scanner catches surface tells and honors the `anti-slop-allow` / `unslop-ignore` escape hatch; it cannot see the structural tells (sentence rhythm, sycophancy, tutorial-shaped or over-engineered code, hallucinated APIs). Then dispatch to the `slop-detector` agent for that semantic review. For code, verify first -- a build or type-check catches hallucinated APIs that no scanner will.
-3. For non-file targets (a diff, a PR, the last response), or if the scanner cannot be run, dispatch directly to the `slop-detector` agent.
-4. If the Agent tool also fails, perform the review directly using the rules in the anti-slop skill.
-5. Present the scored report to the user: the scanner's score (deterministic, `Scan score: N/50`) and the agent's review score (5-dimension judgment, `Review score: N/50`) are different scales measuring different things -- include both, labeled
-6. Offer to fix the identified issues if the user wants
-7. The dashboard is optional and off by default. Offer it only if the user asks or it's contextually useful; it is the one command that opens a port, and `.anti-slop/config.json` `{"dashboard": false}` disables it:
+   The scanner takes files only: no directory recursion, no glob expansion. Passing a directory is a usage error (exit 2), so pipe a list in for the diff and PR paths:
+
+   ```bash
+   git diff --name-only --diff-filter=d | xargs node "${CLAUDE_PLUGIN_ROOT}/scripts/slop-scanner.mjs" scan
+   gh pr diff --name-only | xargs node "${CLAUDE_PLUGIN_ROOT}/scripts/slop-scanner.mjs" scan
+   ```
+
+   It needs no install: zero runtime dependencies. Exit 0 clean, 1 on findings, 2 on a usage error. Flags: `--format json` for machine output; `--fail-on any|high|medium|low|none` to move the exit-1 threshold (`--fail-on none` always exits 0, so do not read a 0 as clean without checking which flags ran); `--quiet` to suppress the per-finding lines and print the summary only; `--record` to log the run for `history` and `stats`. **Do not pass `--record` by default.** It writes to `.anti-slop/` in the user's project, so use it only when the user asks for it or the invocation is a CI gate that wants the trend. The scanner honors the `anti-slop-allow` / `unslop-ignore` escape hatch, on the offending line itself.
+3. Dispatch the `slop-detector` agent for the semantic review, on every path. The scanner cannot see the structural tells (sentence rhythm, sycophancy, tutorial-shaped or over-engineered code, hallucinated APIs), and those outrank everything it does see. For code, run the build or type-check first and pass its output to the agent; hallucinated APIs are otherwise NOT ASSESSED.
+4. Fall back only on an observed failure, and name the failure to the user. The scanner is unavailable when `node` is missing (`command not found`), when Bash is denied, or when the script path does not exist; exit 2 is a usage error and means the argument list was wrong, so fix the list rather than falling back. If the Agent tool fails, review directly using the rules in the anti-slop skill and label the result as a direct review with no agent score.
+5. Present the scored report. When step 2 ran, include both scores, labeled: the scanner's `Scan score: N/50` (deterministic, subtractive) and the agent's `Review score: N/M` (judgment across the dimensions it could assess). They are different scales measuring different things and must not be averaged. When step 2 did not run, say so explicitly -- "no scan; last-response targets are not files" -- rather than printing one number as if it were both.
+6. Say what neither layer could reach. The scanner has no rule for SQL injection, command injection, path traversal, SSRF, insecure deserialization, IDOR, insecure randomness, N+1 queries, missing timeouts, or race conditions, all of which the catalogue teaches; a clean scan is silent on every one of them. The coverage matrix in `references/empirical-rankings.md` lists the boundary in full.
+7. Offer to fix the identified issues if the user wants.
+8. The dashboard is optional and off by default. Offer it only if the user asks or it's contextually useful; it is the one command that opens a port, and `.anti-slop/config.json` `{"dashboard": false}` disables it:
 
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/slop-scanner.mjs" dashboard
@@ -47,7 +60,8 @@ If the diff or PR is empty, inform the user that no changes were found.
 
 ## Usage Examples
 
-- `/slop-check` (review last output)
-- `/slop-check src/components/Header.tsx` (review specific file)
-- `/slop-check diff` (review uncommitted changes)
-- `/slop-check pr` (review current PR)
+- `/slop-check` (review the last assistant message; agent review only, no scan)
+- `/slop-check src/components/Header.tsx` (one file: scan plus agent review)
+- `/slop-check src/components/` (expand with Glob, then scan the expansion plus agent review)
+- `/slop-check diff` (uncommitted changes: `git diff --name-only` piped to the scanner, plus agent review)
+- `/slop-check pr` (the current branch's PR: `gh pr diff --name-only` piped to the scanner, plus agent review)

@@ -74,7 +74,7 @@ AI modifies tests to make them pass instead of fixing the underlying code. This 
 - Never weaken an assertion (e.g., `toBe(90)` to `toBeDefined()`)
 - Never lower coverage thresholds
 - Never use `--no-verify` to bypass pre-commit hooks
-- Never add `@ts-ignore`, `eslint-disable`, or `# type: ignore` to suppress errors instead of fixing them
+- Never add `@ts-ignore`, `eslint-disable`, `# type: ignore`, `@SuppressWarnings`, or `@ts-nocheck` to suppress errors instead of fixing them. `suppression-comment` matches these, **Quality defect**, medium severity. **Remediation: fix the type or lint error.** `@ts-expect-error` with a reason is deliberately **not** matched: the compiler verifies it is still needed and errors when it is not, so it expires on its own, which is the property `@ts-ignore` lacks
 - The default assumption is that the code is wrong, not the test. Exceptions: the test has a bug in its own logic, asserts on a changed spec, or is over-specified on implementation details. In those cases, fix the test and document why the old assertion was incorrect.
 
 A documented pattern: an AI changed `expect(total).toBe(90)` to `expect(total).toBe(0)` to match buggy 100%-off discount logic instead of fixing the discount calculation. The test passed, the bug deployed. (Source: dev.to/kensave, "Your AI Agent Says All Tests Pass")

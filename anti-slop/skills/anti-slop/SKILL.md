@@ -1,6 +1,6 @@
 ---
 name: anti-slop
-version: 2.0.0
+version: 2.1.0
 description: Catches agentic development shortcomings in prose, code, and UI output: security holes, accessibility failures, regressions, banned vocabulary, structural cliches, and AI-default design tells. Applies whenever output is produced or revised. Activates on "write", "create", "build", "implement", "fix", "generate", "review", "refactor", "design", "edit". Context-aware: yields to domain conventions and project requirements.
 ---
 
@@ -10,11 +10,30 @@ This plugin must never reduce output quality. If a rule makes the output worse f
 
 Apply rules with judgment, not mechanically. Rigid compliance creates its own detectable pattern. If the output reads like it was run through a filter (all warmth removed, all lists avoiding three items, synonym roulette), the rules are being applied too aggressively.
 
-Three principles from the corpus data (`references/empirical-rankings.md`) sharpen this:
+Four findings from the corpus data (`references/empirical-rankings.md`) sharpen this:
 
-- **Flag the unspecified default, not the value.** A tell is an unchosen default, not a banned token. Purple, a serif font, an em dash, or a broad `try/except` is a tell when the model reached for it by default and a legitimate choice when it was chosen for a reason. A line marked `anti-slop-allow: <reason>` (or `unslop-ignore`) is a deliberate choice; leave it alone.
+- **Flag the unspecified default, not the value.** A tell is an unchosen default, not a banned token. Purple, a serif font, an em dash, or a broad `try/except` is a tell when the model reached for it by default and a legitimate choice when it was chosen for a reason. A line marked `anti-slop-allow: <reason>` (or `unslop-ignore`) is a deliberate choice; leave it alone. The marker must sit on the offending line itself (`references/choosing-with-intent.md` states the placement contract).
 - **Concentration, not lone hits.** One "delve," one "however," one em dash is not a tell; several in a short span is. Some high-frequency words ("however," "nuanced," "comprehensive," "utilize") match often but are rarely the real signal. Weight by density.
-- **Banning the old tells creates the new one.** Mechanical over-correction is itself detectable: staccato prose dodging every em dash, or cream-and-serif replacing purple. The fix is a deliberate choice with a reason (`references/choosing-with-intent.md`), not avoidance. The highest-signal tells (sentence rhythm, sycophancy, empty fluency, hallucinated APIs) are invisible to any word scan; read for them.
+- **The loudest tells are structural, and no pattern matches them.** Sentence rhythm, sycophancy, fluent-but-empty paragraphs, tutorial-shaped code, hallucinated APIs, and code that ignores its neighbours are the top-cited tells in every domain, and every one of them is invisible to a word scan. A clean scan clears the cheap layer only. Route the rest to a semantic read (§ How to run this).
+- **Banning the old tells creates the new one.** Mechanical over-correction is itself detectable: staccato prose dodging every em dash, or cream-and-serif replacing purple. The fix is a deliberate choice with a reason (`references/choosing-with-intent.md`), not avoidance.
+
+## How to run this
+
+The plugin ships three layers. Route by what the target is and what evidence is available.
+
+| Layer | Trigger | How to run it |
+|---|---|---|
+| Inline self-check | Output you wrote or edited in this turn, before you hand it back | § Quick Self-Check below; `references/self-check.md` for the full checklist by output type |
+| Deterministic scan | The target is one or more files on disk | `node "${CLAUDE_PLUGIN_ROOT}/scripts/slop-scanner.mjs" scan <file...>` |
+| `slop-detector` agent | The target is a diff, a PR, a long response, or the structural tells above | Dispatch the `slop-detector` agent, or run `/slop-check <target>`, which runs both layers and reports both scores |
+
+The scanner needs no install and has zero runtime dependencies. It exits 0 when clean, 1 on findings, 2 on a usage error, and takes `--format json`, `--fail-on <level>`, and `--quiet`. It reads files only, never a directory or a glob, so pipe a file list in:
+
+```bash
+git diff --name-only --diff-filter=d | xargs node "${CLAUDE_PLUGIN_ROOT}/scripts/slop-scanner.mjs" scan
+```
+
+Run both layers whenever both apply, and say which one produced a given score. For code, build and type-check before either: hallucinated APIs are the second-ranked code tell by verified share and only a compiler catches them.
 
 ## Scope and Limitations
 
@@ -27,8 +46,11 @@ finding carries one of four confidence classes (Hard defect, Quality defect, Pat
 Taste note), independent of severity; most design tells are Pattern smells, and grading
 them honestly is what stops a tell reading as an accusation. Claims of spatial or numeric
 precision need real geometry, never a screenshot. Anything the evidence could not reach is
-reported NOT ASSESSED rather than clean. All three rules live in
-`references/confidence-and-evidence.md`, which is their single definition.
+reported NOT ASSESSED rather than clean. `references/confidence-and-evidence.md` is the
+single definition of all six: the confidence classes, the presence/concentration split, the
+remediation floor, the evidence modes, the geometry rule, and the not-assessed rule. The
+domain reference files restate individual rules where a domain needs a local
+specialisation, and those restatements defer to that file.
 
 ## Context Exceptions
 
@@ -74,7 +96,7 @@ Mix sentence lengths. No three consecutive sentences of similar length. Break th
 
 ### Punctuation
 
-Use em dashes for their correct grammatical purpose (parenthetical insertions, abrupt breaks). Do not use them as a general-purpose connector substituting for commas, colons, or semicolons. High density is a strong AI tell. Limit exclamation marks to one per 1000 words.
+Use em dashes for their correct grammatical purpose (parenthetical insertions, abrupt breaks). Do not use them as a general-purpose connector substituting for commas, colons, or semicolons. Density is the tell, and the scanner's threshold is the measured one: **five or more em dashes in the document AND at least four per 1,000 words**, counted after code blocks, quotes, and backticked spans are stripped. Both conditions must hold, so a lone correct dash is clean and a long document is judged on rate rather than raw count. Do not self-check against a lower number; correcting below the measured threshold produces the em-dash-dodging contortion that is itself a tell (`references/writing-patterns.md` § The Over-Corrected Register). Limit exclamation marks to one per 1000 words.
 
 ### Trust and Directness
 
@@ -82,7 +104,7 @@ State facts. No softening, justification, or hand-holding (except in pedagogical
 
 ### Formatting
 
-No markdown headers in short responses. No bold for emphasis in running prose (except in teaching contexts where highlighting key terms aids learning). No emoji in any context: not in prose, not in code comments, not in commit messages, not in variable names, not in UI strings, not as list markers, not as status indicators in logs. The only exception is if the user explicitly uses emoji first and the context calls for matching their tone. No bullet points where a sentence works.
+No markdown headers in short responses. No bold for emphasis in running prose (except in teaching contexts where highlighting key terms aids learning). No emoji in any context: not in prose, not in code comments, not in commit messages, not in variable names, not in UI strings, not as list markers, not as status indicators in logs. Two exceptions, both narrow: the user uses emoji first and the context calls for matching their tone, or the project's own convention requires them (a gitmoji commit history, per § Context Exceptions). An exception earned in one surface does not carry to the others; a gitmoji repo still gets emoji-free code, logs, and UI strings. No bullet points where a sentence works.
 
 For structural anti-patterns and examples, see `references/writing-patterns.md`.
 
@@ -116,17 +138,15 @@ No SQL string concatenation; use parameterized queries. No eval() or exec() with
 
 ### Regression Prevention
 
-When modifying existing code: change only what was asked. Read files and their dependents before editing. Use Edit (targeted diff), not Write (full file rewrite). Preserve error messages, status codes, default values, log formats, metric names, and conditional logic exactly. Never modify tests to make them pass instead of fixing the code. Never delete code that looks unused without verifying zero references across the entire codebase. Run tests after every change.
-
-When modifying existing code, fixing bugs, or refactoring, load and follow `references/regression-patterns.md` for the full regression prevention guide.
+When modifying existing code, fixing bugs, or refactoring, load and follow `references/regression-patterns.md` § The Cardinal Rules. Read it rather than working from a summary: the two exceptions are the part a summary drops, and both are load-bearing. Behaviour is preserved exactly *unless* the change is a security fix, where the old behaviour is the defect. Tests are never edited to make them pass *unless* the test itself encodes the wrong contract, in which case the fix is the test and the reason belongs in the commit message. The reference file states the conditions that qualify each.
 
 For code anti-patterns with examples, see `references/code-patterns.md`. For React, CSS, performance, HTML semantics, and UX patterns, see `references/frontend-patterns.md`.
 
 ## Design and UI Rules
 
-No purple-to-blue gradients (Tailwind's default). No Inter/Roboto as the unquestioned font. No cookie-cutter hero sections. No three-column icon grids. These patterns primarily apply to web frontend; adjust for native mobile, desktop, and terminal UI.
+No purple-to-blue gradients (Tailwind's default). No unquestioned default sans, which now means Space Grotesk, Manrope, Outfit, and DM Sans as much as Inter and Roboto. No cookie-cutter hero sections. No three-column icon grids. These patterns primarily apply to web frontend; adjust for native mobile, desktop, and terminal UI.
 
-The strongest *emerging* design tell is the cream-background + serif-display + sage-green "tasteful default" that the previous wave of anti-AI advice converged on; it now reads as AI faster than purple. Empirically the loudest complaints are generic sameness, the un-themed shadcn/Tailwind default kit, and purple — not the memes (bento grids, mesh gradients), which the data clears as low-signal or rejected. See `references/design-patterns.md`.
+The strongest *emerging* design tell is the cream-background + serif-display + warm-accent "tasteful default" (sage green through 2025, rusty orange in 2026) that the previous wave of anti-AI advice converged on; it now reads as AI faster than purple. Empirically the loudest complaints are generic sameness, the un-themed shadcn/Tailwind default kit, and purple — not the memes (bento grids, mesh gradients), which the data clears as low-signal or rejected. See `references/design-patterns.md`.
 
 Every element must serve the design. Forms need error states, validation, and accessible labels. Navigation needs keyboard support. Check color contrast (4.5:1 for normal text, 3:1 for large text and UI components). Design the empty state and error state, not just the populated view. Write specific microcopy. Use design tokens, not magic numbers.
 
@@ -148,20 +168,25 @@ or the native tells to web files.
 
 ## Quick Self-Check
 
+This is the canonical minimum check. `references/self-check.md` carries the full checklists by output type and points back here rather than keeping a second copy, because two lists claiming to be the same minimum drift apart.
+
 Before finalizing any output, run through:
 
-- No banned words from `references/banned-words.md`?
-- No sycophantic or throat-clearing openers?
+- First word of the response: sycophantic or throat-clearing?
+- No banned words from `references/banned-words.md`, judged by concentration rather than a lone hit?
 - Sentence lengths vary?
 - Not forcing lists to exactly three items?
-- Em dashes used for correct purpose, not as general connector (density is the #1 writing tell)?
+- Em dashes counted? (the scanner fires at five or more AND four per 1,000 words; a lone correct dash is clean)
 - No "It's not just X, it's Y" antithesis (the strongest sentence tell)?
 - Active voice with concrete subjects (passive fine when appropriate)?
+- No summary or recap at the end restating what the reader just read?
+- No emoji anywhere: prose, code, comments, commits, logs, UI strings?
 - Code comments explain *why*, not *what*?
 - No unnecessary abstractions or premature patterns?
-- No unverified APIs or invented packages?
+- No unverified APIs or invented packages? (build or type-check first; no scan sees these)
 - No SQL injection, XSS, hardcoded credentials, or eval with user input?
+- UI: focus indicator present, alt text written, contrast checked?
 - Design choices specific to the project, not AI defaults?
 - If modifying existing code: changed only what was asked? Tests fix the code, not weakened assertions?
 
-For full checklists by output type, see `references/self-check.md`. For the data behind which tells matter most and which to apply with restraint, see `references/empirical-rankings.md`. For the positive direction (what to choose instead of a default), see `references/choosing-with-intent.md`.
+For the data behind which tells matter most and which to apply with restraint, see `references/empirical-rankings.md`. For which tells the scanner reaches and which need an agent or a runtime, see the coverage matrix in that file. For the positive direction (what to choose instead of a default), see `references/choosing-with-intent.md`.

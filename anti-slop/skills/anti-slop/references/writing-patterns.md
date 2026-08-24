@@ -49,6 +49,13 @@ The single-sentence negate-then-assert, and the #1 sentence-level tell in the co
 **Slop:** "It's not only faster, but also more reliable."
 **Fix:** "It's faster and more reliable."
 
+The construction has a reframe variant that reads as less formulaic and is not: **"It's not about X, it's about Y."** Same negate-then-assert shape, same free profundity, and it is the version currently rising fastest.
+
+**Slop:** "It's not about the tooling, it's about the culture."
+**Fix:** "The tooling is fine; nobody reviews." Say the thing you were going to say after the comma.
+
+The scanner matches `just`, `only`, `merely`, `simply`, `about`, and `really` as the qualifier, and it needs the second clause to fire, so a single-clause "It's not about money." stays clean.
+
 This is distinct from the two-sentence Binary Contrast above ("Not X. Y."). Both perform a drama the content should carry on its own.
 
 ### Negative Listing
@@ -102,9 +109,17 @@ Posing a question, then answering it in the next sentence. Socratic posturing.
 
 The template paragraph structure AI defaults to. Every paragraph follows the same format: state the topic, explain it, give an example, then transition to the next section. Break this pattern. Start with the example sometimes. End abruptly. Skip the transition.
 
+**Slop:** "Caching improves performance. When a value is expensive to compute, storing the result avoids recomputing it. For example, a memoized fibonacci function returns instantly on repeat calls. This brings us to invalidation."
+**Fix:** "A memoized fibonacci returns instantly on repeat calls. The hard part is knowing when the stored answer went stale." Two sentences, no scaffolding, and the second one is the thing worth saying.
+
+The diagnostic: read only the first sentence of every paragraph. If each one announces its topic and none makes a claim, the template is running the piece.
+
 ### The Five-Paragraph Essay
 
 Introduction, three body paragraphs, conclusion. This format screams "I'm fulfilling a structure." Let the content determine the shape.
+
+**Slop:** an opening paragraph that lists the three things the piece will cover, three paragraphs covering them in that order, and a closing paragraph restating all three.
+**Fix:** open on the claim, spend the length each point actually needs (one may take four paragraphs and another one sentence), and stop when the argument is finished. If a section can be cut without the argument losing anything, it was there to fill a slot.
 
 ### Recapping Before Answering
 
@@ -146,13 +161,19 @@ Overly accommodating, overly cautious, speaks to the user as if they might break
 
 Everything at the same emotional register. No humor, no surprise, no frustration, no personality. Every sentence sounds exactly as important as every other sentence.
 
-**Fix:** Let some things be casual. Let some things be blunt. Vary the register.
+**Slop:** "The migration completed successfully. Three records failed validation. The remaining 40,000 were imported. The failed records are in the error log."
+**Fix:** "The migration went through. Three records failed validation, which is three more than it should be, and they are sitting in the error log; the other 40,000 are in." The 40,000 and the 3 are not equally interesting, and the prose should say which one you care about.
+
+**Fix, generally:** Let some things be casual. Let some things be blunt. Vary the register.
 
 ### False Confidence
 
 Asserting facts with certainty when the answer is uncertain. AI rarely says "I don't know" or "I'm not sure." It just states things.
 
-**Fix:** When uncertain, say so plainly. "I'm not sure about this" is better than a wrong answer stated with confidence.
+**Slop:** "The timeout is 30 seconds by default, so the retry never fires before the request resolves."
+**Fix:** "The default looks like 30 seconds, but I have not checked this version's config; if it is lower, the retry can fire while the first request is still open." The uncertainty is information, and hiding it costs the reader the one thing they needed to check.
+
+**Fix, generally:** When uncertain, say so plainly. "I'm not sure about this" is better than a wrong answer stated with confidence.
 
 ### Performed Edginess
 
@@ -212,6 +233,8 @@ Common offenses:
 
 **Fix:** No emoji anywhere unless the user explicitly uses them and the context calls for matching their style. Use words for status ("PASS", "FAIL", "WARNING"), text for headings, proper icon components for UI, and conventional prefixes for commits. Emoji are decorative noise that adds zero information and marks output as AI-generated.
 
+**How the scanner grades it.** Severity escalates with the count: a handful is low, more than five is medium, because one glyph in a CLI banner is a choice and twenty across a file is the house style. Coverage extends past the pictographic blocks to the arrows, technical symbols, and geometric shapes that carry the same load (a heavy check mark, a warning triangle, a black circle standing in for a status dot) while stopping short of the punctuation and typographic ranges, which would fire on ordinary text. A file that is *about* emoji, this one included, is guarded by the word appearing in it, because a catalogue that cannot quote its own examples is not a catalogue. `console-log-emoji` covers the log-output leg separately, since a glyph in a log line survives longer than one in a comment and breaks more parsers.
+
 ### Markdown in Non-Markdown Contexts
 
 Using markdown formatting in contexts that don't render it (emails, chat messages, commit messages).
@@ -224,7 +247,71 @@ Dropping `---`, `***`, or `___` rules between every section. Named as "another o
 
 **Fix:** Use a paragraph break. Reserve the rule for a real section boundary in a long document.
 
+### Forced Title Case on Every Heading
+
+Every heading capitalised as a title, including ones that are plainly sentences: "How To Configure The Cache", "What This Means For Your Team". The tell is not title case itself; it is title case applied by reflex to headings that are questions or clauses, and applied at a depth where nobody does it by hand (an `h4` reading "Why This Matters" in a document whose `h2`s are sentence case).
+
+**Slop:** `### Adding A New Rule To The Scanner`
+**Fix:** `### Adding a new rule to the scanner`
+
+**Judgment note, and the reason there is no rule for this.** Title case is a legitimate house style. The Chicago and AP conventions are title case, and plenty of documentation sites apply it deliberately at every level. The tell is **inconsistency with the surrounding document**, which a single-file pattern match cannot judge and a reader can see instantly. Check the document's own other headings before writing this finding, and drop it if they agree.
+
+### Leaked Model Tooling Tokens
+
+Vendor-internal citation and tooling markup left in the output: `oaicite`, `contentReference`, `attributableIndex`, `turn0search0`, `[cite: 1]`, `grok_card`, `ppl-ai-file-upload`. These are not stylistic tells. They are machine tokens that a person could not have typed, and one of them is proof of provenance in a way no vocabulary choice ever is.
+
+**Slop:** "The timeout defaults to 30 seconds :contentReference[oaicite:3]{index=3}."
+**Fix:** "The timeout defaults to 30 seconds." Delete the token; if it was standing in for a real citation, write the real citation.
+
+The scanner matches these as `model-tooling-artifact` at high severity, presence-flagged, in prose and in code alike. They sit alongside § Leftover Chat Artifacts in `code-patterns.md`: same class, different vocabulary. Do not confuse them with real markup that happens to look similar. A `:::note` admonition, a `[1]` footnote reference, and a variable named `attributedString` are all ordinary and none of them matches.
+
 ## Sentence-Level Anti-Patterns
+
+### First-Word Fingerprints
+
+The class, not the list. Individual openers ("Certainly!", "Absolutely", "Good question", "I'd be happy to") are in `banned-phrases.md` and in the scanner's phrase list, but the tell generalises past any list: **the first word of a generated response is drawn from a small pool, and the pool is model-specific.** Reflexive agreement ("You're right", "Exactly"), reflexive enthusiasm ("Perfect!", "Love this"), and reflexive framing ("Sure thing", "Happy to") all belong to it, and new members appear with every model release.
+
+The test is positional and does not need a list: **read the first three words alone. Do they carry information?** If they could be deleted without the reader losing anything, they are the fingerprint, whatever the words happen to be this month.
+
+**Slop:** "Great question! The timeout lives in `config/http.ts`."
+**Slop:** "You're absolutely right to check that. The timeout lives in `config/http.ts`."
+**Fix:** "The timeout lives in `config/http.ts`."
+
+Brief acknowledgment is not this tell. "Sure." before a real answer is conversational; "Great question!" before the same answer is a filler slot the model fills by habit.
+
+### Participial Sentence Openers
+
+Starting a sentence with an `-ing` phrase: "Building on this, the team...", "Having reviewed the data, we...", "Considering the constraints, the approach...". Measured at roughly two to five times the human rate in generated prose, which makes it the mirror image of the trailing form in § -ing Appended Analysis below: the same construction, moved to the front.
+
+**Slop:** "Building on the previous release, the migration adds three indexes."
+**Fix:** "The migration adds three indexes." The participle attaches the sentence to whatever came before, which is a transition, and most sentences do not need one.
+
+**Judgment note.** The construction is correct English and every writer uses it. This is a concentration tell: one is invisible, and three in a page is the rhythm. It has no scanner rule for the same reason (the false-positive rate on a single-occurrence match would be near-total), so it lives on the semantic read.
+
+### The "From X to Y" Sweep
+
+"From startups to enterprises." "From onboarding to offboarding." "From simple scripts to complex pipelines." The construction performs coverage: it asserts a range without naming what is in it, and the two endpoints are almost always the two most obvious ones.
+
+**Slop:** "From small teams to large organizations, everyone benefits from better tooling."
+**Fix:** "A four-person team gets the same speedup as a four-hundred-person one." Or delete the framing and name the one case that matters.
+
+**Slop:** "It handles everything from authentication to authorization."
+**Fix:** "It handles authentication and authorization." The sweep added a preposition and no information.
+
+### False Agency and Personification
+
+Abstractions given verbs that only people have. Data "tells a story". Decisions "emerge". The architecture "wants" something. Numbers "reveal" and metrics "suggest". Each one hides who did the thing, which is the same defect as § Passive Voice with an extra flourish.
+
+**Slop:** "The data tells a compelling story about user behavior."
+**Fix:** "Seventy percent of sessions end on the pricing page." The data does not narrate; you read it, and what you read is the sentence worth writing.
+
+**Slop:** "A consensus emerged that the API should be versioned."
+**Fix:** "Priya and Sam argued for versioning the API and nobody objected."
+
+**Slop:** "The code wants to be structured this way."
+**Fix:** "I structured it this way because the parser and the formatter both need the token list."
+
+The exception is live metaphor a writer chose. "The build is angry at me again" is a joke with an author; "the data suggests" is a slot filler. The test is whether removing the personification loses anything.
 
 ### Wh- Openers
 
@@ -268,25 +355,37 @@ Every sentence roughly the same length. AI tends to produce medium-length senten
 
 AI text says "in recent years" instead of naming a year. "Some researchers" instead of naming them. "A growing body of evidence" instead of citing papers. This vagueness about time, attribution, and specifics distinguishes AI from informed human writing.
 
-**Fix:** Name the year. Name the person. Cite the specific paper. If the specifics aren't known, say so directly rather than hiding behind vague attribution.
+**Slop:** "In recent years, a growing body of evidence has shown that some researchers find AI-generated pull requests harder to review."
+**Fix:** "Google's 2025 DORA report put review time up 91% on teams at high AI adoption." One date, one source, one number, and the sentence is now checkable.
+
+**Fix, generally:** Name the year. Name the person. Cite the specific paper. If the specifics aren't known, say so directly rather than hiding behind vague attribution.
 
 ### The Knowledge-Style Mismatch
 
 AI combines deep domain knowledge with a writing style no expert in that domain would use. A real neurosurgeon doesn't explain neurosurgery with bullet points and encouraging sign-offs. The mismatch between knowledge depth and presentation style is a strong tell.
 
-**Fix:** Match the style to the domain. Technical content gets technical style. Casual questions get casual answers.
+**Slop:** "Great question! Let's break down cache coherence: **MESI protocol** handles this through four states. Hope that clears things up!"
+**Fix:** "MESI gives each line four states, and the invalidate traffic is what kills you once more than four cores share a line." Someone who works on this writes about the part that bites, not the part that fits a slide.
+
+**Fix, generally:** Match the style to the domain. Technical content gets technical style. Casual questions get casual answers.
 
 ### The Confident Generalist
 
 AI writes about every topic with the same level of confidence and the same tone. A human expert writes about their field with casual mastery and about unfamiliar fields with visible uncertainty. AI lacks this variation.
 
-**Fix:** When writing about uncertain territory, say so. Modulate confidence to match actual knowledge depth.
+**Slop:** the same measured, evenly-hedged paragraph shape applied to Postgres index selection, to eighteenth-century naval logistics, and to the writer's own product.
+**Fix:** write the thing you know from the inside, with the shortcuts and irritations that come with it, and say "I am reading this off Wikipedia" about the thing you do not. The shift between the two is the signal.
+
+**Fix, generally:** When writing about uncertain territory, say so. Modulate confidence to match actual knowledge depth.
 
 ### Absence of Imperfection
 
 Human writing naturally contains colloquialisms, incomplete thoughts, opinions stated without hedging, humor, sarcasm, and personal references. The near-total absence of these is itself a tell. AI text is "too clean."
 
-**Fix:** Write naturally. Use contractions. Leave in some rough edges. A slightly imperfect voice sounds human; a perfectly polished one sounds generated.
+**Slop:** "This approach offers several advantages while introducing certain trade-offs that should be carefully considered."
+**Fix:** "It is faster and I do not love how much state it keeps, but nothing else finished in under a second." An actual opinion, stated flat, is the thing generated prose keeps sanding off.
+
+**Fix, generally:** Write naturally. Use contractions. Leave in some rough edges. A slightly imperfect voice sounds human; a perfectly polished one sounds generated. Note the failure mode on the other side: manufactured roughness is § The Over-Corrected Register below, and it reads as generated just as fast.
 
 ### The Over-Corrected Register (Trying Not to Sound Like AI)
 
@@ -302,6 +401,50 @@ What it looks like:
 
 **Fix:** do not over-apply the rules. The fix for an em dash is a comma or period in a sentence you would actually write, not an ellipsis or a contortion. The fix for the smooth, voiceless paragraph is a real voice — pick a register and commit (see `choosing-with-intent.md`) — not the absence of voice dressed up as casual. Vary sentence length for real, long sentences included. If a casual marker is not native to the register you chose, cut it.
 
+## Short-Form Registers
+
+Everything above this section is shaped for articles and essays. An agentic development tool emits almost none of those. It emits commit messages, PR bodies, changelog entries, and code-review comments, and those are the highest-volume prose in the entire workflow. They have their own tells, and `SKILL.md` § Context Exceptions exempts "instruction documents" from the formatting rules, which a reader can easily over-extend to cover a PR body. It does not: a PR body is prose someone has to read, and every rule here applies to it.
+
+The register is `choosing-with-intent.md`'s conversational-professional: plain, direct, no throat-clearing, no warmth performed for its own sake.
+
+### Commit Messages
+
+- **The body restates the diff.** "Updated the `parseConfig` function to accept an optional `strict` parameter and updated its three callers." The diff already says that. Say why the parameter exists.
+- **Emoji prefixes.** Only where the project's own history uses them (`SKILL.md` § Formatting states the exception and its limit).
+- **Filler subject lines.** "Various improvements", "Minor fixes", "Update files".
+
+**Slop:** `Refactor: improve error handling in the sync worker for better reliability`
+**Fix:** `sync: retry on 429 instead of dropping the batch` plus a body sentence naming the incident that prompted it.
+
+### PR Bodies
+
+- **The `## Summary` / `## Changes` / `## Test plan` template on a three-line change.** Headings are navigation; a PR nobody needs to navigate does not need them.
+- **The bullet list that is the file list.** If the reviewer can get it from "Files changed", it is not a description.
+- **"This PR does X. It also does Y. Additionally, it does Z."** The recap shape from § Summary at the End, transplanted.
+- **Confidence with no evidence.** "Thoroughly tested" without saying what was run.
+
+**Slop:** "## Summary\nThis PR introduces a robust caching layer to significantly improve performance.\n## Changes\n- Added cache.ts\n- Updated api.ts"
+**Fix:** "Adds a 60-second cache in front of `/api/prices`. p95 on the dashboard drops from 1.4s to 180ms. `cache.ts` is new; `api.ts` calls it. Cache is keyed on realm id only, so a stale price survives at most a minute, which the pricing team signed off on."
+
+### Changelog Entries
+
+- **Emoji-bulleted feature lists**, and a sparkle glyph after a `feat:` prefix. See § Emoji Abuse above for the full set.
+- **Marketing copy in a technical file.** "We're excited to announce a powerful new way to..."
+- **Entries written from the author's side.** "Refactored the store module" tells a user nothing. Write what changed for them.
+
+**Slop:** `- [sparkle] Enhanced the scanning experience with powerful new capabilities`
+**Fix:** `- scan now accepts multiple files and exits 1 on any finding`
+
+### Code-Review Comments
+
+- **The sycophantic opener, in its native habitat.** "Great catch!", "Nice work on this!", "Love this approach!" before the actual comment. The phrases are banned by `banned-phrases.md`; the surface is worth naming because it is where they survive longest.
+- **Hedging that hides the ask.** "Might be worth considering possibly extracting this?" Either it should change or it should not.
+- **Restating the code back to the author.** They wrote it.
+- **Praise with no object.** "This looks good to me" on a 900-line diff is a rubber stamp wearing a comment.
+
+**Slop:** "Great catch on the null check! I wonder if it might potentially be worth considering whether we could maybe extract this into a helper?"
+**Fix:** "This block is repeated in `sync.ts` at line 40. Worth a helper, or leave it until there is a third." State the observation, then the ask, then the option to decline.
+
 ## Creative Writing Tells
 
 When generating fiction, narrative, or creative content:
@@ -311,6 +454,6 @@ When generating fiction, narrative, or creative content:
 - **Emotional telling:** "She felt a profound sense of sadness" instead of showing sadness through action.
 - **Character action cliches:** Characters sigh, take deep breaths, and stare out windows at inhuman rates. Eyes are constantly "glistening," "sparkling," or "widening." Lips "curl," "purse," or "tremble."
 - **Safe resolution:** Every story ends with a pat emotional resolution or obvious twist. No genuine darkness, moral ambiguity, or discomfort.
-- **AI fiction vocabulary:** whispering, tendrils, etched, nestled, palpable, symphony (metaphor), kaleidoscope (metaphor), gossamer, iridescent, luminous, ephemeral, ethereal, cascade (metaphor), ember, silhouette, enigmatic.
+- **AI fiction vocabulary:** `whispering`, `tendrils`, `etched`, `nestled`, `palpable`, `symphony` (metaphor), `kaleidoscope` (metaphor), `gossamer`, `iridescent`, `luminous`, `ephemeral`, `ethereal`, `cascade` (metaphor), `ember`, `silhouette`, `enigmatic`.
 
 **Fix:** Show don't tell. Let characters act rather than emote. Avoid wrapping every story in a bow. Use specific, surprising details rather than stock descriptions.
