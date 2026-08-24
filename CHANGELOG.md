@@ -2,6 +2,100 @@
 
 All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `anti-slop/.claude-plugin/plugin.json`, and the SKILL.md frontmatter — all four are bumped together. (It was five until 2.0.0 removed the MCP Server constructor.)
 
+## 2.1.0 - 2026-08-23
+
+The largest detection expansion since 1.4.0, driven by a five-way audit of the whole
+plugin (scanner engine, corpus and tests, instruction surface, docs and packaging, and
+current-source research on 2026-era tells). Thirty rules are new, seven existing rules
+were broken by realistic one-line inputs and are fixed, and the plugin's own reference
+library now scans clean under its own scanner.
+
+**Scanner: 30 new rules.** The tables grow from 49 to 79 distinct rules.
+
+- *Design (14, web surfaces):* fixed pixel page shells and grid tracks, `100vh` app
+  shells, spacing values that bypass the file's own token scale, repeated literal radii
+  with no stated radius identity, dead controls (empty or TODO-only handlers),
+  `outline: none` with no `:focus-visible` replacement, missing or generic `alt` text,
+  the tracked-out uppercase overline, decorative blur blobs, the shadcn stats-row
+  example figures shipping as content, generic microcopy, `transition-all`, and uniform
+  section padding.
+- *Code (13):* `dangerouslySetInnerHTML` without sanitization, `shell=True` command
+  injection, unsafe deserialization (`pickle.loads` / bare `yaml.load`), Tailwind
+  dynamic class construction, suppression comments (`@ts-ignore` / `eslint-disable`;
+  `@ts-expect-error` deliberately exempt), deprecated APIs, dead branches
+  (`if (true)` / `if (false)`), `forEach(async ...)`, `catch (e: any)`, leaked model
+  tooling tokens (`oaicite`, `turn0search`, `[cite: N]` and kin — also active on
+  prose), and the comment-slop family: banner, apologetic, and deferral/hedging
+  comments.
+- *Native (2, Apple surfaces):* `.font(.system(size:))` without `relativeTo:` or
+  `@ScaledMetric` (Dynamic Type stops scaling), and `DispatchQueue.main.async` piled up
+  as a blanket concurrency fix.
+- *Prose (1):* the 2026 plain-word register, matched as collocations only
+  (`quietly building`, `decisions compound`, `earn the right to`) — the bare words
+  stay unbannable by design, and a test enforces that.
+- *Updated:* the cream-serif tell gains its drifted warm accent leg (rusty orange and
+  terracotta alongside sage), `generic-font` covers the current default set (Space
+  Grotesk, Manrope, Plus Jakarta Sans, Outfit, DM Sans), the antithesis rule catches
+  the "it's not about X, it's Y" reframe, and `z-index-escalation` sees the JS object
+  form (`zIndex: 9999`).
+
+**Fixed: seven rules that failed on realistic input.**
+
+- `.html`, `.htm`, `.vue`, `.svelte`, and `.astro` files now run the code rules too.
+  Previously a `<script>` block containing `eval()`, an `innerHTML` assignment, and a
+  hardcoded key scanned clean on the most common surface for each.
+- The escape hatch (`anti-slop-allow` / `unslop-ignore`) now works for banned phrases
+  in code files. It silently did not.
+- Context exceptions are word-anchored. The substring test had quietly disabled five
+  banned words in almost any real file ("port" inside "important" disabled
+  `ephemeral`).
+- `hardcoded-secret` requires a secret-shaped value, so i18n strings
+  (`password: "Please enter your password"`), lexer token kinds, and validation
+  messages stop firing at high severity.
+- Three class-fingerprint rules matched only one utility-class order and were silent on
+  the exact canonical strings the reference catalog documents. They now match the
+  tokens unordered, scoped to a single class attribute.
+- The emoji ranges cover arrows, media controls, and geometric shapes (U+2190-21FF,
+  U+2300-23FF, U+25A0-25FF) — the pause/play glyph family previously slipped through
+  bare. Severity escalates above five emoji, and a prose file that discusses emoji is
+  no longer flagged for its own examples.
+- `listicle-scaffold`, `hr-divider`, `narrating-comment`, and `boilerplate-marker` are
+  narrowed: "the migration runs in 3 steps", Markdown setext underlines, runbook
+  `# Step 1:` comments, and RFC-2606 `example.com` in real config no longer fire.
+
+**Engine.** Rules can declare file-scope guards (`requires` / `unless`), a numeric
+`count` predicate joins `pattern` for rules whose test is arithmetic, and concentration
+thresholds now apply on every table. `--record` batches to one write per invocation
+(about 7x faster on large runs) and stores one aggregate score row per scan instead of
+evicting its own results; `history` and `stats` no longer create an empty `.anti-slop/`
+directory just by being asked.
+
+**Verification.** The suite grows from 131 to 302 tests: a per-rule corpus regression
+gate (a rule regression can no longer hide inside aggregate precision), a dedicated
+false-positive suite, store and CLI coverage, a cross-module drift check, and a dogfood
+snapshot gate that scans every shipped markdown file and pins the finding counts — it
+caught a real defect in the dashboard's own stylesheet on its first run. The corpus
+grows from 48 to 66 fixtures, including the first raw-CSS fixtures and near-miss clean
+controls for every narrowed rule. Corpus accuracy: precision 100.0%, recall 99.1%.
+
+**Instruction surface.** SKILL.md finally routes to the plugin's own executable: a
+"How to run this" section states when to self-check inline, when to run the scanner,
+and when to dispatch the `slop-detector` agent. The agent locates its reference library
+by discovery instead of unresolvable relative paths, its findings carry an explicit
+Severity alongside the confidence class, and dimensions its evidence cannot reach are
+reported `NOT ASSESSED` instead of forcing a number. `/slop-check` runs the
+deterministic scan on `diff` and `pr` targets via `git diff --name-only | xargs`. A
+coverage matrix in `references/empirical-rankings.md` states, per tell family, whether
+a scanner rule exists, whether the agent can reach it, and what needs a runtime or a
+build — and `references/confidence-and-evidence.md` names the families that remain
+judgment-only.
+
+**Docs and packaging.** An internal maintainer work order is no longer shipped in the
+plugin, the README's worked example and agent dimension names match the code, research
+claims carry links only where the source was verified, the dev-install command points
+at the actual plugin directory, and SECURITY.md and CONTRIBUTING.md exist. Both
+`plugin.json` files are byte-identical and version parity remains four spots.
+
 ## 2.0.0 - 2026-07-27
 
 **Breaking: the MCP server is gone.** The plugin no longer registers
