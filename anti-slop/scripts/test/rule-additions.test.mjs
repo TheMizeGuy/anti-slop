@@ -527,10 +527,29 @@ test("bootstrap-default-blue: design rules stay off native surfaces", () => {
   assert.ok(!fires("bootstrap-default-blue", "// #0d6efd #0b5ed7 in a comment", "View.swift"));
 });
 
-test("generic-microcopy: 'Scroll to explore' hero literal is a finding", () => {
-  assert.ok(fires("generic-microcopy", '<span class="hint">Scroll to explore</span>', "Hero.tsx"));
+// ── 2.2.1 recalibration ──────────────────────────────────────────────────────
+// The literal moved out of generic-microcopy into hero-scroll-hint, and
+// bootstrap-default-blue gained the requires-blue file gate. Both directions of each are
+// asserted here; the false-positive shapes that forced the change are in
+// rule-false-positives.test.mjs, next to the rest of the negative direction.
+
+test("hero-scroll-hint: the hero scroll literal is a finding, and it is no longer generic-microcopy", () => {
+  const found = names('<span class="hint">Scroll to explore</span>', "Hero.tsx");
+  assert.ok(found.includes("hero-scroll-hint"), `expected hero-scroll-hint, got ${JSON.stringify(found)}`);
+  assert.ok(!found.includes("generic-microcopy"), "the literal must not fire the host rule it was split out of");
 });
 
-test("generic-microcopy: product-specific scroll copy is NOT a finding", () => {
-  assert.ok(!fires("generic-microcopy", '<span class="hint">Scroll for the 2019-2026 price history</span>', "Hero.tsx"));
+test("hero-scroll-hint: product-specific scroll copy is NOT a finding", () => {
+  assert.ok(!fires("hero-scroll-hint", '<span class="hint">Scroll for the 2019-2026 price history</span>', "Hero.tsx"));
+});
+
+test("hero-scroll-hint: it is graded as a smell, not as the host rule's Quality defect", () => {
+  const [violation] = scanContent('<span class="hint">Scroll to explore</span>', "Hero.tsx");
+  assert.equal(violation.name, "hero-scroll-hint");
+  assert.equal(violation.confidence, "Pattern smell");
+});
+
+test("generic-microcopy: the rest of the family still fires without the scroll literal", () => {
+  assert.ok(fires("generic-microcopy", '<h1>Welcome back!</h1>', "Dashboard.tsx"));
+  assert.ok(fires("generic-microcopy", '<p>Join thousands of happy people</p>', "Landing.tsx"));
 });

@@ -148,8 +148,10 @@ export const BANNED_PHRASES = [
 ];
 
 // ── UI Design Patterns (WEB surfaces only -- see WEB_SURFACE_EXTENSIONS) ──
-// Ordered roughly by empirical signal. Severity reflects the corpus ranking:
-// shadcn-default / purple / gradients are the strongest; the rest are lighter.
+// Ordered roughly by empirical signal where a corpus ranking exists. Severity reflects that
+// ranking: shadcn-default / purple / gradients are the strongest; the rest are lighter.
+// Rules whose own comment marks them heuristic are grouped with their nearest analogue and
+// are NOT ranked -- position claims nothing about their signal.
 //
 // Every rule declares:
 //   severity    -- what it costs if real (may be a function of the match count)
@@ -175,7 +177,14 @@ export const DESIGN_PATTERNS = [
   // together is a framework default wearing a product's clothes. Adapted from VibeCurb
   // (github.com/Yu-369/VibeCurb, MIT) and graded to this repo's classes: heuristic
   // provenance, not corpus-ranked, hence smell + concentration.
-  { name: "bootstrap-default-blue", severity: "low", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, pattern: /#(0d6efd|0b5ed7|dee2e6)\b/i, desc: "Unthemed Bootstrap compiled defaults (primary blue / gray-300 border)" },
+  // `requires` is what makes "two together" true. minCount counts MATCHES, not distinct
+  // alternatives, so without the gate one chosen border gray reused across a sheet -- a
+  // tokenised decision, the inverse of the tell -- reached the threshold by itself. The
+  // blue is the leg only an unthemed build emits, so it has to be in the file before the
+  // gray counts for anything. The recall cost is deliberate and stated in the 2.2.1
+  // changelog: a file that themed the blue and kept #dee2e6 is now invisible, which is the
+  // right trade for a lone borrowed gray sitting below the signal floor.
+  { name: "bootstrap-default-blue", severity: "low", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, requires: /#(0d6efd|0b5ed7)\b/i, pattern: /#(0d6efd|0b5ed7|dee2e6)\b/i, desc: "Unthemed Bootstrap compiled defaults (primary blue / gray-300 border)" },
   { name: "gradient-text", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /bg-clip-text\s[^"]*text-transparent|text-transparent\s[^"]*bg-clip-text|-webkit-background-clip\s*:\s*text|\bbackground-clip\s*:\s*text/i, desc: "Gradient text on heading (strong AI tell)" },
   // design-patterns.md has always said "the signal is the combination -- any two of
   // {cream background, serif display, sage green}. One alone may be a real decision."
@@ -273,7 +282,15 @@ export const DESIGN_PATTERNS = [
   // user-facing figure is wrong regardless of how it looks. Near-100% precision -- those
   // exact strings come from one shadcn example and reach product UI only by copy-paste.
   { name: "shadcn-stats-magic", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\$45,?231\.89|\+20\.1%\s+from last month/gi, desc: "shadcn dashboard example literals shipping as product figures" },
-  { name: "generic-microcopy", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\bWelcome back!|\bGet started today\b|\bJoin thousands of\b|\bStay in the loop\b|\bWe['’]re here to help\b|\bScroll to explore\b/gi, desc: "Generic microcopy literal (says nothing about the product)" },
+  { name: "generic-microcopy", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\bWelcome back!|\bGet started today\b|\bJoin thousands of\b|\bStay in the loop\b|\bWe['’]re here to help\b/gi, desc: "Generic microcopy literal (says nothing about the product)" },
+  // Its own rule rather than a sixth alternative inside generic-microcopy, because
+  // appending a literal inherits the host's confidence class and the host's remediation.
+  // The host is a Quality defect on the grounds that its strings say nothing about the
+  // product, so replacing them costs the interface nothing; a scroll hint asserts something
+  // true about the page, which is Pattern smell, and its remediation is structural (let the
+  // layout show there is more) rather than a copy rewrite. The suppress guard keeps it off
+  // an accessible name, where the stated remediation would delete screen-reader output.
+  { name: "hero-scroll-hint", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /\bScroll to explore\b/gi, suppress: /aria-label|alt\s*=/i, desc: "Hero scroll-indicator microcopy (the poster-hero tell)" },
 
   // ── Motion and rhythm defaults ──
   // transition-all animates every animatable property, layout ones included, which

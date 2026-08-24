@@ -232,3 +232,48 @@ test("emoji: naming a CSS class or a constant `emoji` does not silence a source 
   assert.ok(fires("emoji", '<span class="emoji">\u{1F680}</span>', "page.html"));
   assert.ok(fires("emoji", 'const EMOJI_MAP = { rocket: "\u{1F680}" };', "src/icons.ts"));
 });
+
+// ── bootstrap-default-blue: the gray leg only counts once the blue is present ──
+// The rule reads "two or more of Bootstrap's compiled literals together", and minCount
+// counts matches rather than distinct alternatives, so before the requires-blue gate a
+// hand-rolled sheet reusing ONE chosen border gray reached the threshold on its own. That
+// is a tokenised decision reported as an unthemed framework: the inverse of the claim.
+
+test("bootstrap-default-blue: one chosen border gray used consistently is NOT a finding", () => {
+  const twice = ".card { border: 1px solid #dee2e6; }\n.divider { border-top: 1px solid #dee2e6; }\n.brand { color: #7a2e1d; }";
+  assert.ok(!fires("bootstrap-default-blue", twice, "site.css"));
+  const thrice = ".a { border-color: #dee2e6 }\n.b { border-color: #dee2e6 }\n.c { border-color: #dee2e6 }\n.brand { background: #7a2e1d; color: #f5e9dc }";
+  assert.ok(!fires("bootstrap-default-blue", thrice, "site.css"));
+});
+
+test("bootstrap-default-blue: the gray still counts alongside the blue it borders", () => {
+  const pair = ".card { border: 1px solid #dee2e6; }\na { color: #0d6efd; }";
+  assert.ok(fires("bootstrap-default-blue", pair, "site.css"));
+});
+
+test("bootstrap-default-blue: the unthemed blue pair still fires on its own", () => {
+  const unthemed = ".btn { background: #0d6efd; }\n.btn:hover { background: #0b5ed7; }";
+  assert.ok(fires("bootstrap-default-blue", unthemed, "site.css"));
+  const repeated = ".btn { background: #0d6efd; }\n.link { color: #0d6efd; }";
+  assert.ok(fires("bootstrap-default-blue", repeated, "site.css"));
+});
+
+// ── hero-scroll-hint: an accessible name is not hero microcopy ──
+// The remediation is "let the layout invite scrolling", i.e. remove the hint. Applied to a
+// control's accessible name that would delete screen-reader output, which the remediation
+// floor forbids -- so the rule never sees those lines.
+
+test("hero-scroll-hint: an aria-label carrying the phrase is NOT a finding", () => {
+  const labelled = '<button aria-label="Scroll to explore the gallery" onClick={next}>Next</button>';
+  assert.ok(!fires("hero-scroll-hint", labelled, "Gallery.tsx"));
+  assert.ok(!fires("generic-microcopy", labelled, "Gallery.tsx"));
+});
+
+test("hero-scroll-hint: an alt text carrying the phrase is NOT a finding", () => {
+  assert.ok(!fires("hero-scroll-hint", '<img src="/hint.svg" alt="Scroll to explore the map">', "Hero.tsx"));
+});
+
+test("hero-scroll-hint: the visible hero label still fires beside a suppressed line", () => {
+  const mixed = '<button aria-label="Scroll to explore the gallery">Next</button>\n<span class="hint">Scroll to explore</span>';
+  assert.ok(fires("hero-scroll-hint", mixed, "Hero.tsx"));
+});
