@@ -1,6 +1,58 @@
 # Changelog
 
-All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `anti-slop/.claude-plugin/plugin.json`, and the SKILL.md frontmatter — all four are bumped together. (It was five until 2.0.0 removed the MCP Server constructor.)
+All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `anti-slop/.claude-plugin/plugin.json`, the SKILL.md frontmatter, and `anti-slop/scripts/package.json` — all five are bumped together. (It was five, then four when 2.0.0 removed the MCP Server constructor, then five again when 2.2.1 brought the scanner's package.json under the same gate.)
+
+## 2.2.1 - 2026-08-24
+
+Calibration and record-keeping pass over the 2.2.0 additions, from an adversarial
+review of that release. No new tells; two rules are narrowed and one is re-housed.
+
+`bootstrap-default-blue` now requires the compiled primary blue (`#0d6efd` or
+`#0b5ed7`) to be present in the file before any of its hexes count. The threshold
+sums matches rather than distinct alternatives, so the rule was reaching two on
+repeats of a single literal: a hand-rolled sheet reusing one chosen `#dee2e6`
+border gray, which is a token decision, was being reported as an unthemed
+framework. **This is a deliberate recall loss**, and it is the point of the
+change: a file that themed the blue and kept the Bootstrap gray is now invisible
+to the scanner. A lone borrowed neutral sits below this repo's signal floor, and
+the tell remains the agent's to catch from the catalogue.
+
+The "Scroll to explore" literal moves out of `generic-microcopy` into its own
+`hero-scroll-hint` rule. Appending it in 2.2.0 made it inherit a Quality-defect
+class justified by "these strings say nothing about the product" and a
+copy-rewrite remediation, neither of which fits a hint that asserts something
+true about the page; it is now a Pattern smell with the structural remediation its
+own catalogue entry states. The new rule carries a `suppress` guard for
+`aria-label` and `alt`, where removing the hint would delete screen-reader output.
+`generic-microcopy` returns to its 2.1.1 pattern.
+
+Corpus: three fixtures close the gap that made "corpus precision holds at 100%"
+uninformative for the 2.2.0 additions, which had no labels at all. A positive for
+the genuine unthemed Bootstrap pair, a clean control carrying a consistently
+reused non-Bootstrap border gray, and a positive for the hero scroll hint that
+also plants the suppressed `aria-label` shape. `baseline.json` regenerated:
+design true positives 49 to 51, precision unchanged at 100%.
+
+Documentation: the scanner-coverage table splits the Bootstrap fingerprint into
+its three honest rows (hexes covered, 4px radius partly, default shadow and zebra
+striping not at all) rather than one unqualified Yes for a five-leg fingerprint;
+the concentration-threshold table lists all ten design rules instead of five; the
+zebra remediation replaces striping with row rules plus a `:hover` and
+`:focus-visible` highlight, so the row boundary survives touch and keyboard rather
+than becoming pointer-only; the Bootstrap remediation names the escape hatch for
+mid-migration token sheets; `## Logo and Brand Mark Tells` moves below
+`### The "Logo Swap Test"`, which is a page-identity diagnostic and was silently
+re-parented under it; and the `DESIGN_PATTERNS` header states that heuristic rules
+are grouped with their nearest analogue rather than ranked by signal.
+`empirical-rankings.md` § Coverage matrix gains the Bootstrap and microcopy
+families, and both it and `confidence-and-evidence.md` are re-stamped to 2.2.1.
+`docs/rankings-refresh.md` records that the 2.2.x UI tells were authored in
+parallel in ui-craft from the same MIT upstream rather than propagated by the
+downstream-sync procedure, and that anti-slop remains the owner of the tells.
+
+Packaging: `anti-slop/scripts/package.json` was still declaring 2.1.1. It ships
+inside the plugin and prints its version on every `npm run measure`, so it is now
+the fifth version spot and `test/dashboard.test.mjs` A9 enforces it.
 
 ## 2.2.0 - 2026-08-24
 

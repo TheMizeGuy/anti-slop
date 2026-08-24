@@ -225,15 +225,19 @@ test("A8: dashboard.html is clean by declared exception, and the same bytes unha
 
 // ── A9: version bump ──
 
-// Four spots since 2.0.0: the entry point used to carry a fifth as the MCP Server
-// constructor's version string, and that constructor no longer exists.
-test("A9: all four version spots agree (both manifests, marketplace, SKILL.md)", () => {
+// Five spots. It was four from 2.0.0, when the entry point stopped carrying the MCP Server
+// constructor's version string, until 2.2.1 added scripts/package.json -- which had tracked
+// the plugin version by hand for three releases and silently missed 2.2.0, printing
+// `anti-slop-scanner@2.1.1` on the very `npm run measure` run that release cited as its
+// evidence. Everything under anti-slop/ ships, so that stale number reached every install.
+test("A9: all five version spots agree (both manifests, marketplace, SKILL.md, package.json)", () => {
   const pluginDir = dirname(SCRIPTS_DIR);
   const repoRoot = dirname(pluginDir);
 
   const pluginManifest = JSON.parse(readFileSync(join(pluginDir, ".claude-plugin", "plugin.json"), "utf8"));
   const rootManifest = JSON.parse(readFileSync(join(repoRoot, ".claude-plugin", "plugin.json"), "utf8"));
   const marketplace = JSON.parse(readFileSync(join(repoRoot, ".claude-plugin", "marketplace.json"), "utf8"));
+  const scannerPackage = JSON.parse(readFileSync(join(SCRIPTS_DIR, "package.json"), "utf8"));
   const skillSrc = readFileSync(join(pluginDir, "skills", "anti-slop", "SKILL.md"), "utf8");
   const skillVersion = skillSrc.match(/^version:\s*(\S+)$/m);
   assert.ok(skillVersion, "SKILL.md frontmatter must declare a version");
@@ -243,6 +247,7 @@ test("A9: all four version spots agree (both manifests, marketplace, SKILL.md)",
     ".claude-plugin/plugin.json": rootManifest.version,
     "marketplace.json plugins[0]": marketplace.plugins[0].version,
     "SKILL.md frontmatter": skillVersion[1],
+    "scripts/package.json": scannerPackage.version,
   };
   const values = new Set(Object.values(spots));
   assert.equal(values.size, 1, `version spots disagree: ${JSON.stringify(spots)}`);
