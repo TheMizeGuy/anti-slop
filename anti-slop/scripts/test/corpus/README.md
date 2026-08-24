@@ -39,9 +39,13 @@ precisely so that a rule which cannot tell those from the Tailwind default fails
 Two of ui-craft's own controls were latent doctrine violations for several releases, so
 audit these against current doctrine rather than trusting them.
 
-Clean controls and coverage boundaries carry `maxIncidentalFindings` (a tolerance, not a hard
-zero, so one incidental note does not fail the suite). `corpus-contract.test.mjs` enforces it,
-along with label/scanner grading drift and the scorer's own arithmetic.
+Clean controls and coverage boundaries carry `maxIncidentalFindings`, and it is `0` on every
+fixture. It used to be `1`, described as a tolerance rather than a hard zero -- but that slack
+was unreachable: any finding on a negative fixture is a false positive by construction, so the
+precision gate in `corpus.test.mjs` fails on the first one long before a per-fixture tolerance
+of 1 would. A dominated gate is a dead test, so the field now states the policy the suite
+actually enforces. `corpus-contract.test.mjs` enforces it, along with label/scanner grading
+drift and the scorer's own arithmetic.
 - `baseline.json` -- a committed snapshot of `node measure.mjs --format json`'s `rules`,
   `modalities`, and `overall` fields, captured against the scanner at the time the baseline was
   last regenerated. This is an honest MEASUREMENT, not a target: if the scanner has false
@@ -67,8 +71,7 @@ overall and per modality.
    third-party text or a real secret.
 2. Add an entry to `labels.json` with the modality, the role, and your best honest guess at
    `expected` -- the rule ids a careful human reviewer would say this file legitimately trips
-   (or `[]` plus a `maxIncidentalFindings` tolerance for a clean control or coverage
-   boundary).
+   (or `[]` plus `"maxIncidentalFindings": 0` for a clean control or coverage boundary).
 3. Run `npm run measure -- --format json` and check the `misses` array for your new file. If
    the actual scan differs from your guess, decide which is right:
    - If your `expected` was wrong (you mis-predicted a regex, or missed an interaction like

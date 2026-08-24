@@ -80,7 +80,7 @@ test("A1: importing the entry module keeps the event loop free (no auto-start)",
 
 // ── A3: config kill-switch ──
 
-test("A3: dashboard: false in config disables get_dashboard_url and starts nothing", async () => {
+test("A3: dashboard: false in config disables the dashboard command and starts nothing", async () => {
   writeConfig({ dashboard: false });
   const before = setIntervalCalls;
   const result = await dashboard.ensureDashboard();
@@ -116,7 +116,7 @@ test("A2/A4: default config starts on demand; second call reuses; interval only 
   assert.equal(body.name, store.PROJECT_NAME);
 });
 
-test("A2: concurrent get_dashboard_url calls share one start (no second server, one interval)", async () => {
+test("A2: concurrent ensureDashboard calls share one start (no second server, one interval)", async () => {
   // Needs a process where DASHBOARD_PORT is still null, so run in a fresh child
   // with its own scratch project + registry.
   const raceProject = mkdtempSync(join(tmpdir(), "anti-slop-race-project-"));
@@ -187,11 +187,40 @@ test("A5: dashboard.html shows findings stats, not the old score-centric UI", ()
 
 // ── A8: the dashboard HTML itself must pass the plugin's own scanner ──
 
+// Until 2.1.0 this test passed vacuously: the path ends in .html, .html was not a code
+// surface, and so no code pattern ever ran. The file could have gained a dynamic-eval call,
+// a hardcoded secret or a chat artifact and the assertion would have stayed green. It now
+// runs the code
+// table for real, which means the assertion has to prove two things -- that the file is
+// clean, and that it is clean because of what it does rather than because nothing looked.
 test("A8: dashboard.html passes the plugin's own scanner", async () => {
   const { scanContent } = await import(pathToFileURL(SCAN_PATH).href);
   const html = readFileSync(DASHBOARD_HTML_PATH, "utf8");
   const violations = scanContent(html, DASHBOARD_HTML_PATH);
   assert.deepEqual(violations, [], `dashboard.html should scan clean: ${JSON.stringify(violations)}`);
+});
+
+test("A8: dashboard.html is clean by declared exception, and the same bytes unhatched do fire", async () => {
+  const { scanContent } = await import(pathToFileURL(SCAN_PATH).href);
+  const html = readFileSync(DASHBOARD_HTML_PATH, "utf8");
+
+  // Every escape hatch in the file states a reason, and every one of them is the esc()
+  // boundary or a deliberately best-effort fetch. A bare marker with no reason is a TODO.
+  const hatches = html.split("\n").filter((l) => /anti-slop-allow/.test(l));
+  assert.ok(hatches.length > 0, "the innerHTML sites must carry their exception, not be silently unscanned");
+  for (const line of hatches) {
+    assert.match(line, /anti-slop-allow: \S+ .*\S/, `escape hatch with no stated reason: ${line.trim()}`);
+  }
+
+  // Strip the markers and the findings must come back. If they do not, the hatches are
+  // decorative and this file is passing for some other reason.
+  const unhatched = html.split("\n").map((l) => l.replace(/\s*\/\/ anti-slop-allow:.*$/, "")).join("\n");
+  const wouldFire = scanContent(unhatched, DASHBOARD_HTML_PATH).map((v) => v.name);
+  assert.deepEqual(
+    wouldFire.sort(),
+    ["innerhtml-usage", "swallowed-error"],
+    "removing the markers must restore the exact findings they suppress",
+  );
 });
 
 // ── A9: version bump ──

@@ -1,15 +1,14 @@
 {
   "name": "anti-slop-scanner",
-  "version": "1.0.0",
-  "main": "index.js",
+  "version": "2.1.0",
   "scripts": {
-    "test": "node --test test/*.test.mjs",
+    "test": "node --test test/cli.test.mjs test/corpus.test.mjs test/corpus-contract.test.mjs test/dashboard.test.mjs test/module-parity.test.mjs test/no-mcp.test.mjs test/references.test.mjs test/rule-false-positives.test.mjs test/rule-metadata.test.mjs test/rule-narrowing.test.mjs test/scanner.test.mjs test/stats.test.mjs test/store.test.mjs",
     "measure": "node measure.mjs",
     "check-references": "node check-references.mjs"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "TheMizeGuy",
+  "license": "MIT",
   "description": "Deterministic AI-slop scanner for the anti-slop Claude Code plugin. Zero runtime dependencies.",
   "private": true
 }
