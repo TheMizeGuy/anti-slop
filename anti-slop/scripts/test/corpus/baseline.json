@@ -2,7 +2,7 @@
   "rules": [
     {
       "rule": "ai-purple-class",
-      "tp": 1,
+      "tp": 2,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -18,7 +18,7 @@
     },
     {
       "rule": "antithesis-not-just-x-y",
-      "tp": 1,
+      "tp": 2,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -26,6 +26,14 @@
     },
     {
       "rule": "antithesis-not-only-but",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "apologetic-comment",
       "tp": 1,
       "fp": 0,
       "fn": 0,
@@ -49,7 +57,39 @@
       "recall": 1
     },
     {
+      "rule": "async-foreach",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "banner-comment",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "blur-blob",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "boilerplate-marker",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "catch-any",
       "tp": 1,
       "fp": 0,
       "fn": 0,
@@ -81,6 +121,38 @@
       "recall": 1
     },
     {
+      "rule": "dangerous-inner-html",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "dead-branch",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "dead-control",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "deferral-comment",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "delve",
       "tp": 1,
       "fp": 0,
@@ -89,7 +161,23 @@
       "recall": 1
     },
     {
+      "rule": "deprecated-api",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "device-idiom-branch",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "dispatch-main-async-spam",
       "tp": 1,
       "fp": 0,
       "fn": 0,
@@ -153,8 +241,32 @@
       "recall": 1
     },
     {
+      "rule": "fixed-font-size",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "fixed-grid-columns",
       "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "fixed-grid-tracks",
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "fixed-page-shell",
+      "tp": 2,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -195,6 +307,14 @@
     {
       "rule": "generic-font",
       "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "generic-microcopy",
+      "tp": 1,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -282,7 +402,15 @@
     },
     {
       "rule": "img-no-dimensions",
-      "tp": 2,
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "important-overuse",
+      "tp": 1,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -337,6 +465,22 @@
       "recall": 1
     },
     {
+      "rule": "missing-alt",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "model-tooling-artifact",
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "narrating-comment",
       "tp": 1,
       "fp": 0,
@@ -353,7 +497,23 @@
       "recall": 1
     },
     {
+      "rule": "outline-none",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "placeholder-comment",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "plain-aiism-collocation",
       "tp": 1,
       "fp": 0,
       "fn": 0,
@@ -363,6 +523,14 @@
     {
       "rule": "purple-blue-gradient",
       "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "purple-gradient-default",
+      "tp": 1,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -393,7 +561,23 @@
       "recall": 1
     },
     {
+      "rule": "shadcn-stats-magic",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "shadow-border-rounded-combo",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "shell-injection",
       "tp": 1,
       "fp": 0,
       "fn": 0,
@@ -417,6 +601,14 @@
       "recall": 1
     },
     {
+      "rule": "suppression-comment",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "swallowed-error",
       "tp": 3,
       "fp": 0,
@@ -425,7 +617,31 @@
       "recall": 1
     },
     {
+      "rule": "tailwind-dynamic-class",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "tailwind-hero-triplet",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "token-drift-spacing",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "transition-all",
       "tp": 1,
       "fp": 0,
       "fn": 0,
@@ -441,7 +657,39 @@
       "recall": 1
     },
     {
+      "rule": "uniform-literal-radius",
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "uniform-section-padding",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "unlock-potential",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "unsafe-deserialize",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "rule": "uppercase-overline",
       "tp": 1,
       "fp": 0,
       "fn": 0,
@@ -457,6 +705,14 @@
       "recall": 0
     },
     {
+      "rule": "vh-viewport-shell",
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "z-index-escalation",
       "tp": 1,
       "fp": 0,
@@ -468,15 +724,15 @@
   "modalities": [
     {
       "modality": "code",
-      "tp": 17,
+      "tp": 30,
       "fp": 0,
       "fn": 1,
       "precision": 1,
-      "recall": 0.9444444444444444
+      "recall": 0.967741935483871
     },
     {
       "modality": "design",
-      "tp": 26,
+      "tp": 49,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -484,7 +740,7 @@
     },
     {
       "modality": "native",
-      "tp": 5,
+      "tp": 7,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -492,7 +748,7 @@
     },
     {
       "modality": "prose",
-      "tp": 23,
+      "tp": 26,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -500,10 +756,10 @@
     }
   ],
   "overall": {
-    "tp": 71,
+    "tp": 112,
     "fp": 0,
     "fn": 1,
     "precision": 1,
-    "recall": 0.9861111111111112
+    "recall": 0.9911504424778761
   }
 }

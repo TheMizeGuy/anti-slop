@@ -1,2 +1,4 @@
 node_modules/
 .anti-slop/
+# A Python language server byte-compiles the .py corpus fixtures on open.
+__pycache__/

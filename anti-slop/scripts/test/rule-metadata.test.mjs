@@ -162,6 +162,61 @@ test("a guarded rule is skipped end to end by scanContent", () => {
   }
 });
 
+// ── Counting shapes and the concentration gate (2.1.0) ───────────────────────
+// A rule counts by `pattern`, by `classAll`, or by a `count(line)` predicate, and exactly
+// one of the three has to be present or the rule silently counts nothing.
+test("every table rule declares exactly one way of counting a line", () => {
+  for (const rule of ALL_TABLE_RULES) {
+    const shapes = [rule.pattern, rule.classAll, rule.count].filter((s) => s !== undefined);
+    assert.equal(
+      shapes.length, 1,
+      `rule "${rule.name}" declares ${shapes.length} counting shapes; expected exactly one of pattern/classAll/count`,
+    );
+    if (rule.pattern !== undefined) assert.ok(rule.pattern instanceof RegExp, `rule "${rule.name}" has a non-RegExp pattern`);
+    if (rule.classAll !== undefined) assert.ok(Array.isArray(rule.classAll) && rule.classAll.length >= 2, `rule "${rule.name}" needs >= 2 classAll tokens`);
+    if (rule.count !== undefined) assert.equal(typeof rule.count, "function", `rule "${rule.name}" has a non-function count`);
+  }
+});
+
+// The gate used to live only on the design and native loops. A concentration rule in the
+// code or text table would have fired on its first hit -- reading as implemented while
+// ignoring its own threshold, which is the quietest kind of wrong.
+test("the concentration gate applies to the code and text tables too", () => {
+  const codeRule = CODE_PATTERNS.find((r) => r.mode === CONCENTRATION);
+  const textRule = TEXT_CONSTRUCTS.find((r) => r.mode === CONCENTRATION);
+  assert.ok(codeRule, "expected at least one concentration rule in CODE_PATTERNS");
+  assert.ok(textRule, "expected at least one concentration rule in TEXT_CONSTRUCTS");
+
+  const oneBanner = "// ==========================================\nfunction go() {}";
+  const twoBanners = "// ==========================================\nfunction go() {}\n// ==========================================";
+  assert.ok(!scanContent(oneBanner, "a.js").some((v) => v.name === codeRule.name), "one hit is below minCount");
+  assert.ok(scanContent(twoBanners, "a.js").some((v) => v.name === codeRule.name), "minCount hits fire");
+
+  const onePlain = "Decisions compound, and the cost lands later.";
+  const twoPlain = "They are quietly building it. Decisions compound, and the cost lands later.";
+  assert.ok(!scanContent(onePlain, "post.md").some((v) => v.name === textRule.name), "one hit is below minCount");
+  assert.ok(scanContent(twoPlain, "post.md").some((v) => v.name === textRule.name), "minCount hits fire");
+});
+
+test("a count() predicate drives the same gate a pattern does, end to end", () => {
+  const probe = {
+    name: "count-probe", severity: "low", confidence: CONFIDENCE.TASTE,
+    mode: CONCENTRATION, minCount: 2,
+    count: (line) => (line.includes("odd") ? 1 : 0),
+    desc: "probe rule for the count predicate",
+  };
+  DESIGN_PATTERNS.push(probe);
+  try {
+    const fired = (css) => scanContent(css, "app.css").some((v) => v.name === "count-probe");
+    assert.equal(fired(".a { /* odd */ }"), false, "one hit is below minCount");
+    assert.equal(fired(".a { /* odd */ }\n.b { /* odd */ }"), true);
+    assert.equal(fired(".a { /* odd */ } // anti-slop-allow: opted out\n.b { /* odd */ }"), false,
+      "the escape hatch must reach a count() rule the same way it reaches a pattern rule");
+  } finally {
+    DESIGN_PATTERNS.pop();
+  }
+});
+
 test("every emitted violation carries a confidence class", () => {
   const samples = [
     ["Let's dive in. In today's fast-paced world, we delve into the tapestry.", "post.md"],

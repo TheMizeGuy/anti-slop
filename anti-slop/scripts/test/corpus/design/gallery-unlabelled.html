@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Kiln log</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; color: oklch(0.24 0.01 60); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 1rem; }
+  a:focus, button:focus { outline: none; }
+  .caption { font-size: 0.875rem; color: oklch(0.45 0.01 60); }
+</style>
+</head>
+<body>
+  <h1>Kiln log</h1>
+  <div class="grid">
+    <figure>
+      <img src="/photos/kiln-cone-6.jpg" width="480" height="320">
+      <figcaption class="caption">Cone 6 firing, third shelf</figcaption>
+    </figure>
+    <figure>
+      <img src="/photos/glaze-rack.jpg" alt="photo">
+      <figcaption class="caption">Glaze rack after the reduction cycle</figcaption>
+    </figure>
+  </div>
+  <button type="button" onclick="openFiring(6)">Open the firing schedule</button>
+</body>
+</html>

@@ -1,0 +1,61 @@
+/* The same console, rewritten against a stated token system.
+   Clean control for the raw-CSS surface: every construct the catalogue prescribes,
+   and zero findings. */
+
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --radius: 6px;
+  --ring: oklch(0.55 0.14 250);
+  --surface: oklch(0.99 0.003 90);
+  --rule: oklch(0.9 0.004 90);
+}
+
+.app-shell {
+  width: min(100%, 74rem);
+  margin-inline: auto;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-3);
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+}
+
+.panel__header {
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: clamp(0.9375rem, 0.9rem + 0.2vw, 1.0625rem);
+}
+
+.pill {
+  border-radius: calc(var(--radius) * 2);
+  padding: var(--space-1) var(--space-2);
+}
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  padding-bottom: max(var(--space-2), env(safe-area-inset-bottom));
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.panel__header {
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 1ms !important; }
+}
