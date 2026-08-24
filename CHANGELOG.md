@@ -2,6 +2,28 @@
 
 All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `anti-slop/.claude-plugin/plugin.json`, and the SKILL.md frontmatter — all four are bumped together. (It was five until 2.0.0 removed the MCP Server constructor.)
 
+## 2.2.0 - 2026-08-24
+
+Design-tell additions adapted from [VibeCurb](https://github.com/Yu-369/VibeCurb)
+(MIT, Copyright (c) 2026 Yu-369), deduplicated against the existing catalogue and
+graded to this repo's confidence classes (heuristic provenance, not corpus-ranked,
+so everything lands as Pattern smell or agent judgment).
+
+New scanner rule: `bootstrap-default-blue` -- Bootstrap 5's compiled literals
+(`#0d6efd`, `#0b5ed7`, `#dee2e6`) as a concentration rule from two occurrences,
+the Bootstrap twin of `ai-purple-hex`. `generic-microcopy` gains the
+"Scroll to explore" hero literal. Both carry bidirectional tests; corpus
+precision holds at 100% with no new misses.
+
+New catalogue entries in `design-patterns.md`: the Bootstrap Fingerprint
+(incl. zebra-striped tables), scroll indicators in the hero, cards-inside-cards
+nesting, the unchosen-easing / scale(0)-entrance motion defaults (deliberately
+scanner-less -- keyword easings are ubiquitous in human CSS), and a new
+Logo and Brand Mark Tells section (brain-neuron marks, globe-swoosh,
+shield-wings, chrome 3D, gradient-dependent marks) with reduction-based
+remediation (3-primitive cap, favicon test, one-sentence geometry, inversion
+test). Scanner-coverage and concentration-threshold tables updated to match.
+
 ## 2.1.1 - 2026-08-24
 
 `dead-branch` now matches Python's colon forms (`if False:`, `elif True:`,
