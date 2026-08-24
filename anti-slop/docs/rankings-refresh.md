@@ -15,7 +15,7 @@ Keeps `skills/anti-slop/references/empirical-rankings.md`, and the rules that le
 3. Grade each top claim as confirmed, drifting, or superseded (definitions below), with one line of evidence and a source per claim.
 4. Note new tells the file does not cover, graded with the frequency x specificity rubric.
 5. Write the stamp into `empirical-rankings.md` (format below). Do not rewrite the existing analysis; the historical tables stay as the baseline the spot-checks diff against.
-6. List rule-change candidates separately (session notes, issue, or blackboard), each tagged pending-measure. Never change rule code in the same pass as the research; rule changes are a follow-up gated by the measure step below.
+6. List rule-change candidates separately (session notes or an issue), each tagged pending-measure. Never change rule code in the same pass as the research; rule changes are a follow-up gated by the measure step below.
 7. Dogfood and test before committing (gate below).
 
 ## Source classes and example queries
@@ -100,7 +100,7 @@ The measure gate, mandatory for every scanner rule change:
 The plugin scans its own docs. Every edited markdown file must introduce zero new active findings against its pre-edit baseline.
 
 ```bash
-cd anti-slop/scripts && npm ci
+cd anti-slop/scripts
 node -e "import('./lib/scan.mjs').then(async m => {
   const fs = await import('node:fs');
   const p = process.argv[1];
@@ -119,10 +119,9 @@ Writing rules that keep the delta at zero:
 
 ## Downstream sync: ui-craft catalogue
 
-The consolidated `ui-craft` Claude Code plugin (private, TheMizeGuy/ui-craft) distills this
-plugin's UI research into two files that must be refreshed whenever a quarterly refresh
-changes the UI/design section of `empirical-rankings.md` or the UI tells in
-`design-patterns.md` / `frontend-patterns.md`:
+A downstream UI plugin (`ui-craft`) distills this plugin's UI research into two files that
+must be refreshed whenever a quarterly refresh changes the UI/design section of
+`empirical-rankings.md` or the UI tells in `design-patterns.md` / `frontend-patterns.md`:
 
 - `references/catalogue/02-empirical-evidence.md` -- mirrors the UI ranking table,
   cleared-memes list, and drift spot-checks.
@@ -130,15 +129,15 @@ changes the UI/design section of `empirical-rankings.md` or the UI tells in
   re-graded UI tells land there as well.
 
 Procedure: after the refresh stamp lands here, apply the same delta to the ui-craft repo,
-bump its patch version, and release through the mize-plugins channel. anti-slop remains the
+bump its patch version, and release it through your release channel. anti-slop remains the
 source of truth for corpus evidence; ui-craft is a downstream distillation.
 
 ### Per-item ownership, settled 2026-07-27 (anti-slop 1.7.0)
 
 The one-way flow above describes the *rankings* correctly and nothing else. `ui-craft`
 0.3.0 and `apple-ui-craft` 0.3.1 produced material that flowed BACK into this repo,
-including a correction to a rule this repo shipped. The work order was
-`docs/ui-toolkit-integration.md`; it is executed, and this table is the durable record.
+including a correction to a rule this repo shipped. That integration is executed, and the
+table below is its durable record.
 
 **A file both repos edit independently is a fork.** Every row below names exactly one
 owner. When a row's subject changes, it changes at the owner and propagates outward; a

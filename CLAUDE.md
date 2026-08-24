@@ -1,6 +1,6 @@
 # anti-slop
 
-Claude Code plugin that catches agentic-dev shortcomings (security, accessibility, AI-default design, banned vocabulary, regressions). Public repo TheMizeGuy/anti-slop, MIT, version 2.0.0. This clone is the source of truth for development; the LIVE plugin runs from the Claude Code plugin cache — changes here do nothing to the running session until the plugin is updated/reinstalled from the marketplace repo.
+Claude Code plugin that catches agentic-dev shortcomings (security, accessibility, AI-default design, banned vocabulary, regressions). Public repo TheMizeGuy/anti-slop, MIT; the shipped version is whatever the four parity spots say (see Rules below). This clone is the source of truth for development; the LIVE plugin runs from the Claude Code plugin cache — changes here do nothing to the running session until the plugin is updated/reinstalled from the marketplace repo.
 
 ## Layout
 
@@ -16,7 +16,7 @@ Claude Code plugin that catches agentic-dev shortcomings (security, accessibilit
 
 ## Commands
 
-- Test: `cd anti-slop/scripts && npm test` (131 tests, hermetic; no deps, no lint/build step — `npm ci` is unnecessary). Use `npm test`, NOT bare `node --test` — Node's bare runner recursively executes the non-test corpus samples under `test/corpus/` and fails on their deliberate missing imports.
+- Test: `cd anti-slop/scripts && npm test` (the hermetic suite under `scripts/test/`; no deps, no lint/build step — `npm ci` is unnecessary). Use `npm test`, NOT bare `node --test` — Node's bare runner recursively executes the non-test corpus samples under `test/corpus/` and fails on their deliberate missing imports.
 - Measure scanner precision/recall against the labeled corpus: `npm run measure` (report only) — regenerate `test/corpus/baseline.json` per `test/corpus/README.md` after deliberate rule changes.
 - CI scan CLI: `node anti-slop/scripts/slop-scanner.mjs scan [--format text|json] [--fail-on any|high|medium|low|none] [--record] [--quiet] <files...>` (exit 0/1/2; no side effects without `--record`).
 - Link integrity for the reference library: `npm run check-references` (also gated by `test/references.test.mjs`).
@@ -30,7 +30,8 @@ Claude Code plugin that catches agentic-dev shortcomings (security, accessibilit
 - Never widen a rule until its remediation would remove responsive, accessible, or motion-preference behaviour. That defect shipped twice (Strongest-10 entry 9; `important-overuse` on the reduced-motion idiom) and is the reason the corpus carries `responsive-type-clean.html` and `AdaptiveShell.swift` as clean controls.
 - Dashboard is optional by design (v1.5.0, preserved through the 2.0.0 MCP removal): nothing may start an HTTP listener except an explicit `slop-scanner.mjs dashboard` call; `.anti-slop/config.json` `{"dashboard": false}` must keep disabling it. The dashboard shows findings stats only — the /50 score belongs to the `scan` output. `lib/dashboard.mjs` and `lib/stats.mjs` are dynamically imported so the `scan` path never loads the HTTP module.
 - Version bumps touch 4 spots: SKILL.md frontmatter, both plugin.json files, and marketplace.json. (It was 5 until 2.0.0 removed the MCP Server constructor from slop-scanner.mjs.) `test/dashboard.test.mjs` A9 enforces agreement.
-- Dogfood before committing docs: scan edited .md files with the project's own `scanContent` and diff finding counts against the pre-edit baseline (README carries a pre-existing em-dash-density finding at 5 dashes — leave untouched prose alone).
+- Dogfood before committing docs: scan edited .md files with the project's own `scanContent` and diff finding counts against the pre-edit baseline. Measure the baseline first rather than trusting a remembered number, and leave untouched prose alone.
+- Everything under `anti-slop/` SHIPS. The marketplace `source` is `./anti-slop` and `claude plugin update` copies that directory verbatim into every installer's cache, so a file put there for maintainer convenience is distribution. Maintainer-only material (local paths, private repo names, session or memory-system identifiers, executed work orders) belongs at the repo root or outside the repo; only docs written for a public reader go inside `anti-slop/docs/`. A work order kept there shipped local paths and memory-system IDs to every install: it was deleted in 2.1.0 (`anti-slop/docs/ui-toolkit-integration.md`) and its durable record folded into `anti-slop/docs/rankings-refresh.md`. Before a release, grep the SHIPPED subtree (`git ls-files -- anti-slop/`), not just the repo, and note that `git grep -E` silently ignores `\b`, so hygiene patterns need explicit character classes.
 - The corpus is the single owner of its fixtures; ui-craft's `tests/corpus/` is a downstream view. Per-item ownership across the three repos is in `anti-slop/docs/rankings-refresh.md` (Downstream sync). Fixture roles are `positive`, `clean-control`, and `coverage-boundary` (plants a real tell this scanner has no rule for -- never cite one as evidence the tell is absent).
 - `store.mjs` captures `process.cwd()` at import time; tests needing a different project dir must spawn a child node process (see the allowedWords test).
 - Serena is activated for this repo (memories: project-overview, architecture-and-modules, build-test-release).
