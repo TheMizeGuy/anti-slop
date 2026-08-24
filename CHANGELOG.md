@@ -2,7 +2,7 @@
 
 All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `anti-slop/.claude-plugin/plugin.json`, and the SKILL.md frontmatter — all four are bumped together. (It was five until 2.0.0 removed the MCP Server constructor.)
 
-## 2.0.0 (current)
+## 2.0.0 - 2026-07-27
 
 **Breaking: the MCP server is gone.** The plugin no longer registers
 `anti-slop-scanner`, ships no `.mcp.json`, and exposes no MCP tools. Anything calling
@@ -40,7 +40,7 @@ No capability was dropped. All four tools have a subcommand:
   import anywhere, no MCP identifier left in the entry point, and no subcommand except
   `dashboard` opening a port. Suite is 131 tests.
 
-## 1.7.0
+## 1.7.0 - 2026-07-27
 
 Integrates the anti-AI work from the `ui-craft` 0.3.0 and `apple-ui-craft` 0.3.1 releases.
 Both are downstream of this plugin's UI research, and both produced material that flows
@@ -95,7 +95,7 @@ matches, since it is named *overuse*.
   precision gain is the three reduced-motion false positives; recall rose despite dropping
   two `rounded-everything` labels that the floor rule shows were never correct.
 
-## 1.6.0
+## 1.6.0 - 2026-07-03
 
 - CI-facing scan CLI: `node scripts/slop-scanner.mjs scan [options] <file...>` for pre-commit hooks and CI gates that don't speak MCP, with `--format`, `--fail-on`, `--record`, and `--quiet` flags.
 - Split score naming: `Scan score: N/50` (deterministic, from `scan_file` or the CLI) and `Review score: N/50` (the `slop-detector` agent's 5-dimension judgment) are now always labeled separately so neither is mistaken for the other.
@@ -104,29 +104,31 @@ matches, since it is named *overuse*.
 - Model policy: the `slop-detector` agent no longer pins a model. Its frontmatter reads `model: inherit`, so it always runs on the session's active Claude model, present or future.
 - Docs refresh: corrected the reference-file count (10, not 8), added a worked walkthrough and a troubleshooting table to the README, and added this changelog.
 
-## 1.5.0
+## 1.5.0 - 2026-07-03
 
 - The web dashboard became optional and on-demand: nothing starts an HTTP listener except an explicit `get_dashboard_url` call, and `.anti-slop/config.json` `{ "dashboard": false }` disables it entirely.
 - Dashboard scope narrowed to findings statistics only (scan counts, severity breakdown, findings by rule, findings per scan, recent findings) — the earlier score-centric view was dropped.
 - `slop-scanner.mjs` split into `scripts/lib/` modules (`rules.mjs`, `scan.mjs`, `store.mjs`, `dashboard.mjs`, `stats.mjs`, `cli.mjs`) with no behavior change.
 
-## 1.4.x
+## 1.4.x - 2026-06-22
 
 - 1.4.1: cut hardcoded-secret false positives in the scanner.
 - 1.4.0: integrated an empirical AI-tells dataset and expanded scanner coverage.
+- 1.4.0 also dropped the prompt-based hooks that 1.2.0 introduced (commit `3011c54`): a hook was the wrong enforcement mechanism for judgment-shaped rules. The domain exceptions stayed, the `hooks/` directory went, and no release since has shipped one.
+- There is no 1.3.0 entry below because 1.3.0 was never released; the number was skipped.
 
-## 1.2.0
+## 1.2.0 - 2026-03-30
 
-- Context-aware hooks and expanded domain exceptions — the plugin now yields to academic, legal, medical, ML, and other domain conventions instead of flagging their standard vocabulary.
+- Context-aware hooks and expanded domain exceptions — the plugin now yields to academic, legal, medical, ML, and other domain conventions instead of flagging their standard vocabulary. (The hooks were removed before the next release; see 1.4.x.)
 
-## 1.1.0
+## 1.1.0 - 2026-03-30
 
 - Plugin optimization pass informed by best-practices research on Claude Code plugin structure.
 
-## 1.0.0
+## 1.0.0 - 2026-03-30
 
 - First stable release: the `anti-slop` skill, the `slop-detector` agent, the `/slop-check` command, the MCP scanner with web dashboard, and the banned-words/banned-phrases/pattern reference catalogs.
 
-## 0.9.0
+## 0.9.0 - 2026-03-30
 
 - Initial release.

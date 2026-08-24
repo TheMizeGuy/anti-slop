@@ -6,11 +6,11 @@ A Claude Code plugin that scans for security vulnerabilities, accessibility fail
 
 Loads pattern-matching rules during content generation. The rules target failure modes documented in published research.
 
-On the **writing** side: vocabulary tells (words like "delve" show up 25-48x more often in AI text than human text per a 2024 Max Planck/Stanford study), sycophantic openers, structural cliches, filler phrases.
+On the **writing** side: vocabulary tells (the words whose frequency in published text jumped after 2022, "delve" being the one readers name most often), sycophantic openers, structural cliches, filler phrases.
 
 On the **code** side: SQL injection, XSS, path traversal, command injection, hardcoded credentials, `eval()`, swallowed errors, premature abstractions, comment slop, N+1 queries, missing timeouts, full library imports, `useEffect` misuse, shallow copy bugs, floating-point money, date/time errors, async race conditions.
 
-On the **frontend** side: WCAG failures (AI code has 3-5x more accessibility violations per page than hand-written code — Deque 2024), missing states (empty, error, loading), the generic AI aesthetic, CSS z-index escalation, `!important` abuse, missing `prefers-reduced-motion`, hydration mismatches, and demo-ware that only handles the happy path.
+On the **frontend** side: the accessibility work a model skips when the prompt does not ask for it, so WCAG failures (unlabeled controls, missing alt text, low contrast, absent focus states), missing states (empty, error, loading), the generic AI aesthetic, CSS z-index escalation, `!important` abuse, missing `prefers-reduced-motion`, hydration mismatches, and demo-ware that only handles the happy path.
 
 On **regressions**: the fix-one-break-another pattern, test manipulation (weakening assertions to make tests pass), silent behavioral changes, and destructive operations.
 
@@ -25,7 +25,7 @@ Rules yield to domain context. Academic writing gets its hedging language. Legal
 | **Command** (`/slop-check`) | Manual review — point it at a file, diff, or PR |
 | **Scanner CLI** (`slop-scanner.mjs`) | Fast deterministic scanner — regex-based pattern matching for banned words, phrases, design tells, native UI tells, code smells, security issues. Four subcommands: `scan`, `history`, `stats`, `dashboard`. Zero runtime dependencies, so it runs from a clone or an installed plugin with no `npm install` |
 | **Web Dashboard** | Optional, off by default. Nothing starts on its own; `slop-scanner.mjs dashboard` starts it on demand at a per-project deterministic port and prints the URL. Shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, recent findings |
-| **13 reference files** | ~230 banned words, ~210 banned phrases, plus pattern catalogs for writing, code, design, frontend, native (SwiftUI/UIKit) UI, regressions, density and economy, self-check checklists, empirical rankings, confidence and evidence rules, and choosing-with-intent guidance |
+| **13 reference files** | ~225 banned words, ~220 banned phrases, plus pattern catalogs for writing, code, design, frontend, native (SwiftUI/UIKit) UI, regressions, density and economy, self-check checklists, empirical rankings, confidence and evidence rules, and choosing-with-intent guidance |
 
 The scanner and the agent serve different purposes. The scanner is fast — it runs regex patterns against file content and returns in milliseconds. The agent is thorough — it reads reference files, understands context, and produces a scored report with specific fixes. The `/slop-check` command runs both: scanner first for a quick pass, then the agent for semantic analysis.
 
@@ -33,27 +33,43 @@ The two also report different scales, on purpose. **Scan score** (`Scan score: N
 
 ## The numbers
 
-- AI-generated code has **2.74x more security vulnerabilities** than human-written code (CodeRabbit 2025). 100% of tested vibe-coded apps lacked CSRF protection (Escape.tech).
-- **70-80% of AI-generated UI fails WCAG AA** without explicit instructions (University of Michigan 2025).
-- AI-generated PRs contain **1.7x more issues**, 75% more logic errors, and 3x worse readability (CodeRabbit 2025).
-- Refactoring dropped from 25% of changed lines to **under 10%** in AI-assisted codebases (GitClear 2024).
+- Across 470 open-source pull requests, the AI-authored ones carried **10.83 issues each against 6.45** for human-only PRs, with security issues up to **2.74x** higher, logic and correctness errors **75%** more common, and readability issues more than **3x** more frequent ([CodeRabbit](https://www.coderabbit.ai/blog/state-of-ai-vs-human-code-generation-report)).
+- A scan of deployed applications built by AI coding platforms found **2,038 critical vulnerabilities**, 400+ leaked secrets, and 175 exposures of personal data, every one of them live in production ([Escape](https://escape.tech/state-of-security-of-vibe-coded-apps)).
+- Refactoring fell from **25% of changed lines in 2021 to under 10% in 2024** as assistants wrote more of the code ([GitClear](https://www.gitclear.com/ai_assistant_code_quality_2025_research)).
 - Adam Wathan (Tailwind creator) apologized for `bg-indigo-500` being the demo default that trained every model.
 
 ## Installation
 
+Inside Claude Code:
+
 ```bash
-# Add the marketplace:
-/plugin marketplace add https://github.com/TheMizeGuy/anti-slop
+# Add the marketplace (the owner/repo shorthand and the full URL both work):
+/plugin marketplace add TheMizeGuy/anti-slop
 
 # Install:
 /plugin install anti-slop@anti-slop
 ```
 
-For development:
+From a shell, the same two steps are `claude plugin marketplace add TheMizeGuy/anti-slop` and `claude plugin install anti-slop@anti-slop`.
+
+For development, point Claude Code at the plugin directory, which sits one level below the repo root:
 
 ```bash
-claude --plugin-dir /path/to/anti-slop
+claude --plugin-dir /path/to/anti-slop/anti-slop
 ```
+
+Point it at the repo root instead and it loads successfully with nothing in it: the root carries a `plugin.json` of its own for version parity, but no skill, agent, or command sits beside it, and a plugin that registers nothing raises no error.
+
+### Without Claude Code
+
+The scanner is a plain Node script with zero dependencies, so it also runs straight from a clone:
+
+```bash
+git clone https://github.com/TheMizeGuy/anti-slop
+node anti-slop/anti-slop/scripts/slop-scanner.mjs scan path/to/your/file.ts
+```
+
+Node 22 or newer, nothing to install, nothing to build.
 
 ## Usage
 
@@ -66,7 +82,7 @@ The skill activates whenever you write, build, or edit code. For manual review:
 /slop-check pr                           # review current PR
 ```
 
-The dashboard is optional and never starts on its own. Run `node scripts/slop-scanner.mjs dashboard` to start it on demand; it opens at a per-project deterministic port and prints the URL. It is the only command that opens a port. It shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, and recent findings. Scan and finding data persist in `.anti-slop/` in your project directory (`scan-log.json` for findings, `scores.json` for per-scan records). If you're working across multiple projects, the dashboard shows tabs for all active projects.
+The dashboard is optional and never starts on its own. Run `node scripts/slop-scanner.mjs dashboard` to start it on demand; it opens at a per-project deterministic port and prints the URL. It is the only command that opens a port. It shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, and recent findings. Scan and finding data persist in `.anti-slop/` in your project directory (`scan-log.json` for findings, `scores.json` for per-scan records), and scans leave no trace there unless you opt in with `--record`. If you're working across multiple projects, the dashboard shows tabs for all active projects; that index lives in a single `~/.anti-slop/registry.json` outside any project, written only when a dashboard starts, and `ANTI_SLOP_REGISTRY_DIR` points it somewhere else.
 
 ### CI usage
 
@@ -86,8 +102,21 @@ Options:
 - `--fail-on any|high|medium|low|none`: minimum severity that triggers a nonzero exit (default `any`)
 - `--record`: write findings to `.anti-slop/scan-log.json` and `scores.json`, which is what `history` and `stats` read back. Default is off; a CI scan leaves no trace in your project directory unless you opt in
 - `--quiet`: suppress all output, exit code only
+- `-h`, `--help`: print the usage block, including this option list and the exit codes
 
 Exit codes: `0` clean or below the `--fail-on` threshold, `1` findings at or above the threshold, `2` usage error or unreadable file. The CLI takes files only, with no glob or directory recursion, so compose it with your own file list as in the `git diff` example above.
+
+What a green scan does and does not mean: the scanner runs the part of the catalog a regex can decide, and that is a strict subset. Reachable SQL injection, N+1 queries, missing timeouts, sentence rhythm, and over-engineering are all in the reference catalogs and none of them are scanner rules, so a passing `scan` is a floor rather than a security review. The skill and the `slop-detector` agent read the full catalogs; the coverage matrix in `references/empirical-rankings.md` records which rules sit in which layer.
+
+#### Deliberate exceptions
+
+A line marked `anti-slop-allow: <reason>` (or `unslop-ignore`) is exempt from every rule. The marker goes on the same line as the finding, in whatever comment syntax the file already uses:
+
+```js
+const DEMO_KEY = "sk-test-0000"; // anti-slop-allow: fixture for the auth test
+```
+
+The regex accepts the marker with or without a reason. Write one anyway: the marker outlives the person who added it, and the reason is what tells the next reader whether it still holds. Exempt lines are not invisible either, since `slop-scanner.mjs stats` reports per-rule active versus suppressed counts, so a gate that is quietly being argued out of firing still shows up.
 
 ### Configuration
 
@@ -113,7 +142,7 @@ A worked example, start to finish:
 
    ```
    src/components/Header.tsx
-   Scan score: 42/50 | SOME | 4 violation(s)
+   Scan score: 40/50 | SOME | 4 violation(s)
 
    [HIGH] Possible hardcoded credential (1x)
    [MEDIUM] Banned AI-tell word "leverage" found 2x
@@ -122,7 +151,7 @@ A worked example, start to finish:
    ```
 
    A clean file reports `src/components/Header.tsx: clean` and exits 0.
-5. Claude then dispatches the `slop-detector` agent for the semantic pass the scanner cannot do (sentence rhythm, sycophancy, tutorial-shaped code, hallucinated APIs). The agent replies with its own `Review score: N/50` on the five judgment dimensions (directness, specificity, security/a11y awareness, code quality, design quality) plus concrete fixes per finding.
+5. Claude then dispatches the `slop-detector` agent for the semantic pass the scanner cannot do (sentence rhythm, sycophancy, tutorial-shaped code, hallucinated APIs). The agent replies with its own `Review score: N/50` on the five judgment dimensions (directness, specificity, authenticity, economy, soundness) plus concrete fixes per finding.
 6. Claude presents both scores together, labeled (`Scan score` and `Review score` measure different things and are not comparable), and offers to apply the fixes.
 7. Optional: run `slop-scanner.mjs stats` for per-rule active vs suppressed counts, `history` for recent scores, or `dashboard` for the same over time in a browser.
 
@@ -131,7 +160,7 @@ A worked example, start to finish:
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `/slop-check` runs but no scan output appears | The command could not run `node`, or the plugin path is wrong | Confirm `node` is on PATH and that `scripts/slop-scanner.mjs` exists in the installed plugin directory; the scanner needs no install step of its own |
-| Every file scans clean even when it clearly has banned words | A `.anti-slop/config.json` in the project lists the word under `allowedWords`, or the line ends in `anti-slop-allow: <reason>` / `unslop-ignore` | Check the project's `.anti-slop/config.json` and inline escape hatches; both are intentional per-project overrides, not bugs |
+| Every file scans clean even when it clearly has banned words | A `.anti-slop/config.json` in the project lists the word under `allowedWords`, or the lines carry `anti-slop-allow: <reason>` / `unslop-ignore` (see Deliberate exceptions above) | Check the project's `.anti-slop/config.json` and the inline markers; both are intentional per-project overrides, not bugs. `slop-scanner.mjs stats` lists what is being suppressed |
 | `dashboard` prints "Dashboard is disabled" | `.anti-slop/config.json` has `"dashboard": false` | Remove the key or set it to `true`, then run the command again |
 | `dashboard` reports "could not be started (no available port)" | No free port in the dashboard's deterministic per-project range | Free up local ports or retry; the dashboard is optional and scan/review still work without it |
 | CI scan exits 2 | A path in the file list is unreadable (often a deleted file from a diff) | Use `--diff-filter=d` on `git diff` before piping into `slop-scanner.mjs scan`, as shown in the CI usage example |
@@ -139,7 +168,7 @@ A worked example, start to finish:
 
 ## Scope
 
-Tuned for web-centric code (Python, TypeScript, JavaScript, CSS) and English prose. Limited coverage for Rust, Go, C/C++, mobile (SwiftUI, Jetpack Compose), and ML pipelines. The word lists and pattern matchers are web-focused; the underlying principles (specificity, economy, correctness) apply anywhere.
+Tuned for web-centric code (Python, TypeScript, JavaScript, CSS) and English prose, plus a layout and adaptation rule set for Apple platforms (`references/native-ui-patterns.md`) that runs on `.swift`, `.m`, and `.mm` files. Design tells run on web extensions only and native tells on Apple extensions only, so neither vocabulary is matched against the other's files. Limited coverage for systems languages (Rust, Go, C/C++), Jetpack Compose, ML pipelines, and non-English text: there, apply the underlying principles (specificity, economy, correctness) rather than the word lists.
 
 ## License
 
