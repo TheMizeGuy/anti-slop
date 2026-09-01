@@ -67,6 +67,7 @@ Every item here is countable on purpose. Rhythm is the second most-cited tell an
 - [ ] Specific rather than vague? (Real numbers, named things, concrete details)
 - [ ] No performative enthusiasm? (Exclamation marks that don't match the content)
 - [ ] Direct and trusting of the reader? (No hand-holding, softening, or justifying)
+- [ ] Uncertainty stated where it is real? (What was not verified, what could still fail, and how sure you are. Calibrated doubt is information; false confidence is the mirror tell, `writing-patterns.md` § False Confidence.)
 
 ### Formatting
 

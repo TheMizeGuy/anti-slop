@@ -134,6 +134,8 @@ Restating everything that was just said, often starting with "In summary" or "To
 
 **Fix:** Stop when the content is done. No conclusion paragraph unless it adds something new.
 
+The closing message of an agentic session is the case that looks like this tell and is not. The reader there may have seen none of the intermediate tool output, so a final message that states what was found, what changed, what failed, and what was left undone carries information for the first time. The test is the same as everywhere else in this file: cut a sentence that restates what the reader has already read, and keep one that tells them something they have not.
+
 ## Tonal Anti-Patterns
 
 ### Performed Enthusiasm

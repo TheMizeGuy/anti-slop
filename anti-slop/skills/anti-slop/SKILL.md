@@ -25,7 +25,7 @@ The plugin ships three layers. Route by what the target is and what evidence is 
 |---|---|---|
 | Inline self-check | Output you wrote or edited in this turn, before you hand it back | § Quick Self-Check below; `references/self-check.md` for the full checklist by output type |
 | Deterministic scan | The target is one or more files on disk | `node "${CLAUDE_PLUGIN_ROOT}/scripts/slop-scanner.mjs" scan <file...>` |
-| `slop-detector` agent | The target is a diff, a PR, a long response, or the structural tells above | Dispatch the `slop-detector` agent, or run `/slop-check <target>`, which runs both layers and reports both scores |
+| `slop-detector` agent | The target is a diff, a PR, a long response, or the structural tells above | Dispatch the `slop-detector` agent, or run `/slop-check <target>`, which runs both layers and reports both scores. Name the reference library in the dispatch prompt: `${CLAUDE_PLUGIN_ROOT}/skills/anti-slop/references` |
 
 The scanner needs no install and has zero runtime dependencies. It exits 0 when clean, 1 on findings, 2 on a usage error, and takes `--format json`, `--fail-on <level>`, and `--quiet`. It reads files only, never a directory or a glob, so pipe a file list in:
 
@@ -100,7 +100,7 @@ Use em dashes for their correct grammatical purpose (parenthetical insertions, a
 
 ### Trust and Directness
 
-State facts. No softening, justification, or hand-holding (except in pedagogical contexts where hand-holding helps learners). No summarizing what was just said. No recapping at the end.
+State facts. No softening, defensive justification, or hand-holding (except in pedagogical contexts where hand-holding helps learners). Calibrated uncertainty is not softening: say what was not verified, what could still fail, and how sure you are, because the mirror tell is false confidence (`references/writing-patterns.md` § False Confidence). No summarizing what was just said, and no recap at the end of a document that restates what the reader just read. The closing message of an agentic session is different: the reader may have seen none of the tool output, so a final message stating what was found, what changed, and what failed is the deliverable, not a recap.
 
 ### Formatting
 
@@ -118,7 +118,7 @@ Never comment what code already says. No `// increment counter` above `counter++
 
 ### Architecture
 
-No abstraction layers for single implementations. No factory/builder/strategy patterns unless multiple variants exist right now or dependency injection for testability requires it. No configuration objects for trivial one-off values. No helper functions used once. A few similar lines beat a premature abstraction. Match the codebase's existing patterns; read before writing.
+No abstraction layers for single implementations. No factory/builder/strategy patterns unless multiple variants exist right now or dependency injection for testability requires it. No configuration objects for trivial one-off values. No trivial helper used once; a function earns its name by a second caller or by being complex enough to deserve one. A few similar lines beat a premature abstraction. Match the codebase's existing patterns; read before writing.
 
 ### Error Handling
 
@@ -179,7 +179,8 @@ Before finalizing any output, run through:
 - Em dashes counted? (the scanner fires at five or more AND four per 1,000 words; a lone correct dash is clean)
 - No "It's not just X, it's Y" antithesis (the strongest sentence tell)?
 - Active voice with concrete subjects (passive fine when appropriate)?
-- No summary or recap at the end restating what the reader just read?
+- Uncertainty stated where it is real? (what was not verified, what could still fail; false confidence is the mirror tell)
+- No summary or recap at the end restating what the reader just read? (a closing message that carries results the reader has not seen is the deliverable, not a recap)
 - No emoji anywhere: prose, code, comments, commits, logs, UI strings?
 - Code comments explain *why*, not *what*?
 - No unnecessary abstractions or premature patterns?
