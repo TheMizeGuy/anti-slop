@@ -2,6 +2,91 @@
 
 All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `anti-slop/.claude-plugin/plugin.json`, the SKILL.md frontmatter, and `anti-slop/scripts/package.json` — all five are bumped together. (It was five, then four when 2.0.0 removed the MCP Server constructor, then five again when 2.2.1 brought the scanner's package.json under the same gate.)
 
+## 2.2.2 - 2026-09-01
+
+A functioning-and-harm review of the whole plugin, run from one question: does any
+surface of this reduce output quality or reasoning? Three defects in the scanner and CLI,
+one in the agent, two instruction-surface rules that could push a model into worse output,
+a doctrine correction, and a handful of documentation corrections.
+
+**Fixed: the `dashboard` subcommand exited before serving.** Since 2.0.0 turned the MCP
+tool into a CLI, `slop-scanner.mjs dashboard` printed a URL and returned, the entry point
+turned that return into `process.exit`, and the listener died with the process: the port
+answered nothing and the registry entry was removed in the same tick. The command now
+holds the process open while it serves and prints `Serving until Ctrl-C.`; SIGINT and
+SIGTERM unregister the project and exit 0. A dashboard already serving from another
+session still prints its URL and returns at once. `test/no-mcp.test.mjs` spawns the
+command, fetches from the URL it printed, sends SIGINT, and checks the registry is empty
+afterwards.
+
+**Fixed: the `slop-detector` agent could not find its reference library.** The 2.1.0 agent
+located the catalogue with a `Glob` for `**/skills/anti-slop/references/*.md`, described
+as finding the installed plugin cache. `Glob` searches the project directory, the plugin
+cache is not under it, and the agent's own instruction was to stop and report the library
+unreachable when the search came back empty, so in every project except a clone of this
+repo the deep review refused to run. The agent now reads from
+`${CLAUDE_PLUGIN_ROOT}/skills/anti-slop/references/`, which Claude Code substitutes in
+agent and skill content, with the dispatcher-supplied directory and the project-relative
+`Glob` as fallbacks. `/slop-check` and the skill's routing table name the directory in the
+dispatch prompt. When nothing resolves, the agent no longer refuses: it says so on the
+evidence line, reviews against the rules its own body carries, and marks
+catalogue-dependent findings NOT ASSESSED.
+
+**Scanner: `hardcoded-secret` reaches snake_case, SCREAMING_CASE and `*_KEY` names.** The
+key needed a word boundary, an underscore is a word character, and so `OPENAI_API_KEY`,
+`BILLING_SECRET_KEY`, `client_secret`, `access_token`, `db_password` and Django's
+`SECRET_KEY` all scanned clean while `apiKey` on the next line fired. The key may now
+stand alone or end a snake_case name, and `secret_key`, `access_key` and `private_key`
+(with an optional `_id` or `_base`) join `api_key`. A name that continues past the noun
+(`PASSWORD_LABEL`, `API_KEY_HEADER`, `TOKEN_ENDPOINT`) still does not match, camelCase
+compounds (`currentPassword`, `colorToken`) stay unmatched on purpose, and the value must
+still be secret-shaped. Corpus: `site-settings.py` (positive) and `config-labels.py`
+(clean control), both authored here.
+
+**Scanner: `assistant-boilerplate` fires only when the assistant speaks about itself.**
+The sole single-instance prose tell, at high severity, was matching ordinary English:
+"I can't help but notice", "I cannot help thinking", a document stating a model's
+knowledge cutoff in the third person, and "I don't have access to the staging box" were
+all reported as leftover boilerplate. The refusal leg now excludes the idioms after
+`help` and needs a request object after `fulfill`, `comply with` and `provide`; the cutoff
+legs need `my`; the access leg needs the things an assistant lacks (real-time data, the
+internet, "your files"); and `I'm unable to` joins `I am unable to`. Every form the corpus
+and the unit tests already pinned still fires. Corpus: `first-person-idioms-clean.md`
+(clean control).
+
+**Instruction surface: two rules that could push a model into worse output.** `SKILL.md`
+§ Trust and Directness said "no softening, justification, or hand-holding" and "no
+recapping at the end" with no counterweight on the always-loaded surface. It now states
+that calibrated uncertainty is not softening (say what was not verified and what could
+still fail; false confidence is the mirror tell), and that the closing message of an
+agentic session, whose reader may have seen none of the tool output, is the deliverable
+rather than a recap. The Quick Self-Check gains the uncertainty item and its recap item
+carries the same distinction; `self-check.md` and `writing-patterns.md` § Summary at the
+End say the same in their own places. § Architecture's flat "no helper functions used
+once" now matches the catalogue: a function earns its name by a second caller or by
+being complex enough to deserve one.
+
+**Doctrine correction.** `empirical-rankings.md` and `banned-phrases.md` said assistant
+boilerplate fires "even inside quotes". The scanner has always stripped quoted spans and
+blockquotes before matching, its own clean control (`quoted-and-fenced-noise.md`) carries
+a blockquoted "As an AI language model" that must stay silent, and a document that quotes
+the phrase to discuss it is not committing it. Both files now say so.
+
+**Smaller corrections.** `/slop-check` described `--quiet` as printing the summary only;
+it suppresses all output and leaves the exit code, as the CLI and README already said.
+The command's `allowed-tools` gains `Bash(git branch:*)` for the branch line it runs at
+load, and its dashboard step says the command serves in the foreground. `README.md`
+stops promising a `/50` review score (the agent has reported `N/M` with a NOT ASSESSED
+denominator since 1.7.0) and says the dashboard serves until Ctrl-C. `CONTRIBUTING.md`
+said a version bump touches four places; it is five. `code-patterns.md` § Hardcoded
+Credentials documents what the rule matches and what it refuses, like the other rules
+with a scanner leg. `anti-slop/scripts/package-lock.json` had said `1.0.0` and `ISC` since
+the first release while the package beside it said otherwise; npm regenerated it.
+
+Measure: precision holds at 100% on 72 fixtures; recall 99.1%, with the one known false
+negative (`user-profile-widget.jsx`, `useeffect-setstate`) unchanged. `baseline.json`
+regenerated: code true positives 31 to 32.
+
 ## 2.2.1 - 2026-08-24
 
 Calibration and record-keeping pass over the 2.2.0 additions, from an adversarial

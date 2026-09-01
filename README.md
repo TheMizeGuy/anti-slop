@@ -21,15 +21,15 @@ Rules yield to domain context. Academic writing gets its hedging language. Legal
 | Component | Description |
 |-----------|-------------|
 | **Skill** (`anti-slop`) | Core rules, activates automatically on writes/edits/builds |
-| **Agent** (`slop-detector`) | Deep semantic review, scores on 5 dimensions (50pt scale) |
+| **Agent** (`slop-detector`) | Deep semantic review, scored on five dimensions at 10 points each; a dimension the evidence cannot reach is reported NOT ASSESSED and leaves the denominator |
 | **Command** (`/slop-check`) | Manual review — point it at a file, diff, or PR |
 | **Scanner CLI** (`slop-scanner.mjs`) | Fast deterministic scanner — regex-based pattern matching for banned words, phrases, design tells, native UI tells, code smells, security issues. Four subcommands: `scan`, `history`, `stats`, `dashboard`. Zero runtime dependencies, so it runs from a clone or an installed plugin with no `npm install` |
-| **Web Dashboard** | Optional, off by default. Nothing starts on its own; `slop-scanner.mjs dashboard` starts it on demand at a per-project deterministic port and prints the URL. Shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, recent findings |
+| **Web Dashboard** | Optional, off by default. Nothing starts on its own; `slop-scanner.mjs dashboard` starts it on demand at a per-project deterministic port, prints the URL, and serves until Ctrl-C. Shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, recent findings |
 | **13 reference files** | ~225 banned words, ~220 banned phrases, plus pattern catalogs for writing, code, design, frontend, native (SwiftUI/UIKit) UI, regressions, density and economy, self-check checklists, empirical rankings, confidence and evidence rules, and choosing-with-intent guidance |
 
 The scanner and the agent serve different purposes. The scanner is fast — it runs regex patterns against file content and returns in milliseconds. The agent is thorough — it reads reference files, understands context, and produces a scored report with specific fixes. The `/slop-check` command runs both: scanner first for a quick pass, then the agent for semantic analysis.
 
-The two also report different scales, on purpose. **Scan score** (`Scan score: N/50`) is the scanner's deterministic deduction count. **Review score** (`Review score: N/50`) is the `slop-detector` agent's 5-dimension judgment call, and neither implies the other.
+The two also report different scales, on purpose. **Scan score** (`Scan score: N/50`) is the scanner's deterministic deduction count. **Review score** (`Review score: N/M`, where M shrinks when a dimension is NOT ASSESSED) is the `slop-detector` agent's five-dimension judgment call, and neither implies the other.
 
 ## The numbers
 
@@ -82,7 +82,7 @@ The skill activates whenever you write, build, or edit code. For manual review:
 /slop-check pr                           # review current PR
 ```
 
-The dashboard is optional and never starts on its own. Run `node scripts/slop-scanner.mjs dashboard` to start it on demand; it opens at a per-project deterministic port and prints the URL. It is the only command that opens a port. It shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, and recent findings. Scan and finding data persist in `.anti-slop/` in your project directory (`scan-log.json` for findings, `scores.json` for per-scan records), and scans leave no trace there unless you opt in with `--record`. If you're working across multiple projects, the dashboard shows tabs for all active projects; that index lives in a single `~/.anti-slop/registry.json` outside any project, written only when a dashboard starts, and `ANTI_SLOP_REGISTRY_DIR` points it somewhere else.
+The dashboard is optional and never starts on its own. Run `node scripts/slop-scanner.mjs dashboard` to start it on demand; it opens at a per-project deterministic port, prints the URL, and serves in the foreground until Ctrl-C. It is the only command that opens a port. It shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, and recent findings. Scan and finding data persist in `.anti-slop/` in your project directory (`scan-log.json` for findings, `scores.json` for per-scan records), and scans leave no trace there unless you opt in with `--record`. If you're working across multiple projects, the dashboard shows tabs for all active projects; that index lives in a single `~/.anti-slop/registry.json` outside any project, written only when a dashboard starts, and `ANTI_SLOP_REGISTRY_DIR` points it somewhere else.
 
 ### CI usage
 
@@ -151,7 +151,7 @@ A worked example, start to finish:
    ```
 
    A clean file reports `src/components/Header.tsx: clean` and exits 0.
-5. Claude then dispatches the `slop-detector` agent for the semantic pass the scanner cannot do (sentence rhythm, sycophancy, tutorial-shaped code, hallucinated APIs). The agent replies with its own `Review score: N/50` on the five judgment dimensions (directness, specificity, authenticity, economy, soundness) plus concrete fixes per finding.
+5. Claude then dispatches the `slop-detector` agent for the semantic pass the scanner cannot do (sentence rhythm, sycophancy, tutorial-shaped code, hallucinated APIs). The agent replies with its own `Review score: N/M` on the five judgment dimensions (directness, specificity, authenticity, economy, soundness) plus concrete fixes per finding.
 6. Claude presents both scores together, labeled (`Scan score` and `Review score` measure different things and are not comparable), and offers to apply the fixes.
 7. Optional: run `slop-scanner.mjs stats` for per-rule active vs suppressed counts, `history` for recent scores, or `dashboard` for the same over time in a browser.
 

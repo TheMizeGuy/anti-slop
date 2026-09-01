@@ -52,5 +52,6 @@ corpus carries clean controls for both cases.
   ```
 
   Markdown changes must not add findings against the file's pre-edit count.
-- **Version parity**: a version bump touches four places, kept in agreement by the A9 test
-  in `test/dashboard.test.mjs`, plus a `CHANGELOG.md` entry.
+- **Version parity**: a version bump touches five places (both `plugin.json` files,
+  `marketplace.json`, the SKILL.md frontmatter, and `anti-slop/scripts/package.json`), kept in
+  agreement by the A9 test in `test/dashboard.test.mjs`, plus a `CHANGELOG.md` entry.
