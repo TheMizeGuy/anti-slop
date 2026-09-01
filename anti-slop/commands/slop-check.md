@@ -2,7 +2,7 @@
 name: slop-check
 description: Review output, a file, the working diff, or the current PR for AI slop patterns; reports an agent review score with per-finding fixes, plus a deterministic scan score wherever the target resolves to files on disk.
 argument-hint: "[target]"
-allowed-tools: Read, Grep, Glob, Agent, Bash(git diff:*), Bash(gh pr:*), Bash(node:*), Bash(xargs:*)
+allowed-tools: Read, Grep, Glob, Agent, Bash(git branch:*), Bash(git diff:*), Bash(gh pr:*), Bash(node:*), Bash(xargs:*)
 ---
 
 # Slop Check
@@ -46,13 +46,13 @@ If the diff or PR is empty, tell the user that no changes were found.
    gh pr diff --name-only | xargs node "${CLAUDE_PLUGIN_ROOT}/scripts/slop-scanner.mjs" scan
    ```
 
-   It needs no install: zero runtime dependencies. Exit 0 clean, 1 on findings, 2 on a usage error. Flags: `--format json` for machine output; `--fail-on any|high|medium|low|none` to move the exit-1 threshold (`--fail-on none` always exits 0, so do not read a 0 as clean without checking which flags ran); `--quiet` to suppress the per-finding lines and print the summary only; `--record` to log the run for `history` and `stats`. **Do not pass `--record` by default.** It writes to `.anti-slop/` in the user's project, so use it only when the user asks for it or the invocation is a CI gate that wants the trend. The scanner honors the `anti-slop-allow` / `unslop-ignore` escape hatch, on the offending line itself.
-3. Dispatch the `slop-detector` agent for the semantic review, on every path. The scanner cannot see the structural tells (sentence rhythm, sycophancy, tutorial-shaped or over-engineered code, hallucinated APIs), and those outrank everything it does see. For code, run the build or type-check first and pass its output to the agent; hallucinated APIs are otherwise NOT ASSESSED.
+   It needs no install: zero runtime dependencies. Exit 0 clean, 1 on findings, 2 on a usage error. Flags: `--format json` for machine output; `--fail-on any|high|medium|low|none` to move the exit-1 threshold (`--fail-on none` always exits 0, so do not read a 0 as clean without checking which flags ran); `--quiet` to suppress all output and leave the exit code as the only result; `--record` to log the run for `history` and `stats`. **Do not pass `--record` by default.** It writes to `.anti-slop/` in the user's project, so use it only when the user asks for it or the invocation is a CI gate that wants the trend. The scanner honors the `anti-slop-allow` / `unslop-ignore` escape hatch, on the offending line itself.
+3. Dispatch the `slop-detector` agent for the semantic review, on every path, and name the reference library in its prompt: `${CLAUDE_PLUGIN_ROOT}/skills/anti-slop/references`. The agent resolves that same path on its own; naming it is what keeps a copy of the agent running outside a plugin install on the catalogue. The scanner cannot see the structural tells (sentence rhythm, sycophancy, tutorial-shaped or over-engineered code, hallucinated APIs), and those outrank everything it does see. For code, run the build or type-check first and pass its output to the agent; hallucinated APIs are otherwise NOT ASSESSED.
 4. Fall back only on an observed failure, and name the failure to the user. The scanner is unavailable when `node` is missing (`command not found`), when Bash is denied, or when the script path does not exist; exit 2 is a usage error and means the argument list was wrong, so fix the list rather than falling back. If the Agent tool fails, review directly using the rules in the anti-slop skill and label the result as a direct review with no agent score.
 5. Present the scored report. When step 2 ran, include both scores, labeled: the scanner's `Scan score: N/50` (deterministic, subtractive) and the agent's `Review score: N/M` (judgment across the dimensions it could assess). They are different scales measuring different things and must not be averaged. When step 2 did not run, say so explicitly -- "no scan; last-response targets are not files" -- rather than printing one number as if it were both.
 6. Say what neither layer could reach. The scanner has no rule for SQL injection, command injection, path traversal, SSRF, insecure deserialization, IDOR, insecure randomness, N+1 queries, missing timeouts, or race conditions, all of which the catalogue teaches; a clean scan is silent on every one of them. The coverage matrix in `references/empirical-rankings.md` lists the boundary in full.
 7. Offer to fix the identified issues if the user wants.
-8. The dashboard is optional and off by default. Offer it only if the user asks or it's contextually useful; it is the one command that opens a port, and `.anti-slop/config.json` `{"dashboard": false}` disables it:
+8. The dashboard is optional and off by default. Offer it only if the user asks or it's contextually useful; it is the one command that opens a port, it serves in the foreground until Ctrl-C (so run it in the background, or hand the command to the user for a terminal of their own), and `.anti-slop/config.json` `{"dashboard": false}` disables it:
 
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/slop-scanner.mjs" dashboard

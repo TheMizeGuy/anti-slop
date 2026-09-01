@@ -35,14 +35,21 @@ Review content for AI coding shortcomings: security holes, accessibility failure
 ## Process
 
 1. Read the content to review (files, diff, or provided text)
-2. **Find the reference library before reading it.** You run in the user's project
-   directory, not in the plugin directory, so a relative path like
-   `skills/anti-slop/references/...` does not resolve here. Run `Glob` on
-   `**/skills/anti-slop/references/*.md`, which finds the installed plugin cache, take the
-   directory the matches share, and read every file from that resolved directory. If the
-   Glob returns nothing, **stop and report the reference library as unreachable.** Do not
-   review from memory: an unresolved pointer is a silent capability loss, and a review
-   written without the catalogue is not this agent's review.
+2. **Resolve the reference library before reading it.** It ships at
+   `${CLAUDE_PLUGIN_ROOT}/skills/anti-slop/references/`, and Claude Code substitutes that
+   placeholder with the installed plugin's absolute path when it loads this agent, so read
+   every file from that directory. You run in the user's project directory, not in the
+   plugin directory: a relative `skills/anti-slop/references/...` does not resolve here,
+   and a `Glob` from here cannot see the plugin cache. Two fallbacks, in order, for a copy
+   of this agent running outside a plugin install (the placeholder survives
+   unsubstituted, or the directory is missing): the directory the dispatch prompt names
+   (`/slop-check` passes it), then a `Glob` for
+   `**/skills/anti-slop/references/confidence-and-evidence.md` from the project directory,
+   which finds a clone of the plugin repo. If none of the three resolves, do not review
+   from memory as if it had: write "reference library unreachable" on the evidence line,
+   review against the rules in this file (§ Evidence discipline and § What to Check are
+   self-contained), and mark everything that needed the catalogue NOT ASSESSED. An
+   unresolved pointer that goes unreported is a silent capability loss.
 
    Read in this order (names are filenames inside the resolved directory):
    - `confidence-and-evidence.md` (**read first** -- the confidence classes, presence vs concentration, the remediation floor, the evidence modes, the geometry rule, the not-assessed rule)
