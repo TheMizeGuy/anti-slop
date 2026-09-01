@@ -51,7 +51,7 @@ Source: the `vibecoded-design-tells` project by JCarterJohnson (MIT-licensed ana
 | Bolded lead-in labels (`**Word:**` + sentence) | 0.3 | 0.8 | Real but **presence ≠ citation**; weight by clustering |
 | "In conclusion" / "In summary" closer | 0.2 | 0.2 | Real, low-frequency, easy to delete |
 
-Only leftover assistant boilerplate is **absolute** (fires on a single instance, even inside quotes). The em dash is the top-cited tell but is judged by density: a lone, correctly used dash is clean, and the scanner flags only sustained overuse. Everything else is judged by clustering.
+Only leftover assistant boilerplate is **absolute** (fires on a single instance). A quoted or blockquoted example of it is not an instance: a document that quotes the phrase to discuss it is not committing it, and the scanner strips quoted spans before it matches. The legs are the assistant speaking about itself, never a person's idiom, so "I can't help but notice" and a model's cutoff stated in the third person stay clean. The em dash is the top-cited tell but is judged by density: a lone, correctly used dash is clean, and the scanner flags only sustained overuse. Everything else is judged by clustering.
 
 ### Writing: do NOT flag on a lone hit
 

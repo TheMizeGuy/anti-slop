@@ -354,7 +354,7 @@
     },
     {
       "rule": "hardcoded-secret",
-      "tp": 1,
+      "tp": 2,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -740,11 +740,11 @@
   "modalities": [
     {
       "modality": "code",
-      "tp": 31,
+      "tp": 32,
       "fp": 0,
       "fn": 1,
       "precision": 1,
-      "recall": 0.96875
+      "recall": 0.9696969696969697
     },
     {
       "modality": "design",
@@ -772,10 +772,10 @@
     }
   ],
   "overall": {
-    "tp": 115,
+    "tp": 116,
     "fp": 0,
     "fn": 1,
     "precision": 1,
-    "recall": 0.9913793103448276
+    "recall": 0.9914529914529915
   }
 }

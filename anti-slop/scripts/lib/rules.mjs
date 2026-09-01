@@ -340,10 +340,16 @@ export const CODE_PATTERNS = [
   { name: "full-moment-import", severity: "medium", confidence: CONFIDENCE.QUALITY, pattern: /import\s+moment\s+from\s+['"]moment['"]/g, desc: "moment.js import (use dayjs or date-fns)" },
   { name: "eval-usage", severity: "high", confidence: CONFIDENCE.HARD, pattern: /\beval\s*\(/g, desc: "eval() usage (security risk)" },
   { name: "innerhtml-usage", severity: "high", confidence: CONFIDENCE.HARD, skipInTests: true, pattern: /\.innerHTML\s*=/g, desc: "innerHTML assignment (XSS risk)" },
-  // Word-boundary on the key avoids compound identifiers (colorToken, currentPassword,
-  // URL_CHANGE_PASSWORD); the value lookahead excludes URLs/paths/CSS vars/hex that are
-  // never secrets. Test/fixture files are skipped (fake creds live there). "Possible",
-  // not definite: a candidate for a human read, not a confirmed leak.
+  // The key is a credential noun standing alone or as the LAST segment of a snake_case /
+  // SCREAMING_CASE name: `(?:\b|(?<=_))` lets `OPENAI_API_KEY`, `client_secret`,
+  // `access_token` and Django's `SECRET_KEY` match, which a bare \b silently refused
+  // through 2.2.1 (the underscore is a word character, so `_API_KEY` had no boundary and
+  // the commonest real-world secret shape scanned clean). camelCase compounds
+  // (colorToken, currentPassword) stay unmatched on purpose, and a name that CONTINUES past
+  // the noun (PASSWORD_LABEL, API_KEY_HEADER, TOKEN_ENDPOINT) never reaches the `[:=]`.
+  // The value lookahead excludes URLs/paths/CSS vars/hex that are never secrets.
+  // Test/fixture files are skipped (fake creds live there). "Possible", not definite: a
+  // candidate for a human read, not a confirmed leak.
   // severity high, confidence Pattern smell: if it IS a live credential it is the worst
   // finding in the file, but a regex cannot prove the string is one -- it may be a fixture,
   // a variable name, or a placeholder. This pairing is why the two axes stay separate.
@@ -353,7 +359,7 @@ export const CODE_PATTERNS = [
   // digits, a known vendor prefix, >=20 chars of base64/hex}. That keeps every real key
   // while dropping i18n copy ("Please enter your password"), lexer token kinds
   // (token: "punctuation"), validation messages, and env-indirection strings.
-  { name: "hardcoded-secret", severity: "high", confidence: CONFIDENCE.SMELL, skipInTests: true, pattern: /\b(?:api[_-]?key|password|secret|token)\s*[:=]\s*['"](?!\/|https?:|\.\.?\/|var\(|--|#[0-9a-fA-F])(?=[^'"\s]{8,}['"])(?:(?=(?:[^'"]*[0-9]){3})|(?=[^'"]*[-_])(?=[^'"]*[A-Za-z])(?=[^'"]*[0-9])|(?=(?:sk-|pk-|ghp_|xox))|(?=[A-Za-z0-9+/=]{20,}['"]))[^'"\s]{8,}['"]/gi, desc: "Possible hardcoded credential" },
+  { name: "hardcoded-secret", severity: "high", confidence: CONFIDENCE.SMELL, skipInTests: true, pattern: /(?:\b|(?<=_))(?:(?:api|secret|access|private)[_-]?key(?:[_-]?(?:id|base))?|password|passwd|secret|token)\s*[:=]\s*['"](?!\/|https?:|\.\.?\/|var\(|--|#[0-9a-fA-F])(?=[^'"\s]{8,}['"])(?:(?=(?:[^'"]*[0-9]){3})|(?=[^'"]*[-_])(?=[^'"]*[A-Za-z])(?=[^'"]*[0-9])|(?=(?:sk-|pk-|ghp_|xox))|(?=[A-Za-z0-9+/=]{20,}['"]))[^'"\s]{8,}['"]/gi, desc: "Possible hardcoded credential" },
   { name: "console-log-emoji", severity: "medium", confidence: CONFIDENCE.QUALITY, pattern: new RegExp(`console\\.log\\s*\\(\\s*['"][^\\n]*[${EMOJI_RANGES}]`, "gu"), desc: "Emoji in console.log" },
   { name: "img-no-dimensions", severity: "medium", confidence: CONFIDENCE.HARD, pattern: /<img\s(?![^>]*(?:width|height))[^>]*>/gi, desc: "<img> without width/height (causes CLS)" },
   { name: "useeffect-setstate", severity: "medium", confidence: CONFIDENCE.SMELL, pattern: /useEffect\s*\(\s*\(\s*\)\s*=>\s*\{[^}]*set[A-Z]\w*\s*\(/g, desc: "useEffect setting state (likely derived state)" },
@@ -436,7 +442,14 @@ export const TEXT_CONSTRUCTS = [
   // ("It's not about money.") still has nothing to match the trailing "it's".
   { name: "antithesis-not-just-x-y", severity: "medium", confidence: CONFIDENCE.SMELL, pattern: /\b(it'?s|its|it is|that'?s|this is|they'?re)\s+not\s+(just|only|merely|simply|about|really)\b[^.?!\n]{0,60}\bit'?s\b/gi, desc: '"It\'s not just X, it\'s Y" antithesis (#1 sentence tell)' },
   { name: "antithesis-not-only-but", severity: "low", confidence: CONFIDENCE.SMELL, pattern: /\bnot\s+(just|only|merely|simply)\s+(a |an |the )?[\w-]+,?\s+but\b/gi, desc: '"not only X, but Y" antithesis' },
-  { name: "assistant-boilerplate", severity: "high", confidence: CONFIDENCE.HARD, pattern: /\bas an? (ai|a\.i\.) (language )?model\b|\bas a large language model\b|\bi (cannot|can'?t|am unable to) (assist|help|fulfil|fulfill|comply|provide)\b|\bas of my last (knowledge )?(update|training)\b|\bknowledge cut[- ]?off\b|\bi (do not|don'?t) have (personal|the ability|access|feelings|opinions)\b/gi, desc: "Leftover assistant boilerplate (as-an-AI / refusal / cutoff)" },
+  // The sole single-instance prose tell, at high severity, so every leg has to be the
+  // ASSISTANT speaking about itself and nothing a person writes. Through 2.2.1 four legs
+  // were wider than that and fired on ordinary English: "I can't help but notice", "I
+  // cannot help thinking", a document stating the model's knowledge cutoff in the third
+  // person, and "I don't have access to the staging box". The refusal leg now excludes the
+  // idioms after `help` and needs a request object after `fulfill` / `comply` / `provide`;
+  // the cutoff legs need `my`; the access leg needs the things an assistant lacks.
+  { name: "assistant-boilerplate", severity: "high", confidence: CONFIDENCE.HARD, pattern: /\bas an? (ai|a\.i\.) (language )?model\b|\bas a large language model\b|\b(?:i (?:cannot|can'?t|am unable to)|i'?m unable to) (?:assist|help(?!\s+(?:but|it|myself|\w+ing)\b)|(?:fulfil|fulfill|comply with) (?:that|this|your|the) request|provide (?:that|this|any|assistance|information))\b|\bas of my (?:last |latest )?(?:knowledge|training) (?:update|data|cut[- ]?off)\b|\bmy (?:knowledge|training) cut[- ]?off\b|\bi (?:do not|don'?t) have (?:personal (?:opinions|feelings|experiences|preferences)|the ability to (?:access|browse|search|execute|run|view|see|open)|access to (?:real[- ]?time|the internet|live|external|your)|feelings|opinions)\b/gi, desc: "Leftover assistant boilerplate (as-an-AI / refusal / cutoff)" },
   { name: "assistant-offer", severity: "medium", confidence: CONFIDENCE.QUALITY, pattern: /\bwould you like me to\b|\bis there anything else i can\b|\bi hope this (helps|email finds you well)\b/gi, desc: "Trailing assistant offer / sign-off" },
   { name: "dive-in", severity: "low", confidence: CONFIDENCE.SMELL, pattern: /\b(deep dive|dive in(to)?|let'?s dive|diving in|dive deep)\b/gi, desc: '"dive in" / "deep dive" opener' },
   // Two legs, both anchored: a HEADLINE (line start, optionally a heading or bullet), or

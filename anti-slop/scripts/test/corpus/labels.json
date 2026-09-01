@@ -14,7 +14,8 @@
       "shared-with-ui-craft": "gradient-hero, shadcn-card-kit, frosted-nav-neon, legacy-marketing-page, small-avatar-clean originated here and were copied downstream. presence-single, cream-serif-sage, token-drift, missing-states, clean-intentional, uncommitted-radius, fluid-adaptive-clean, fixed-desktop-shell, viewport-query-card, vh-bottom-bar were authored in ui-craft during its 0.2.4 and 0.3.0 releases and were imported here in anti-slop 1.7.0, at which point this corpus became the single owner of all of them.",
       "authored-here-in-1.7.0": "hero-triplet-verbatim, responsive-type-clean, uniform-control-radius, native/FixedGeometryShell, native/AdaptiveShell.",
       "authored-here-in-2.1.0": "marketing-defaults, motion-rhythm, gallery-unlabelled, legacy-theme.css, tokens-clean.css, hatched-wordmark, near-miss-controls (design); render-user-card.tsx, ingest_records.py, pasted-snippet.js, hatched-onboarding.js, order-lookup.py, safe-render.tsx, safe-pipeline.py (code); native/LegacyProfileView, native/MeasuredCardStack; plain-register, plain-register-clean (prose). Five design fixtures were also PROMOTED from coverage-boundary to positive in the same release -- uncommitted-radius, token-drift, missing-states, fixed-desktop-shell, vh-bottom-bar -- because 2.1.0 shipped a rule for the tell each of them had been recording as unreachable.",
-      "authored-here-in-2.2.1": "bootstrap-unthemed.css, chosen-border-gray.css, hero-scroll-poster.html (design). The first two are the positive/clean-control pair the 2.2.0 Bootstrap rule shipped without; the third is the positive for hero-scroll-hint, which 2.2.1 split out of generic-microcopy."
+      "authored-here-in-2.2.1": "bootstrap-unthemed.css, chosen-border-gray.css, hero-scroll-poster.html (design). The first two are the positive/clean-control pair the 2.2.0 Bootstrap rule shipped without; the third is the positive for hero-scroll-hint, which 2.2.1 split out of generic-microcopy.",
+      "authored-here-in-2.2.2": "site-settings.py and config-labels.py (code): the positive/clean-control pair for the hardcoded-secret key widening to snake_case, SCREAMING_CASE and *_KEY names. first-person-idioms-clean.md (prose): the clean control for the assistant-boilerplate narrowing (a person's idioms and a third-person statement of a model's cutoff stay silent)."
     }
   },
   "fixtures": [
@@ -77,6 +78,14 @@
           "confidence": "Hard defect"
         }
       ]
+    },
+    {
+      "file": "prose/first-person-idioms-clean.md",
+      "modality": "prose",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Authored in 2.2.2. 'I can't help but', 'I cannot help thinking', a model's knowledge cutoff stated in the third person, 'as of my last update to this note', 'I don't have access to the staging box': human prose that assistant-boilerplate reported at high severity through 2.2.1."
     },
     {
       "file": "prose/closer-opener-hype.md",
@@ -233,6 +242,27 @@
           "confidence": "Pattern smell"
         }
       ]
+    },
+    {
+      "file": "code/site-settings.py",
+      "modality": "code",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "hardcoded-secret",
+          "severity": "high",
+          "confidence": "Pattern smell"
+        }
+      ],
+      "note": "Authored in 2.2.2. Django SECRET_KEY, OPENAI_API_KEY and STRIPE_SECRET_KEY: the snake_case and *_KEY shapes that scanned clean through 2.2.1 because the key needed a word boundary and an underscore is a word character."
+    },
+    {
+      "file": "code/config-labels.py",
+      "modality": "code",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Authored in 2.2.2. Names that CONTINUE past the credential noun (PASSWORD_LABEL, API_KEY_HEADER, TOKEN_ENDPOINT), a plural (MAX_TOKENS), env indirection, a placeholder value and a template value: everything the widened key must still refuse."
     },
     {
       "file": "code/auth.test.js",

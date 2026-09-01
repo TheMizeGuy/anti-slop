@@ -2,7 +2,7 @@
 
 Phrases that identify text as AI-generated. Never use any of these in general prose.
 
-One thing reads as AI on a single occurrence, even inside a quote: the leftover assistant-voice lines ("As an AI language model," "I cannot assist with..."). The em dash is the top-cited writing tell but is judged by density, not a single instance; a lone correct dash is clean. Everything else here is judged in context and by clustering: one stray phrase in otherwise-natural prose is weaker evidence than several together (see `empirical-rankings.md`). The strongest *construction* tell is not a fixed phrase but a shape: **"It's not just X, it's Y" / "not only X, but also Y"** — the negate-then-assert antithesis. Cut it; state Y plainly. See `writing-patterns.md`.
+One thing reads as AI on a single occurrence: the leftover assistant-voice lines ("As an AI language model," "I cannot assist with..."). A quoted example of one, in a document discussing the tell, is not an occurrence, and the scanner strips quoted spans for that reason. The em dash is the top-cited writing tell but is judged by density, not a single instance; a lone correct dash is clean. Everything else here is judged in context and by clustering: one stray phrase in otherwise-natural prose is weaker evidence than several together (see `empirical-rankings.md`). The strongest *construction* tell is not a fixed phrase but a shape: **"It's not just X, it's Y" / "not only X, but also Y"** — the negate-then-assert antithesis. Cut it; state Y plainly. See `writing-patterns.md`.
 
 ## Sycophantic Openers
 

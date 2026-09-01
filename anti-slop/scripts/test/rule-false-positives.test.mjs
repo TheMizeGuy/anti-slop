@@ -277,3 +277,76 @@ test("hero-scroll-hint: the visible hero label still fires beside a suppressed l
   const mixed = '<button aria-label="Scroll to explore the gallery">Next</button>\n<span class="hint">Scroll to explore</span>';
   assert.ok(fires("hero-scroll-hint", mixed, "Hero.tsx"));
 });
+
+// ── hardcoded-secret: the key may be the last segment of a snake_case or SCREAMING name ──
+// Through 2.2.1 the key needed a \b, and an underscore is a word character, so the
+// commonest real-world shapes (`OPENAI_API_KEY`, `client_secret`, Django's `SECRET_KEY`)
+// scanned clean while `apiKey` on the next line fired. Both directions, so the widening
+// cannot creep: a name that continues past the credential noun is still not a credential.
+
+test("hardcoded-secret: snake_case, SCREAMING_CASE and *_KEY credential names fire", () => {
+  assert.ok(fires("hardcoded-secret", 'OPENAI_API_KEY = "sk-proj-9f8e7d6c5b4a3928170615f4e3d2c1b0"', "settings.py"), "OPENAI_API_KEY");
+  assert.ok(fires("hardcoded-secret", 'SECRET_KEY = "django-insecure-k3v8x2q9m4n7p1r5t6y0w2z8a4c6e8g0"', "settings.py"), "Django SECRET_KEY");
+  assert.ok(fires("hardcoded-secret", 'const client_secret = "9f8e7d6c5b4a39281706f5e4d3c2b1a0";', "src/oauth.ts"), "client_secret");
+  assert.ok(fires("hardcoded-secret", 'access_token = "ya29.a0AfH6SMBx1234567890abcdefghijklmnop"', "src/gcal.py"), "access_token");
+  assert.ok(fires("hardcoded-secret", 'AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"', "deploy.py"), "AWS_SECRET_ACCESS_KEY");
+  assert.ok(fires("hardcoded-secret", 'const secretKey = "billing-9f2a7bd4c1e8-restricted-2026";', "src/billing.ts"), "camelCase secretKey");
+  assert.ok(fires("hardcoded-secret", 'db_password = "hunter2hunter2hunter22"', "src/db.py"), "db_password");
+});
+
+test("hardcoded-secret: a name that continues past the credential noun is not a credential", () => {
+  // Every value here is secret-SHAPED on purpose, so only the key logic keeps the line clean.
+  for (const [line, why] of [
+    ['PASSWORD_MIN_LENGTH = "12chars-minimum-2026"', "a length setting"],
+    ['API_KEY_HEADER = "x-api-key-v2-2026"', "a header name"],
+    ['TOKEN_ENDPOINT = "v2-token-endpoint-2024"', "an endpoint name"],
+    ['ACCESS_KEY_FIELD = "access_key_id_2024_v1"', "a field name"],
+    ['MAX_TOKENS = "4096-per-request-2026"', "a plural noun"],
+    ['csrf_token_name = "csrftoken-v2-2026-abc"', "a cookie name"],
+  ]) {
+    assert.ok(!fires("hardcoded-secret", line, "src/config.py"), why);
+  }
+});
+
+test("hardcoded-secret: a snake_case credential name with a non-secret value stays clean", () => {
+  assert.ok(!fires("hardcoded-secret", 'access_token = "REPLACE_ME"', "src/config.py"), "placeholder");
+  assert.ok(!fires("hardcoded-secret", 'session_token = "{{ session_token }}"', "src/config.py"), "template");
+  assert.ok(!fires("hardcoded-secret", 'SECRET_KEY = os.environ["SECRET_KEY"]', "settings.py"), "env indirection");
+  assert.ok(!fires("hardcoded-secret", 'const currentPassword = "a-fresh-strong-passphrase-12345";', "src/form.ts"), "camelCase compound stays unmatched");
+});
+
+// ── assistant-boilerplate: the assistant speaking about itself, never a person's idiom ──
+// High severity and the sole single-instance prose tell, so a false positive here costs
+// more than anywhere else: through 2.2.1 "I can't help but notice" and a document stating
+// a model's knowledge cutoff in the third person were reported as leftover boilerplate.
+
+test("assistant-boilerplate: first-person idioms and third-person facts about a model do not fire", () => {
+  for (const line of [
+    "I can't help but notice the retry never fires.",
+    "I cannot help thinking the timeout is wrong.",
+    "I can't help it, the old name stuck.",
+    "The model's knowledge cutoff is June 2026, so ask it about nothing newer.",
+    "As of my last update to this post the migration was still running.",
+    "I don't have access to the staging box, so Priya ran it.",
+    "I can't provide the raw logs until the incident closes.",
+    "We cannot comply with the retention policy until legal signs off.",
+  ]) {
+    assert.ok(!fires("assistant-boilerplate", line, "notes.md"), line);
+  }
+});
+
+test("assistant-boilerplate: the assistant's own refusals, cutoff lines and disclaimers still fire", () => {
+  for (const line of [
+    "As an AI language model, I cannot help with these requests.",
+    "I can't help with that request.",
+    "I cannot assist with that.",
+    "I'm unable to fulfill this request.",
+    "As of my last knowledge update, the API had no v2 endpoint.",
+    "My knowledge cutoff is April 2024, so I cannot verify this.",
+    "I don't have access to real-time data.",
+    "I don't have the ability to browse the web.",
+    "I don't have personal opinions on this.",
+  ]) {
+    assert.ok(fires("assistant-boilerplate", line, "notes.md"), line);
+  }
+});

@@ -587,6 +587,8 @@ if not api_key:
 
 Environment variables are better than hardcoding but are visible in process listings. For production, use a secrets manager.
 
+`hardcoded-secret` matches a credential noun (`api_key`, `secret_key`, `access_key`, `private_key`, `password`, `secret`, `token`) standing alone or as the last segment of a snake_case or SCREAMING_CASE name (`OPENAI_API_KEY`, `client_secret`, Django's `SECRET_KEY`), assigned a quoted literal that is secret-shaped: no interior spaces, and at least one of three digits, a separator joining letters and digits, a known vendor prefix, or twenty characters of base64. High severity, **Pattern smell**, because a regex cannot prove the string is live. A name that continues past the noun (`PASSWORD_LABEL`, `API_KEY_HEADER`) does not match, camelCase compounds (`currentPassword`, `colorToken`) are deliberately unmatched, and test and fixture paths are skipped. **Remediation:** the environment or a secrets manager as above, and rotate any value that reached a commit, because a secret in history is public.
+
 ### Insecure Randomness
 
 ```python
