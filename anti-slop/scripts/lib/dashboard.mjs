@@ -37,9 +37,14 @@ export function filterAllowedViolations(log) {
 }
 
 // ── Web Dashboard ──
+// The listener THIS process started, or null when it started none (disabled, no free
+// port, or another session already serves this project). It is unref()'d at start so an
+// embedder or a test never hangs on it; the CLI subcommand re-refs it (holdDashboardOpen).
+let server = null;
+
 function startDashboard(port) {
   const html = readFileSync(DASHBOARD_HTML_PATH, "utf8");
-  const server = createServer((req, res) => {
+  const listener = createServer((req, res) => {
     if (req.url === "/api/log") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(filterAllowedViolations(loadLog())));
@@ -66,12 +71,24 @@ function startDashboard(port) {
   });
 
   return new Promise((resolve, reject) => {
-    server.on("error", (err) => reject(err));
-    server.listen(port, "127.0.0.1", () => {
-      server.unref();
-      resolve(server);
+    listener.on("error", (err) => reject(err));
+    listener.listen(port, "127.0.0.1", () => {
+      listener.unref();
+      resolve(listener);
     });
   });
+}
+
+// The CLI `dashboard` subcommand is the one caller that wants the process to outlive the
+// call. From 2.0.0 to 2.2.1 the subcommand returned as soon as the URL printed, the entry
+// point called process.exit, and the listener died with it: the printed port answered
+// nothing. The MCP server that hosted the dashboard before 2.0.0 was long-lived by nature;
+// the CLI has to be on purpose. Returns false when this process started nothing, so the
+// caller can print the URL of the already-running instance and return at once.
+export function holdDashboardOpen() {
+  if (!server) return false;
+  server.ref();
+  return true;
 }
 
 // ── Dashboard lifecycle: fully on-demand. First call starts the dashboard (or
@@ -121,7 +138,7 @@ async function startOnce() {
     const inUse = await checkPort(candidate);
     if (inUse) continue;
     try {
-      await startDashboard(candidate);
+      server = await startDashboard(candidate);
       port = candidate;
       break;
     } catch (err) {

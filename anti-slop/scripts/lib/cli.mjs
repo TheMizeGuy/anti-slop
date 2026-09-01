@@ -20,7 +20,8 @@ Commands:
   scan [options] <file...>   Scan files for anti-slop findings
   history                    Recent scan scores for this project
   stats                      Per-rule active vs suppressed counts
-  dashboard                  Start the local dashboard and print its URL
+  dashboard                  Start the local dashboard, print its URL, and serve
+                             until Ctrl-C
 
 Scan options:
   --format text|json   Output format (default: text)
@@ -167,7 +168,7 @@ async function runStats() {
 // The v1.5.0 invariant survives the MCP removal unchanged in spirit: nothing starts an
 // HTTP listener except an explicit request for one, and the config switch still wins.
 async function runDashboard() {
-  const { ensureDashboard } = await import("./dashboard.mjs");
+  const { ensureDashboard, holdDashboardOpen } = await import("./dashboard.mjs");
   const result = await ensureDashboard();
   if (result.disabled) {
     process.stdout.write('Dashboard is disabled by .anti-slop/config.json ("dashboard": false).\n');
@@ -178,6 +179,13 @@ async function runDashboard() {
     return 2;
   }
   process.stdout.write(`Dashboard: http://127.0.0.1:${result.port}\n`);
+  // Returning here is what the entry point turns into process.exit, which is what killed
+  // the listener in 2.0.0 through 2.2.1. Hold the process open while this one serves; the
+  // SIGINT/SIGTERM handlers dashboard.mjs registered unregister the port and exit 0.
+  if (holdDashboardOpen()) {
+    process.stdout.write("Serving until Ctrl-C.\n");
+    await new Promise(() => {});
+  }
   return 0;
 }
 

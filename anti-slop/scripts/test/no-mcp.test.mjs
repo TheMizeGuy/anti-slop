@@ -168,3 +168,46 @@ test("an unknown subcommand is a usage error naming the valid ones", () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// From 2.0.0 to 2.2.1 the subcommand printed a URL and exited in the same tick -- the entry
+// point turned its return into process.exit and the listener died with the process -- so
+// the port it named answered nothing. The command has to serve until it is told to stop,
+// and stopping has to unregister the project.
+test("dashboard: serves until SIGINT, then unregisters the project", async () => {
+  const dir = scratchDir();
+  const registryDir = mkdtempSync(join(tmpdir(), "anti-slop-nomcp-registry-"));
+  const registryFile = join(registryDir, "registry.json");
+  const child = spawn(process.execPath, [ENTRY_PATH, "dashboard"], {
+    cwd: dir,
+    env: { ...process.env, ANTI_SLOP_REGISTRY_DIR: registryDir },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.on("data", (d) => { stdout += d; });
+  child.stderr.on("data", (d) => { stderr += d; });
+  const exited = new Promise((resolve) => child.on("exit", (code) => resolve(code)));
+  try {
+    const url = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error(`no dashboard URL within 5s\n${stdout}${stderr}`)), 5000);
+      const look = () => {
+        const m = /http:\/\/127\.0\.0\.1:\d+/.exec(stdout);
+        if (m) { clearTimeout(timer); resolve(m[0]); }
+      };
+      look();
+      child.stdout.on("data", look);
+      exited.then((code) => { clearTimeout(timer); reject(new Error(`dashboard exited ${code} before serving\n${stdout}${stderr}`)); });
+    });
+    const res = await fetch(`${url}/api/project`);
+    assert.equal(res.status, 200, "the URL the command printed must answer while the command runs");
+    assert.equal((await res.json()).port, Number(url.split(":").pop()));
+    assert.equal(Object.keys(JSON.parse(readFileSync(registryFile, "utf8"))).length, 1, "a serving dashboard registers its project");
+    child.kill("SIGINT");
+    assert.equal(await exited, 0, `SIGINT must end the command cleanly\n${stderr}`);
+    assert.deepEqual(JSON.parse(readFileSync(registryFile, "utf8")), {}, "stopping must unregister the project");
+  } finally {
+    if (child.exitCode === null) child.kill("SIGKILL");
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(registryDir, { recursive: true, force: true });
+  }
+});
