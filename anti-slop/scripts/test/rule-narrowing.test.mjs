@@ -31,6 +31,32 @@ test("hero triplet: a single responsive size step is NOT a finding", () => {
   assert.ok(!fires("tailwind-hero-triplet", html, "hero.html"));
 });
 
+// ── eval-usage: the noun "eval" in prose, and Playwright's $eval, are not eval() ──
+// Measured on one fleet (2.3.1): every Swift hit was a doc comment ("once per message per
+// body eval (#787)", "a pure parent re-eval (an obscured row)"), and every JS hit under the
+// audit scripts was Playwright's `page.$eval(` / `page.$$eval(`. Neither executes anything.
+
+test("eval-usage: Playwright's $eval and $$eval are NOT findings", () => {
+  const js = [
+    'const title = await page.$eval("h1", (el) => el.textContent);',
+    'const rows = await page.$$eval(".row", (els) => els.length);',
+  ].join("\n");
+  assert.ok(!fires("eval-usage", js, "probe.mjs"));
+});
+
+test("eval-usage: the noun eval in a comment is NOT a finding", () => {
+  assert.ok(!fires("eval-usage", "/// once per message per body eval (#787), and\nlet x = 1\n", "AppSettings.swift"));
+  assert.ok(!fires("eval-usage", "// so a pure parent re-eval (an obscured row) is cheap\nlet y = 2\n", "Coordinator.swift"));
+  assert.ok(!fires("eval-usage", "# the eval (see notes) happens later\nx = 1\n", "job.py"));
+});
+
+test("eval-usage: a real eval call still fires, with or without a space, bare or on window", () => {
+  assert.ok(fires("eval-usage", "return eval(userInput);", "app.ts"));
+  assert.ok(fires("eval-usage", "return eval (userInput);", "app.ts"));
+  assert.ok(fires("eval-usage", "window.eval(code);", "app.ts"));
+  assert.ok(fires("eval-usage", "run(); eval(payload) // loads the plugin", "app.ts"));
+});
+
 // ── Item 1 sibling: !important on the reduced-motion idiom ───────────────────
 // `* { transition: none !important }` inside a prefers-reduced-motion block is the
 // canonical, correct implementation of WCAG 2.3.3. Flagging it invites a "fix" that

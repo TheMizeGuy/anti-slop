@@ -14,6 +14,27 @@ const names = (content, path) => scanContent(content, path).map((v) => v.name ||
 const fires = (rule, content, path) => names(content, path).includes(rule);
 const corpus = (file) => readFileSync(join(CORPUS_DIR, file), "utf8");
 
+// ── media-control-glyph (design + native): a text glyph standing in for a control ──
+// The 2.1.0 incident: a pause/play toggle shipped as the bare text glyph. Since 2.3.1 the
+// emoji rule follows Unicode and no longer sees a bare ▶ or ⏸, so the incident gets its
+// own tell, scoped to UI surfaces: markup, components, and SwiftUI. In prose a ▶ is a
+// symbol in a sentence, and the emoji-presentation form (▶️) is the emoji rule's.
+
+test("media-control-glyph: a bare play/pause glyph in a component or a SwiftUI view is a finding", () => {
+  const tsx = '<button onClick={toggle} aria-label="Play">{playing ? "⏸" : "▶"}</button>';
+  assert.ok(fires("media-control-glyph", tsx, "Player.tsx"));
+  assert.ok(fires("media-control-glyph", 'Text("▶").font(.title)', "PlayerView.swift"));
+});
+
+test("media-control-glyph: SF Symbols, an icon component, and prose are NOT findings", () => {
+  assert.ok(!fires("media-control-glyph", 'Image(systemName: "play.fill")', "PlayerView.swift"));
+  assert.ok(!fires("media-control-glyph", '<PlayIcon aria-hidden="true" />', "Player.tsx"));
+  assert.ok(!fires("media-control-glyph", "Press ▶ to start the recording.", "guide.md"));
+  // The emoji-presentation form is the emoji rule's finding, not this one's.
+  const vs = names('<span>{"▶️"}</span>', "Player.tsx");
+  assert.ok(vs.includes("emoji") && !vs.includes("media-control-glyph"), JSON.stringify(vs));
+});
+
 // ── Fixed geometry (design, web) ─────────────────────────────────────────────
 
 test("fixed-page-shell: a fixed-pixel content shell is a finding", () => {

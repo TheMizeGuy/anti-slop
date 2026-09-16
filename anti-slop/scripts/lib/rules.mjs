@@ -73,16 +73,19 @@ export function countOffScaleSpacing(line) {
   return hits;
 }
 
-// ── Emoji code-point ranges ──
-// Shared by EMOJI_REGEX and the console-log-emoji code rule so the two can never drift.
-// Miscellaneous Technical (2300-23FF) carries the media-control glyphs, Arrows (2190-21FF)
-// and Geometric Shapes (25A0-25FF) the rest of the picker output a designer pastes in.
-// Deliberately NOT the whole 2000-2BFF block: that swallows the em dash, the curly
-// apostrophe, the ellipsis and the dagger, which the prose rules are built on.
-const EMOJI_RANGES =
-  "\\u{1F300}-\\u{1F9FF}\\u{2600}-\\u{26FF}\\u{2700}-\\u{27BF}\\u{2B00}-\\u{2BFF}" +
-  "\\u{FE00}-\\u{FE0F}\\u{1F000}-\\u{1FAFF}\\u{2190}-\\u{21FF}\\u{2300}-\\u{23FF}" +
-  "\\u{25A0}-\\u{25FF}";
+// ── Emoji ──
+// Unicode's definition, not a block list: a character with default emoji presentation, a
+// pictograph forced to emoji presentation by U+FE0F, a keycap sequence, or a flag; an
+// attached skin-tone modifier rides along so a toned hand counts once. From 2.1.0 to 2.3.0
+// this matched whole blocks (Arrows, Miscellaneous Technical, Geometric Shapes) after a
+// pause/play toggle shipped as a text glyph, and on one fleet that flagged 232 code files
+// in two weeks, 187 of them for a plain right arrow. The bare media-control glyph used as
+// a control is now the `media-control-glyph` design/native tell. Shared by EMOJI_REGEX and
+// the console-log-emoji code rule so the two can never drift; both need the `u` flag, and
+// as an atom rather than a character class it composes with `(?:...)`, never `[...]`.
+const EMOJI_ATOM =
+  "(?:\\p{Regional_Indicator}{2}|[0-9#*]\\uFE0F?\\u20E3|\\p{Extended_Pictographic}\\uFE0F|\\p{Emoji_Presentation})" +
+  "\\p{Emoji_Modifier}?";
 
 // ── Banned Words (top 50 highest-signal, prose-only) ──
 export const BANNED_WORDS = [
@@ -147,6 +150,18 @@ export const BANNED_PHRASES = [
   "key takeaways", "without further ado",
 ];
 
+// ── A text glyph standing in for a control (design + native) ──
+// The 2.1.0 incident: a pause/play toggle shipped as the bare text glyph. The emoji rule
+// follows Unicode (2.3.1), so a bare play or pause sign is typography to it, and the
+// incident gets its own tell on UI surfaces. Text-presentation glyphs only: the default
+// emoji among the transport symbols (fast forward, rewind, alarm clock, hourglass) stay
+// with the emoji rule, and a glyph followed by U+FE0F is an emoji too.
+const MEDIA_CONTROL_GLYPH = {
+  name: "media-control-glyph", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE,
+  pattern: /[\u{23CF}\u{23ED}-\u{23EF}\u{23F8}-\u{23FA}\u{25B6}\u{25C0}](?!️)/gu,
+  desc: "Media-control text glyph used as a control (an icon belongs here)",
+};
+
 // ── UI Design Patterns (WEB surfaces only -- see WEB_SURFACE_EXTENSIONS) ──
 // Ordered roughly by empirical signal where a corpus ranking exists. Severity reflects that
 // ranking: shadcn-default / purple / gradients are the strongest; the rest are lighter.
@@ -165,6 +180,7 @@ export const BANNED_PHRASES = [
 // behaviour, the match is too wide -- narrow it instead (see `tailwind-hero-triplet` and
 // the `important-overuse` suppress guard, both of which exist for exactly that reason).
 export const DESIGN_PATTERNS = [
+  MEDIA_CONTROL_GLYPH,
   { name: "purple-gradient-default", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /from-(indigo|purple|violet)-[45]00\s.*to-(indigo|purple|violet)-[56]00/i, desc: "Purple/indigo gradient (Tailwind AI default)" },
   { name: "purple-blue-gradient", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /from-(purple|violet|indigo|fuchsia)-\d+\s+(via-[a-z]+-\d+\s+)?to-(blue|indigo|pink|cyan|sky)-\d+|linear-gradient\([^)]*#(6366f1|7c3aed|8b5cf6|a855f7)[^)]*\)/i, desc: "Purple-to-blue/pink gradient" },
   // Hex and utility-class purple are property-level: the tell is "indigo IS the palette",
@@ -310,6 +326,7 @@ export const DESIGN_PATTERNS = [
 // size proposal with a number survives exactly one context. Remediations are in
 // skills/anti-slop/references/native-ui-patterns.md, and none of them is "make it fixed".
 export const NATIVE_PATTERNS = [
+  MEDIA_CONTROL_GLYPH,
   { name: "uiscreen-bounds", severity: "medium", confidence: CONFIDENCE.HARD, mode: PRESENCE, pattern: /\bUIScreen\.main\.bounds\b/g, desc: "UIScreen.main.bounds for layout (the window is not the screen)" },
   // 3+ digits means >= 100pt: a content shell, not an icon or a control. `.frame(width: 44)`
   // on an SF Symbol is correct and must stay clean.
@@ -329,16 +346,24 @@ export const NATIVE_PATTERNS = [
 
 // ── Model tooling tokens ──
 // Shared by the CODE_PATTERNS and TEXT_CONSTRUCTS entries of `model-tooling-artifact` so
-// the two surfaces can never drift, the same way EMOJI_RANGES is shared. `.match()` with
+// the two surfaces can never drift, the same way EMOJI_ATOM is shared. `.match()` with
 // the g flag resets lastIndex on every call, so one shared RegExp is safe for both tables.
 export const MODEL_TOOLING_ARTIFACT =
   /\b(?:oai_?citation|contentReference|attributableIndex|turn\d+(?:search|view|news|image)\d+|grok_(?:card|render_citation_card_json)|ppl-ai-file-upload)\b|\[cite:\s*\d+\]|\[span_\d+\]\(start_span\)|:::writing\b/g;
+
+// A line whose first token is a comment marker is prose: nothing on it executes, so an
+// executable-defect rule that opts in through `suppress` skips it. A trailing comment on a
+// code line is still scanned with that line.
+const COMMENT_LINE = /^\s*(?:\/\/|\/\*|\*|#|--|<!--)/;
 
 // ── Code Patterns (severity per rule) ──
 export const CODE_PATTERNS = [
   { name: "full-lodash-import", severity: "medium", confidence: CONFIDENCE.QUALITY, pattern: /import\s+_\s+from\s+['"]lodash['"]/g, desc: "Full lodash import (use cherry-picked imports)" },
   { name: "full-moment-import", severity: "medium", confidence: CONFIDENCE.QUALITY, pattern: /import\s+moment\s+from\s+['"]moment['"]/g, desc: "moment.js import (use dayjs or date-fns)" },
-  { name: "eval-usage", severity: "high", confidence: CONFIDENCE.HARD, pattern: /\beval\s*\(/g, desc: "eval() usage (security risk)" },
+  // `(?<![\w$-])`: Playwright's `page.$eval(` / `$$eval(` and the hyphenated noun
+  // ("re-eval (") are not eval(); `suppress` keeps the noun out of doc comments ("once per
+  // body eval (#787)"). A dot is allowed before the name, so `window.eval(` still matches.
+  { name: "eval-usage", severity: "high", confidence: CONFIDENCE.HARD, suppress: COMMENT_LINE, pattern: /(?<![\w$-])eval\s*\(/g, desc: "eval() usage (security risk)" },
   { name: "innerhtml-usage", severity: "high", confidence: CONFIDENCE.HARD, skipInTests: true, pattern: /\.innerHTML\s*=/g, desc: "innerHTML assignment (XSS risk)" },
   // The key is a credential noun standing alone or as the LAST segment of a snake_case /
   // SCREAMING_CASE name: `(?:\b|(?<=_))` lets `OPENAI_API_KEY`, `client_secret`,
@@ -360,7 +385,7 @@ export const CODE_PATTERNS = [
   // while dropping i18n copy ("Please enter your password"), lexer token kinds
   // (token: "punctuation"), validation messages, and env-indirection strings.
   { name: "hardcoded-secret", severity: "high", confidence: CONFIDENCE.SMELL, skipInTests: true, pattern: /(?:\b|(?<=_))(?:(?:api|secret|access|private)[_-]?key(?:[_-]?(?:id|base))?|password|passwd|secret|token)\s*[:=]\s*['"](?!\/|https?:|\.\.?\/|var\(|--|#[0-9a-fA-F])(?=[^'"\s]{8,}['"])(?:(?=(?:[^'"]*[0-9]){3})|(?=[^'"]*[-_])(?=[^'"]*[A-Za-z])(?=[^'"]*[0-9])|(?=(?:sk-|pk-|ghp_|xox))|(?=[A-Za-z0-9+/=]{20,}['"]))[^'"\s]{8,}['"]/gi, desc: "Possible hardcoded credential" },
-  { name: "console-log-emoji", severity: "medium", confidence: CONFIDENCE.QUALITY, pattern: new RegExp(`console\\.log\\s*\\(\\s*['"][^\\n]*[${EMOJI_RANGES}]`, "gu"), desc: "Emoji in console.log" },
+  { name: "console-log-emoji", severity: "medium", confidence: CONFIDENCE.QUALITY, pattern: new RegExp(`console\\.log\\s*\\(\\s*['"][^\\n]*${EMOJI_ATOM}`, "gu"), desc: "Emoji in console.log" },
   { name: "img-no-dimensions", severity: "medium", confidence: CONFIDENCE.HARD, pattern: /<img\s(?![^>]*(?:width|height))[^>]*>/gi, desc: "<img> without width/height (causes CLS)" },
   { name: "useeffect-setstate", severity: "medium", confidence: CONFIDENCE.SMELL, pattern: /useEffect\s*\(\s*\(\s*\)\s*=>\s*\{[^}]*set[A-Z]\w*\s*\(/g, desc: "useEffect setting state (likely derived state)" },
   // AI-tell code patterns from the corpus study (high precision when present)
@@ -532,8 +557,8 @@ export const CONTEXT_EXCEPTION_REGEXES = new Map(
   ]),
 );
 
-// ── Emoji detection ──
-export const EMOJI_REGEX = new RegExp(`[${EMOJI_RANGES}]`, "gu");
+// ── Emoji detection (EMOJI_ATOM above holds the definition) ──
+export const EMOJI_REGEX = new RegExp(EMOJI_ATOM, "gu");
 // A file that DISCUSSES emoji (this plugin's own writing-patterns.md reference, a design
 // system's icon guidance) is documenting the tell, not committing it. Same file-scope
 // guard schema the table rules use.

@@ -535,6 +535,19 @@
       "note": "Item 1 positive control. The only planted tell is the verbatim unmodified Tailwind hero run on the h1; every other decision on the page is committed. Paired with responsive-type-clean.html."
     },
     {
+      "file": "design/media-control-glyph.tsx",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "media-control-glyph",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        }
+      ],
+      "note": "2.3.1: the transport controls are bare text glyphs (the 2.1.0 pause/play incident). Under Unicode's emoji definition a bare play, pause or next-track sign is typography, so this tell owns the case on UI surfaces; the U+FE0F forms stay with the emoji rule. Labelled buttons and a token class keep every other decision committed."
+    },
+    {
       "file": "design/responsive-type-clean.html",
       "modality": "design",
       "role": "clean-control",

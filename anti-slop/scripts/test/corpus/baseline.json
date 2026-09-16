@@ -481,6 +481,14 @@
       "recall": 1
     },
     {
+      "rule": "media-control-glyph",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "missing-alt",
       "tp": 1,
       "fp": 0,
@@ -748,7 +756,7 @@
     },
     {
       "modality": "design",
-      "tp": 51,
+      "tp": 52,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -772,10 +780,10 @@
     }
   ],
   "overall": {
-    "tp": 116,
+    "tp": 117,
     "fp": 0,
     "fn": 1,
     "precision": 1,
-    "recall": 0.9914529914529915
+    "recall": 0.9915254237288136
   }
 }

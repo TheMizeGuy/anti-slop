@@ -1,6 +1,6 @@
 ---
 name: anti-slop
-version: 2.3.0
+version: 2.3.1
 description: Catches agentic development shortcomings in prose, code, and UI output: security holes, accessibility failures, regressions, banned vocabulary, structural cliches, and AI-default design tells. Applies whenever output is produced or revised. Activates on "write", "create", "build", "implement", "fix", "generate", "review", "refactor", "design", "edit". Context-aware: yields to domain conventions and project requirements.
 ---
 
@@ -110,7 +110,7 @@ State facts. No softening, defensive justification, or hand-holding (except in p
 
 ### Formatting
 
-No markdown headers in short responses. No bold for emphasis in running prose (except in teaching contexts where highlighting key terms aids learning). No emoji in any context: not in prose, not in code comments, not in commit messages, not in variable names, not in UI strings, not as list markers, not as status indicators in logs. Two exceptions, both narrow: the user uses emoji first and the context calls for matching their tone, or the project's own convention requires them (a gitmoji commit history, per § Context Exceptions). An exception earned in one surface does not carry to the others; a gitmoji repo still gets emoji-free code, logs, and UI strings. No bullet points where a sentence works.
+No markdown headers in short responses. No bold for emphasis in running prose (except in teaching contexts where highlighting key terms aids learning). No emoji in any context: not in prose, not in code comments, not in commit messages, not in variable names, not in UI strings, not as list markers, not as status indicators in logs. An emoji is what Unicode renders as one by default, or a pictograph forced to emoji presentation with U+FE0F; typographic arrows, the command-key symbol, plain check marks and geometric shapes are text, and a bare media-control glyph standing in for a control is the `media-control-glyph` design tell instead. Two exceptions, both narrow: the user uses emoji first and the context calls for matching their tone, or the project's own convention requires them (a gitmoji commit history, per § Context Exceptions). An exception earned in one surface does not carry to the others; a gitmoji repo still gets emoji-free code, logs, and UI strings. No bullet points where a sentence works.
 
 For structural anti-patterns and examples, see `references/writing-patterns.md`.
 

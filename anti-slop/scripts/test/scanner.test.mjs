@@ -273,27 +273,41 @@ test("routing: a test-shaped path still skips the security and dummy-data rules 
 });
 
 // ── Emoji ranges (2.1.0) ─────────────────────────────────────────────────────
-// The range list covered six blocks and not Miscellaneous Technical, which is where every
-// media-control glyph lives -- the pause/play toggle from the recorded incident shipped
-// straight past it. The bare code points below all missed; only their +VS16 presentation
-// forms matched, and only incidentally, because the variation-selector range caught the
-// selector rather than the glyph.
+// 2.1.0 widened the code-point ranges to whole blocks (Arrows, Miscellaneous Technical,
+// Geometric Shapes) after a pause/play toggle shipped as a text glyph. Measured on one
+// fleet over two weeks of changes, that widening flagged 232 code files, 187 of them for
+// a plain `→`, the rest mostly ⌘ in shortcut hints and ▸ ▲ ▼ as disclosure markers:
+// typography, not emoji. Since 2.3.1 an emoji is what Unicode renders as one: a
+// default-emoji-presentation character, a pictograph forced to emoji presentation by
+// U+FE0F, a keycap sequence, or a flag. The bare media-control glyph used as a UI control
+// is its own design/native tell (`media-control-glyph`, rule-additions.test.mjs), which
+// is where the recorded incident belongs.
 
-const NOW_EMOJI = [
-  ["pause", "⏸"], ["play", "▶"], ["stop", "⏹"], ["next track", "⏭"],
-  ["fast forward", "⏩"], ["record", "⏺"], ["eject", "⏏"],
-  ["hourglass", "⌛"], ["watch", "⌚"], ["left arrow", "←"], ["black square", "■"],
+const DEFAULT_EMOJI = [
+  ["fast forward", "⏩"], ["hourglass", "⌛"], ["watch", "⌚"], ["check mark button", "✅"],
+  ["cross mark", "❌"], ["star", "⭐"], ["rocket", "🚀"], ["sparkles", "✨"], ["high voltage", "⚡"],
 ];
 
-// Widening to the whole 2000-2BFF block would have swallowed all of these, and the prose
-// rules -- em-dash density above all -- are built on them.
+// Text-presentation pictographs: typography when bare, emoji only with U+FE0F.
+const TEXT_PICTOGRAPHS = [
+  ["play", "▶"], ["pause", "⏸"], ["stop", "⏹"], ["next track", "⏭"], ["record", "⏺"],
+  ["eject", "⏏"], ["heavy check mark", "✔"], ["warning", "⚠"], ["left right arrow", "↔"],
+  ["heavy black heart", "❤"],
+];
+
+// Never emoji: the prose rules are built on the punctuation, and the rest is the
+// typography a working codebase is full of.
 const NEVER_EMOJI = [
-  ["em dash", "—"], ["curly apostrophe", "’"], ["ellipsis", "…"],
-  ["dagger", "†"], ["en dash", "–"], ["bullet", "•"],
+  ["em dash", "—"], ["curly apostrophe", "’"], ["ellipsis", "…"], ["dagger", "†"],
+  ["en dash", "–"], ["bullet", "•"], ["right arrow", "→"], ["double right arrow", "⇒"],
+  ["left arrow", "←"], ["command key", "⌘"], ["small right triangle", "▸"],
+  ["up triangle", "▲"], ["down triangle", "▼"], ["diamond", "◆"], ["black square", "■"],
+  ["multiplication sign", "×"], ["copyright", "©"], ["registered", "®"], ["trade mark", "™"],
+  ["black star", "★"], ["eighth note", "♪"], ["check mark", "✓"], ["ballot x", "✗"],
 ];
 
-test("emoji: the bare media-control and shape glyphs are emoji, in prose and in code", () => {
-  for (const [name, glyph] of NOW_EMOJI) {
+test("emoji: default-emoji-presentation glyphs are emoji, in prose and in code", () => {
+  for (const [name, glyph] of DEFAULT_EMOJI) {
     for (const path of ["notes.md", "src/player.ts"]) {
       assert.ok(
         scanContent(`status ${glyph} here`, path).some((v) => v.type === "emoji"),
@@ -303,7 +317,20 @@ test("emoji: the bare media-control and shape glyphs are emoji, in prose and in 
   }
 });
 
-test("emoji: typographic punctuation is never an emoji", () => {
+test("emoji: a text-presentation pictograph is typography bare and an emoji with U+FE0F", () => {
+  for (const [name, glyph] of TEXT_PICTOGRAPHS) {
+    assert.ok(
+      !scanContent(`status ${glyph} here`, "src/player.ts").some((v) => v.type === "emoji"),
+      `bare ${name} (U+${glyph.codePointAt(0).toString(16).toUpperCase()}) must not be treated as an emoji`,
+    );
+    assert.ok(
+      scanContent(`status ${glyph}️ here`, "src/player.ts").some((v) => v.type === "emoji"),
+      `${name} followed by U+FE0F is an emoji`,
+    );
+  }
+});
+
+test("emoji: typographic punctuation and symbols are never an emoji", () => {
   for (const [name, glyph] of NEVER_EMOJI) {
     assert.ok(
       !scanContent(`a ${glyph} b`, "src/copy.ts").some((v) => v.type === "emoji"),
@@ -315,14 +342,24 @@ test("emoji: typographic punctuation is never an emoji", () => {
   assert.ok(named(scanContent(dashes, "post.md"), "em-dash-density"));
 });
 
-test("emoji: console-log-emoji tracks the same ranges, never a subset of them", () => {
-  for (const [name, glyph] of NOW_EMOJI) {
+test("emoji: a keycap, a toned hand and a flag each count once", () => {
+  const count = (s) => scanContent(s, "src/run.ts").find((v) => v.type === "emoji")?.count ?? 0;
+  assert.equal(count("step 1️⃣ done"), 1, "keycap sequence");
+  assert.equal(count("ok \u{1F44D}\u{1F3FD}"), 1, "thumbs up with a skin tone");
+  assert.equal(count("\u{1F1EC}\u{1F1E7} store"), 1, "regional-indicator flag");
+  assert.equal(count("\u{1F680}\u{1F680}"), 2);
+});
+
+test("emoji: console-log-emoji tracks the same definition, never a subset of it", () => {
+  for (const [name, glyph] of DEFAULT_EMOJI) {
     assert.ok(
       named(scanContent(`console.log("done ${glyph}");`, "src/run.ts"), "console-log-emoji"),
-      `console-log-emoji missed ${name}, so its range list has drifted from EMOJI_REGEX`,
+      `console-log-emoji missed ${name}, so its definition has drifted from EMOJI_REGEX`,
     );
   }
+  assert.ok(named(scanContent('console.log("done ✔️");', "src/run.ts"), "console-log-emoji"));
   assert.ok(!named(scanContent('console.log("done — finally");', "src/run.ts"), "console-log-emoji"));
+  assert.ok(!named(scanContent('console.log("a → b, ⌘K");', "src/run.ts"), "console-log-emoji"));
 });
 
 test("emoji: the count escalates severity the way em-dash density does", () => {

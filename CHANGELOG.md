@@ -2,6 +2,38 @@
 
 All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `anti-slop/.claude-plugin/plugin.json`, the SKILL.md frontmatter, and `anti-slop/scripts/package.json` — all five are bumped together. (It was five, then four when 2.0.0 removed the MCP Server constructor, then five again when 2.2.1 brought the scanner's package.json under the same gate.)
 
+## 2.3.1 - 2026-09-16
+
+Two scanner rules measured against a working fleet and narrowed to what they were for.
+
+**Emoji: Unicode's definition, not a block list.** Since 2.1.0 the emoji rule matched whole
+code-point blocks (Arrows, Miscellaneous Technical, Geometric Shapes), added after a
+pause/play toggle shipped as a text glyph. Over two weeks of changes on 26 repositories that
+flagged 232 code files, 187 of them for a plain right arrow and most of the rest for the
+command-key symbol in shortcut hints and small triangles as disclosure markers. An emoji is
+now what Unicode renders as one: a character with default emoji presentation, a pictograph
+forced to emoji presentation by U+FE0F, a keycap sequence, or a flag, with a skin-tone
+modifier attached to its emoji so a toned hand counts once. Arrows, the command key, heavy
+check marks, copyright and trademark signs, stars and music notes are text and are no longer
+findings; a check-mark button, a rocket, sparkles, a star, and a play sign followed by U+FE0F
+still are. `console-log-emoji` shares the definition.
+
+**`media-control-glyph`, a design and native tell.** The pause/play incident that justified
+the wide ranges gets its own rule on UI surfaces (markup, components, SwiftUI): a bare
+media-control text glyph used as a control is a low-severity Pattern smell. The
+default-emoji transport symbols stay with the emoji rule, prose is not a UI surface, and the
+U+FE0F forms are emoji. Corpus fixture: `design/media-control-glyph.tsx`.
+
+**`eval-usage` no longer fires on Playwright or on the noun "eval".** Every Swift hit on the
+fleet was a doc comment ("once per message per body eval (#787)", "a pure parent re-eval"),
+and every JavaScript hit under the audit scripts was `page.$eval(` or `page.$$eval(`. The
+rule now refuses a `$`, a word character or a hyphen before `eval` and skips comment-only
+lines; `eval(x)`, `eval (x)` and `window.eval(x)` on a code line still fire at high
+severity.
+
+`npm run measure` after the change: precision 100%, recall 99.2% (117 true positives; the one
+known false negative is unchanged), with the new fixture recorded in the baseline.
+
 ## 2.3.0 - 2026-09-16
 
 **Prose scope: the writing rules now cover user-facing prose, and internal documents are

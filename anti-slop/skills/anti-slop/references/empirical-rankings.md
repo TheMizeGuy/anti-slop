@@ -186,7 +186,8 @@ Read the columns as: **scanner rule** = a deterministic rule exists and fires on
 | Em dash density | Yes | Yes | no |
 | Antithesis, listicle scaffold, "in conclusion", fast-paced opener | Yes | Yes | no |
 | Leftover assistant boilerplate, chat artifacts, model tooling tokens | Yes | Yes | no |
-| Emoji in prose, code, logs, UI | Yes | Yes | no |
+| Emoji in prose, code, logs, UI | Yes (Unicode's definition: default emoji presentation, U+FE0F-forced pictographs, keycaps, flags) | Yes | no |
+| A media-control text glyph standing in for a control | Yes (`media-control-glyph`, web and native surfaces) | Yes | no |
 | Sentence rhythm, uniform paragraph shape, five-paragraph essay | **No** | Yes | no |
 | Sycophancy in flowing prose, empty fluency, emotional flatness | **No** | Yes | no |
 | Participial openers, "From X to Y", personification, forced title case | **No** | Yes | no |
