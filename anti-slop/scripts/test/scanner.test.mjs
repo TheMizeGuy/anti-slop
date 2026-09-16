@@ -350,6 +350,25 @@ test("emoji: a keycap, a toned hand and a flag each count once", () => {
   assert.equal(count("\u{1F680}\u{1F680}"), 2);
 });
 
+// 2.3.2, from the independent review of 2.3.1: a ZWJ sequence counted once per component,
+// so two family emoji escalated a finding that six rockets would not.
+test("emoji: a ZWJ sequence counts once", () => {
+  const count = (s) => scanContent(s, "src/run.ts").find((v) => v.type === "emoji")?.count ?? 0;
+  assert.equal(count("\u{1F468}‍\u{1F469}‍\u{1F467}"), 1, "family");
+  assert.equal(count("\u{1F469}‍\u{1F4BB}"), 1, "technologist");
+  assert.equal(count("\u{1F3F3}️‍\u{1F308}"), 1, "rainbow flag");
+  assert.equal(count("\u{1F468}‍\u{1F469}‍\u{1F467} and \u{1F680}"), 2);
+});
+
+// 2.3.2: the emoji rule was the one family with no surface gate, so a PNG read as UTF-8
+// reported "1 emoji found". Text never carries a NUL byte; binary always does early on.
+test("binary content (a NUL byte) matches no rule on any surface", () => {
+  const png = "PNG\r\n\n   \rIHDR��\u{1F680} delve delve delve";
+  assert.deepEqual(scanContent(png, "icon.png"), []);
+  assert.deepEqual(scanContent(png, "src/blob.ts"), []);
+  assert.deepEqual(scanContent(png, "notes.md"), []);
+});
+
 test("emoji: console-log-emoji tracks the same definition, never a subset of it", () => {
   for (const [name, glyph] of DEFAULT_EMOJI) {
     assert.ok(

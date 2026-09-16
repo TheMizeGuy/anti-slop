@@ -1,6 +1,6 @@
 ---
 name: anti-slop
-version: 2.3.1
+version: 2.3.2
 description: Catches agentic development shortcomings in prose, code, and UI output: security holes, accessibility failures, regressions, banned vocabulary, structural cliches, and AI-default design tells. Applies whenever output is produced or revised. Activates on "write", "create", "build", "implement", "fix", "generate", "review", "refactor", "design", "edit". Context-aware: yields to domain conventions and project requirements.
 ---
 
@@ -39,7 +39,7 @@ Run both layers whenever both apply, and say which one produced a given score. F
 
 The writing rules govern user-facing prose: UI copy and microcopy, notifications and emails, marketing and store listings, release notes and tester-facing build notes, and public documentation. Internal documents are out of scope: specs, plans, ADRs and decision logs, evidence and audit reports, handoffs, changelogs, contributor docs, and CLAUDE.md. Do not scan them for writing tells, do not scrub em dashes or vocabulary in them, and do not report their density as a finding or explain it away in a pull request. Code files keep their comment rules on every surface.
 
-The scanner draws the same line: a `.md`, `.mdx`, `.txt`, or `.rst` file prints as `skipped (prose scope: user-facing)` unless the project lists it under `userFacingProse` in `.anti-slop/config.json` (globs relative to the project root, such as `docs/release-notes/**`) or sets `proseScope` to `all`. A skipped file is neither clean nor a finding; leave it alone. Pass `--prose-scope all` only when the user asks for a document to be reviewed as user-facing copy.
+The scanner draws the same line: a `.md`, `.mdx`, `.txt`, or `.rst` file prints as `skipped (prose scope: user-facing)` unless the project lists it under `userFacingProse` in `.anti-slop/config.json` (case-insensitive globs relative to the directory the scanner runs in, such as `docs/release-notes/**`; run it from the project root) or sets `proseScope` to `all`. A skipped file is neither clean nor a finding; leave it alone. Pass `--prose-scope all` only when the user asks for a document to be reviewed as user-facing copy.
 
 ## Scope and Limitations
 

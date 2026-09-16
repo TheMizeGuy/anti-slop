@@ -257,10 +257,23 @@ export async function runCli(argv) {
   // used to scan it twice, record it twice, and double-count it in the totals.
   opts.files = [...new Set(opts.files)];
 
-  // Read everything up front so an unreadable file aborts BEFORE any scan is
-  // recorded -- exit 2 must leave no partial --record side effects behind.
+  const scanOpts = { collectSuppressed: true, proseScope: opts.proseScope };
+  const scope = proseScope(scanOpts);
+  // Scope is decided BEFORE any file is opened: a prose file outside the project's
+  // user-facing list is reported as skipped, never as clean, contributes nothing to the
+  // totals, the exit code, or --record, and cannot fail the run by being unreadable (a
+  // deleted document in a diff list, say).
+  const skipped = [];
+  const toScan = opts.files.filter((filePath) => {
+    if (proseScopeFor(filePath, scanOpts).inScope) return true;
+    skipped.push(filePath);
+    return false;
+  });
+
+  // Read everything the scan will open up front so an unreadable file aborts BEFORE any
+  // scan is recorded -- exit 2 must leave no partial --record side effects behind.
   const contents = new Map();
-  for (const filePath of opts.files) {
+  for (const filePath of toScan) {
     try {
       contents.set(filePath, readFileSync(filePath, "utf8"));
     } catch {
@@ -270,17 +283,8 @@ export async function runCli(argv) {
   }
 
   const results = [];
-  const skipped = [];
   const allEntriesByFile = new Map();
-  const scanOpts = { collectSuppressed: true, proseScope: opts.proseScope };
-  const scope = proseScope(scanOpts);
-  for (const filePath of opts.files) {
-    // A prose file outside the project's user-facing list is reported as skipped, never
-    // as clean, and contributes nothing to the totals, the exit code, or --record.
-    if (!proseScopeFor(filePath, scanOpts).inScope) {
-      skipped.push(filePath);
-      continue;
-    }
+  for (const filePath of toScan) {
     const content = contents.get(filePath);
     // Suppressed entries (escape hatch / allowedWords) are logged under --record for rule
     // stats, but never reach output, score, or exit code.
@@ -307,9 +311,15 @@ export async function runCli(argv) {
 
   const shouldFail = results.some((r) => meetsThreshold(r.violations, opts.failOn));
 
+  // --quiet owns stdout, not stderr: a run that scanned nothing must say so somewhere, or a
+  // docs-only CI change passes green with empty output having read no files at all.
+  if (opts.quiet && results.length === 0 && skipped.length > 0) {
+    process.stderr.write(formatSkippedHint(skipped, scope));
+  }
+
   if (!opts.quiet) {
     if (opts.format === "json") {
-      const skippedRows = skipped.map((file) => ({ file, reason: "prose-scope" }));
+      const skippedRows = skipped.map((file) => ({ file, reason: "prose-scope", scope }));
       process.stdout.write(`${JSON.stringify({ files: results, totals, skipped: skippedRows })}\n`);
     } else {
       // Input order, so a skipped file sits where the caller listed it.

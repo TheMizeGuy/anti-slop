@@ -122,6 +122,22 @@ test("globToRegExp: the forms a config needs", () => {
   assert.ok(matches("release-notes (draft).md", "release-notes (draft).md"));
 });
 
+// 2.3.2, from the independent review of 2.3.1: `**/` compiled to `(?:.*/)?` and a chain of
+// them backtracked exponentially (12 segments: seconds), and matching was case-sensitive on
+// a case-insensitive filesystem.
+test("globToRegExp: repeated **/ segments match in constant time, and matching ignores case", () => {
+  const re = scan.globToRegExp("**/".repeat(12) + "target.md");
+  const started = process.hrtime.bigint();
+  assert.ok(!re.test("a/".repeat(20) + "nope.txt"));
+  assert.ok(re.test("a/b/c/target.md"));
+  assert.ok(re.test("target.md"));
+  const ms = Number(process.hrtime.bigint() - started) / 1e6;
+  assert.ok(ms < 200, `twelve ** segments took ${ms.toFixed(1)} ms`);
+  assert.ok(scan.globToRegExp("README.md").test("readme.md"));
+  assert.ok(scan.globToRegExp("docs/**/*.md").test("Docs/Guide/A.MD"));
+  assert.ok(!scan.globToRegExp("docs/**/*.md").test("Docs/Guide/A.txt"));
+});
+
 // ── The CLI ──────────────────────────────────────────────────────────────────
 
 test("CLI: userFacingProse opts files in; everything else prints as skipped, never as clean", () => {
@@ -138,8 +154,8 @@ test("CLI: userFacingProse opts files in; everything else prints as skipped, nev
     const parsed = JSON.parse(json.stdout);
     assert.deepEqual(parsed.files.map((f) => f.file), ["docs/public/guide.md", "README.md", "app.js"]);
     assert.deepEqual(parsed.skipped, [
-      { file: "docs/plan.md", reason: "prose-scope" },
-      { file: "notes.txt", reason: "prose-scope" },
+      { file: "docs/plan.md", reason: "prose-scope", scope: "user-facing" },
+      { file: "notes.txt", reason: "prose-scope", scope: "user-facing" },
     ]);
     assert.equal(parsed.totals.files, 3, "totals count scanned files only");
     assert.ok(parsed.files.every((f) => f.violations.length > 0));
@@ -218,6 +234,28 @@ test("CLI: with no flag, the environment sets the scope and outranks the config"
   }
 });
 
+// 2.3.2: scope is decided before the file is opened. A prose file the scan will not read
+// cannot abort the run by being unreadable (a deleted doc in a diff list, say).
+test("CLI: a skipped prose file is never opened, so an unreadable one cannot abort the run", () => {
+  const dir = scratchDir();
+  try {
+    mkdirSync(join(dir, "docs"), { recursive: true });
+    writeFileSync(join(dir, "app.js"), SECRET_JS);
+    const result = runCli(["--format", "json", "docs/missing.md", "app.js"], dir);
+    assert.equal(result.status, 1, result.stderr);
+    const parsed = JSON.parse(result.stdout);
+    assert.deepEqual(parsed.files.map((f) => f.file), ["app.js"]);
+    assert.deepEqual(parsed.skipped, [{ file: "docs/missing.md", reason: "prose-scope", scope: "user-facing" }]);
+    // A file the scan WOULD open still aborts before anything is recorded.
+    const abort = runCli(["--record", "app.js", "missing.js"], dir);
+    assert.equal(abort.status, 2);
+    assert.match(abort.stderr, /Cannot read file: missing\.js/);
+    assert.equal(existsSync(join(dir, ".anti-slop")), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("CLI: a skipped file never affects the exit code and is never recorded", () => {
   const dir = scratchDir();
   try {
@@ -241,14 +279,22 @@ test("CLI: a skipped file never affects the exit code and is never recorded", ()
   }
 });
 
-test("CLI: --quiet prints nothing for a skipped file either, and --help documents the flag", () => {
+// 2.3.2: under --quiet a run that skipped everything used to be byte-identical to a clean
+// run, so a docs-only CI change passed green having read no files. stdout stays empty (the
+// contract); the skip hint goes to stderr, and only when nothing at all was scanned.
+test("CLI: --quiet keeps stdout empty, and a run that scanned nothing says so on stderr", () => {
   const dir = scratchDir();
   try {
     writeFileSync(join(dir, "plan.md"), SLOP_MD);
     const quiet = runCli(["--quiet", "plan.md"], dir);
     assert.equal(quiet.status, 0);
     assert.equal(quiet.stdout, "");
-    assert.equal(quiet.stderr, "");
+    assert.match(quiet.stderr, /^1 prose file\(s\) skipped under prose scope user-facing/);
+    writeFileSync(join(dir, "app.js"), SECRET_JS);
+    const mixed = runCli(["--quiet", "plan.md", "app.js"], dir);
+    assert.equal(mixed.status, 1);
+    assert.equal(mixed.stdout, "");
+    assert.equal(mixed.stderr, "", "a run that scanned something stays silent under --quiet");
     const help = spawnSync(process.execPath, [ENTRY_PATH, "--help"], { cwd: dir, encoding: "utf8", env: childEnv() });
     assert.equal(help.status, 0);
     assert.match(help.stdout, /--prose-scope SCOPE\s+user-facing\|all/);

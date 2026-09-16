@@ -364,14 +364,20 @@ export function proseScope(opts = {}) {
 // stay inside one segment, everything else is literal. Anchored to the whole path, so
 // `docs/**` takes a directory, `**/*.md` takes every markdown file, and `README.md` takes
 // the root README and nothing else. No dependency, and no `path.matchesGlob`, which
-// still prints an experimental warning on Node 22.
+// still prints an experimental warning on Node 22. Case-insensitive, because the
+// filesystems most projects sit on fold case and `README.md` has to opt in `Readme.md`.
 export function globToRegExp(glob) {
+  // `**/**/` is `**/`. Uncollapsed, each segment compiled to an optional greedy group and a
+  // chain of them backtracked exponentially on a non-match (twelve segments: nine seconds
+  // on a 42-character path, from the 2.3.1 review). A segment run compiles to whole
+  // segments, `(?:[^/]+/)*`, which a `/` delimits and the engine cannot re-partition.
+  const collapsed = String(glob).replace(/(?:\*\*\/)+/g, "**/").replace(/\*{3,}/g, "**");
   let source = "";
-  for (let i = 0; i < glob.length; i++) {
-    const c = glob[i];
-    if (c === "*" && glob[i + 1] === "*") {
+  for (let i = 0; i < collapsed.length; i++) {
+    const c = collapsed[i];
+    if (c === "*" && collapsed[i + 1] === "*") {
       i += 1;
-      if (glob[i + 1] === "/") { i += 1; source += "(?:.*/)?"; } else source += ".*";
+      if (collapsed[i + 1] === "/") { i += 1; source += "(?:[^/]+/)*"; } else source += ".*";
     } else if (c === "*") {
       source += "[^/]*";
     } else if (c === "?") {
@@ -380,7 +386,7 @@ export function globToRegExp(glob) {
       source += c.replace(/[.+^${}()|[\]\\]/g, "\\$&");
     }
   }
-  return new RegExp(`^${source}$`);
+  return new RegExp(`^${source}$`, "i");
 }
 
 function toPosix(p) {
@@ -434,6 +440,10 @@ export function proseScopeFor(filePath, opts = {}) {
 // behavior is byte-identical to calling scanContent(content, filePath) with no opts.
 export function scanContent(content, filePath, opts = {}) {
   const violations = [];
+  // Binary read as UTF-8 (a PNG, a font, an archive) decodes to replacement characters and
+  // stray code points that satisfy Unicode property escapes; text never carries a NUL byte
+  // and binary carries one within its first few bytes. No rule applies to it.
+  if (content.includes(" ")) return violations;
   const ext = extname(filePath).toLowerCase();
   const isProse = PROSE_EXTENSIONS.has(ext);
   if (isProse && !proseScopeFor(filePath, opts).inScope) return violations;

@@ -79,11 +79,14 @@ Review content for AI coding shortcomings: security holes, accessibility failure
 The prose checks in § What to Check apply to user-facing prose: UI copy, notifications,
 marketing and store copy, release notes, public documentation. Internal documents in the
 input are out of scope for those checks: specs, plans, ADRs, evidence and audit reports,
-handoffs, changelogs, CLAUDE.md, and any prose file the dispatcher or the scanner reported
-as skipped under prose scope. Do not report their em-dash density, vocabulary, or
+handoffs, changelogs, CLAUDE.md. Do not report their em-dash density, vocabulary, or
 structure, and do not score Authenticity on them. Review such a file only for the code it
 embeds or, when the dispatcher asks, for factual soundness, and say on the evidence line
-which files were treated this way. Code comments stay in scope on every surface.
+which files were treated this way. A prose file the scanner reported as skipped is one the
+project has not opted in: treat it as internal unless it is plainly user-facing copy (the
+README of a public project, release notes, store metadata), and then say so on the evidence
+line and mark its prose checks NOT ASSESSED rather than reviewed. Code comments stay in
+scope on every surface.
 
 ## Scoring and abstention
 

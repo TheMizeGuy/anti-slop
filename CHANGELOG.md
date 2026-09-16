@@ -2,15 +2,64 @@
 
 All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `anti-slop/.claude-plugin/plugin.json`, the SKILL.md frontmatter, and `anti-slop/scripts/package.json` — all five are bumped together. (It was five, then four when 2.0.0 removed the MCP Server constructor, then five again when 2.2.1 brought the scanner's package.json under the same gate.)
 
+## 2.3.2 - 2026-09-16
+
+Fixes from an independent review of 2.3.0 and 2.3.1 (a second reviewer with the diff, the
+tests and a real repository), applied the same day.
+
+**`eval-usage` no longer goes quiet on code that follows a closed comment.** The 2.3.1 comment
+suppress tested whether a line starts like a comment, not whether it is one: `/* setup */
+eval(payload);` and the generator method `*gen() { eval(x); }` scanned clean, and the hyphen
+in the lookbehind swallowed `return -eval(expr)`. A line is prose only when its comment never
+closes on it, a leading `*` is a continuation only before whitespace, a slash or the end of
+the line, and the hyphen is gone; the doc-comment noun ("re-eval (") stays silent because it
+sits on a comment line. Known gap, recorded rather than hidden: a line that closes a block
+comment and then executes (`*/ eval(x)`) is still suppressed, because the scanner carries no
+comment state across lines.
+
+**Prose-scope globs no longer hang on repeated `**/`, and they ignore case.** Consecutive
+`**/` segments compiled to a chain of optional greedy groups that backtracked exponentially on
+a non-match (twelve segments: nine seconds); they now collapse to one, and a segment run
+compiles to whole segments. Matching is case-insensitive, so `README.md` opts in `Readme.md`
+on the filesystems that fold case.
+
+**A skipped prose file is never opened.** Scope is decided before any file is read, so a
+deleted or unreadable document in a diff list cannot abort the run with exit 2; a file the
+scan would open still does. Under `--quiet`, a run that scanned nothing at all says so on
+stderr in one line, because a docs-only CI change used to pass green with empty output having
+read zero files. `--format json` skipped rows now carry the `scope` that was in effect.
+
+**Binary is never scanned.** The emoji rule was the one family with no surface gate, and a PNG
+read as UTF-8 reported an emoji; content carrying a NUL byte now matches no rule on any
+surface.
+
+**A ZWJ sequence counts once.** A family emoji counted three, and two of them escalated a
+finding that six rockets would not; the atom now consumes the join.
+
+**Wording.** `/slop-check` and the `slop-detector` agent no longer read "skipped" as
+"internal": a skipped file is one the project has not opted in, and when it is plainly
+user-facing copy (the README of a public project, release notes, store metadata) the reviewer
+says so and offers `--prose-scope all` or a `userFacingProse` entry instead of treating it as
+reviewed. README, SKILL.md and CLAUDE.md now say the globs are relative to the directory the
+scanner runs in, which is where it reads `.anti-slop/config.json`; the 2.3.0 and 2.3.1 entries
+below quote the measurements as recorded (22 projects; 12 repositories, 232 code files); and
+CLAUDE.md notes that the Unicode property escapes resolve against the running Node's tables,
+so emoji newer than the interpreter are not matched.
+
+Not changed, by decision: the default prose scope stays `user-facing` with no shipped default
+list (an unconfigured project scans no prose), and the 97 text-presentation pictographs
+(⚠ ✔ ❤ ➡ and kin) stay text; a companion tell in the style of `media-control-glyph` is the
+shape if that changes.
+
 ## 2.3.1 - 2026-09-16
 
 Two scanner rules measured against a working fleet and narrowed to what they were for.
 
 **Emoji: Unicode's definition, not a block list.** Since 2.1.0 the emoji rule matched whole
 code-point blocks (Arrows, Miscellaneous Technical, Geometric Shapes), added after a
-pause/play toggle shipped as a text glyph. Over two weeks of changes on 26 repositories that
-flagged 232 code files, 187 of them for a plain right arrow and most of the rest for the
-command-key symbol in shortcut hints and small triangles as disclosure markers. An emoji is
+pause/play toggle shipped as a text glyph. Over two weeks of changes in 12 active repositories,
+232 code files carried an emoji finding, 187 of them for a plain right arrow and most of the
+rest for the command-key symbol in shortcut hints and small triangles as disclosure markers. An emoji is
 now what Unicode renders as one: a character with default emoji presentation, a pictograph
 forced to emoji presentation by U+FE0F, a keycap sequence, or a flag, with a skin-tone
 modifier attached to its emoji so a toned hand counts once. Arrows, the command key, heavy
@@ -37,8 +86,8 @@ known false negative is unchanged), with the new fixture recorded in the baselin
 ## 2.3.0 - 2026-09-16
 
 **Prose scope: the writing rules now cover user-facing prose, and internal documents are
-skipped.** Measured across one working fleet of 26 repositories, 81% of the scanner's
-recorded findings sat in markdown and 56% were em-dash density, nearly all of it in specs,
+skipped.** Measured across the 22 projects of one working fleet that had recorded scans, 81%
+of the scanner's recorded findings sat in markdown and 56% were em-dash density, nearly all of it in specs,
 plans, decision logs, evidence reports and handoffs that never ship to a reader; the usual
 follow-up was a paragraph in the pull request explaining the finding away, present in
 roughly one PR in eight. Those documents were never what the writing rules were written

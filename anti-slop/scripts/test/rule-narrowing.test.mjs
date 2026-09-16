@@ -57,6 +57,18 @@ test("eval-usage: a real eval call still fires, with or without a space, bare or
   assert.ok(fires("eval-usage", "run(); eval(payload) // loads the plugin", "app.ts"));
 });
 
+// 2.3.2, from the independent review of 2.3.1: the comment suppress tested whether a line
+// STARTS like a comment, not whether it IS one, and the hyphen in the lookbehind swallowed a
+// unary minus. A security rule must not go quiet on code because a comment sits before it.
+test("eval-usage: a comment that closes on the line does not shield the code after it", () => {
+  assert.ok(fires("eval-usage", "/* setup */ eval(payload);\n", "app.ts"));
+  assert.ok(fires("eval-usage", "  *gen() { eval(x); }\n", "app.ts"));
+  assert.ok(fires("eval-usage", "return -eval(expr);\n", "app.ts"));
+  assert.ok(!fires("eval-usage", "/* eval (notes) */\n", "app.ts"), "a one-line block comment is prose");
+  assert.ok(!fires("eval-usage", " * the second eval (per row) is cheap\n", "app.ts"), "a JSDoc continuation is prose");
+  assert.ok(!fires("eval-usage", "/* opens here, the eval (per row)\n", "app.ts"), "an unclosed block comment is prose");
+});
+
 // ── Item 1 sibling: !important on the reduced-motion idiom ───────────────────
 // `* { transition: none !important }` inside a prefers-reduced-motion block is the
 // canonical, correct implementation of WCAG 2.3.3. Flagging it invites a "fix" that

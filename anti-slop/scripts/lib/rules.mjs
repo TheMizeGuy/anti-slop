@@ -83,9 +83,12 @@ export function countOffScaleSpacing(line) {
 // a control is now the `media-control-glyph` design/native tell. Shared by EMOJI_REGEX and
 // the console-log-emoji code rule so the two can never drift; both need the `u` flag, and
 // as an atom rather than a character class it composes with `(?:...)`, never `[...]`.
+// A ZWJ sequence (a family, a technologist, a rainbow flag) is one emoji: the tail consumes
+// each U+200D join and the pictograph after it, so the count and the severity escalation
+// see one glyph rather than two or three.
 const EMOJI_ATOM =
-  "(?:\\p{Regional_Indicator}{2}|[0-9#*]\\uFE0F?\\u20E3|\\p{Extended_Pictographic}\\uFE0F|\\p{Emoji_Presentation})" +
-  "\\p{Emoji_Modifier}?";
+  "(?:(?:\\p{Regional_Indicator}{2}|[0-9#*]\\uFE0F?\\u20E3|\\p{Extended_Pictographic}\\uFE0F|\\p{Emoji_Presentation})\\p{Emoji_Modifier}?)" +
+  "(?:\\u200D(?:\\p{Extended_Pictographic}\\uFE0F?|\\p{Emoji_Presentation})\\p{Emoji_Modifier}?)*";
 
 // ── Banned Words (top 50 highest-signal, prose-only) ──
 export const BANNED_WORDS = [
@@ -351,19 +354,24 @@ export const NATIVE_PATTERNS = [
 export const MODEL_TOOLING_ARTIFACT =
   /\b(?:oai_?citation|contentReference|attributableIndex|turn\d+(?:search|view|news|image)\d+|grok_(?:card|render_citation_card_json)|ppl-ai-file-upload)\b|\[cite:\s*\d+\]|\[span_\d+\]\(start_span\)|:::writing\b/g;
 
-// A line whose first token is a comment marker is prose: nothing on it executes, so an
-// executable-defect rule that opts in through `suppress` skips it. A trailing comment on a
-// code line is still scanned with that line.
-const COMMENT_LINE = /^\s*(?:\/\/|\/\*|\*|#|--|<!--)/;
+// A line that IS a comment is prose: nothing on it executes, so an executable-defect rule
+// that opts in through `suppress` skips it. The test is "entirely prose", never "begins like
+// prose" (2.3.2, from the independent review): a `/* ... */` that closes on the line with code
+// after it executes that code, and a leading `*` is a JSDoc continuation only before
+// whitespace, a slash or the end of the line (`*gen() {` is a generator method). A trailing
+// comment on a code line is still scanned with that line. Known gap: a line that closes a
+// block comment and then executes (`*/ eval(x)`) stays suppressed, since no comment state is
+// carried across lines.
+const COMMENT_LINE = /^\s*(?:\/\/|#|--|<!--|\*(?:\s|$|\/))|^\s*\/\*(?![^\n]*\*\/[^\n]*\S)/;
 
 // ── Code Patterns (severity per rule) ──
 export const CODE_PATTERNS = [
   { name: "full-lodash-import", severity: "medium", confidence: CONFIDENCE.QUALITY, pattern: /import\s+_\s+from\s+['"]lodash['"]/g, desc: "Full lodash import (use cherry-picked imports)" },
   { name: "full-moment-import", severity: "medium", confidence: CONFIDENCE.QUALITY, pattern: /import\s+moment\s+from\s+['"]moment['"]/g, desc: "moment.js import (use dayjs or date-fns)" },
-  // `(?<![\w$-])`: Playwright's `page.$eval(` / `$$eval(` and the hyphenated noun
-  // ("re-eval (") are not eval(); `suppress` keeps the noun out of doc comments ("once per
-  // body eval (#787)"). A dot is allowed before the name, so `window.eval(` still matches.
-  { name: "eval-usage", severity: "high", confidence: CONFIDENCE.HARD, suppress: COMMENT_LINE, pattern: /(?<![\w$-])eval\s*\(/g, desc: "eval() usage (security risk)" },
+  // `(?<![\w$])`: Playwright's `page.$eval(` / `$$eval(` are not eval(); `suppress` keeps the
+  // noun out of doc comments ("once per body eval (#787)", "a parent re-eval (nil = ...)"). A
+  // dot or a minus is allowed before the name, so `window.eval(` and `-eval(` still match.
+  { name: "eval-usage", severity: "high", confidence: CONFIDENCE.HARD, suppress: COMMENT_LINE, pattern: /(?<![\w$])eval\s*\(/g, desc: "eval() usage (security risk)" },
   { name: "innerhtml-usage", severity: "high", confidence: CONFIDENCE.HARD, skipInTests: true, pattern: /\.innerHTML\s*=/g, desc: "innerHTML assignment (XSS risk)" },
   // The key is a credential noun standing alone or as the LAST segment of a snake_case /
   // SCREAMING_CASE name: `(?:\b|(?<=_))` lets `OPENAI_API_KEY`, `client_secret`,

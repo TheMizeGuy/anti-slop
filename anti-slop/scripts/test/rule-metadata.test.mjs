@@ -12,6 +12,8 @@ import {
   CODE_PATTERNS,
   TEXT_CONSTRUCTS,
   NATIVE_PATTERNS,
+  WEB_SURFACE_EXTENSIONS,
+  NATIVE_UI_EXTENSIONS,
 } from "../lib/rules.mjs";
 import { scanContent, fileGuardOk } from "../lib/scan.mjs";
 
@@ -19,6 +21,16 @@ const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const DOCTRINE = join(REPO, "skills", "anti-slop", "references", "confidence-and-evidence.md");
 
 const ALL_TABLE_RULES = [...DESIGN_PATTERNS, ...CODE_PATTERNS, ...TEXT_CONSTRUCTS, ...NATIVE_PATTERNS];
+
+// A rule that sits in both UI tables (media-control-glyph since 2.3.1) is safe only while it
+// is one object and the two surfaces never share an extension; a file on a shared extension
+// would report the same finding twice, once per table, and subtract twice from the score.
+test("a rule id shared by the design and native tables is one object on disjoint surfaces", () => {
+  const shared = DESIGN_PATTERNS.filter((d) => NATIVE_PATTERNS.some((n) => n.name === d.name));
+  assert.ok(shared.length >= 1, "media-control-glyph is expected in both tables");
+  for (const d of shared) assert.equal(d, NATIVE_PATTERNS.find((n) => n.name === d.name), `${d.name} must be the same object in both tables`);
+  assert.deepEqual([...WEB_SURFACE_EXTENSIONS].filter((e) => NATIVE_UI_EXTENSIONS.has(e)), []);
+});
 
 test("the confidence enum carries exactly the four classes", () => {
   assert.deepEqual(CONFIDENCE_CLASSES, [
