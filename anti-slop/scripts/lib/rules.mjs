@@ -544,6 +544,19 @@ export const EMOJI_ESCALATE_COUNT = 5;
 
 // ── File type detection ──
 export const PROSE_EXTENSIONS = new Set([".md", ".mdx", ".txt", ".rst"]);
+
+// ── Prose scope ──
+// The writing rules govern user-facing prose: UI copy, notifications, marketing and store
+// copy, release notes, public documentation. Internal documents (specs, plans, ADRs,
+// evidence, handoffs, changelogs, CLAUDE.md) are most of the markdown in a working
+// repository, and scanning them for em-dash density and vocabulary produced findings
+// nobody acted on except to explain them away in the pull request. Under "user-facing"
+// (the default since 2.3.0) a prose file is skipped unless the project lists it under
+// `userFacingProse` in .anti-slop/config.json; "all" is the pre-2.3.0 behaviour. Code
+// files keep their comment rules under either scope. Resolution order and the glob
+// dialect live in scan.mjs (proseScopeFor).
+export const PROSE_SCOPES = Object.freeze(["user-facing", "all"]);
+export const DEFAULT_PROSE_SCOPE = "user-facing";
 export const CODE_EXTENSIONS = new Set([".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py", ".rb", ".go", ".rs", ".java", ".cs", ".php", ".c", ".h", ".cpp", ".cc", ".hpp", ".kt", ".kts", ".swift", ".scala", ".m", ".mm", ".sh", ".bash", ".lua", ".dart", ".sql", ".r"]);
 export const STYLE_EXTENSIONS = new Set([".css", ".scss", ".less", ".html", ".htm", ".jsx", ".tsx", ".vue", ".svelte"]);
 

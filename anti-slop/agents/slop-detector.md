@@ -74,6 +74,17 @@ Review content for AI coding shortcomings: security holes, accessibility failure
 4. List every violation found with the exact text or code, which rule it violates, its
    severity, its confidence class, and a specific fix.
 
+## Prose scope
+
+The prose checks in § What to Check apply to user-facing prose: UI copy, notifications,
+marketing and store copy, release notes, public documentation. Internal documents in the
+input are out of scope for those checks: specs, plans, ADRs, evidence and audit reports,
+handoffs, changelogs, CLAUDE.md, and any prose file the dispatcher or the scanner reported
+as skipped under prose scope. Do not report their em-dash density, vocabulary, or
+structure, and do not score Authenticity on them. Review such a file only for the code it
+embeds or, when the dispatcher asks, for factual soundness, and say on the evidence line
+which files were treated this way. Code comments stay in scope on every surface.
+
 ## Scoring and abstention
 
 Your tool grant is `Read`, `Grep`, `Glob`. You cannot run a build, a type-checker, a test

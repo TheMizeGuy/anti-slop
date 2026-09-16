@@ -2,6 +2,32 @@
 
 All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `anti-slop/.claude-plugin/plugin.json`, the SKILL.md frontmatter, and `anti-slop/scripts/package.json` — all five are bumped together. (It was five, then four when 2.0.0 removed the MCP Server constructor, then five again when 2.2.1 brought the scanner's package.json under the same gate.)
 
+## 2.3.0 - 2026-09-16
+
+**Prose scope: the writing rules now cover user-facing prose, and internal documents are
+skipped.** Measured across one working fleet of 26 repositories, 81% of the scanner's
+recorded findings sat in markdown and 56% were em-dash density, nearly all of it in specs,
+plans, decision logs, evidence reports and handoffs that never ship to a reader; the usual
+follow-up was a paragraph in the pull request explaining the finding away, present in
+roughly one PR in eight. Those documents were never what the writing rules were written
+for. The scanner now skips `.md`, `.mdx`, `.txt` and `.rst` files unless the project lists
+them under `userFacingProse` in `.anti-slop/config.json` (globs relative to the project
+root: `docs/release-notes/**`, `**/*.md`, `README.md`) or sets `proseScope` to `all`;
+`--prose-scope all` and `ANTI_SLOP_PROSE_SCOPE=all` do the same for one run, and the flag
+outranks the variable, which outranks the config. A skipped file prints as
+`skipped (prose scope: user-facing)`, sits under `skipped` in `--format json` (the `files`
+and `totals` shapes are unchanged), is never recorded, and never affects the exit code,
+so a run that skips everything exits 0 and writes nothing. Code files are untouched: their
+comment rules run under either scope. The skill, the `/slop-check` command and the
+`slop-detector` agent carry the same boundary, so an internal document is neither scrubbed
+for em dashes nor reported for them. CI gates that relied on the old default keep it with
+`proseScope: "all"` in the project config or `--prose-scope all` on the command line.
+
+The plugin's own suite runs under `all` through a preload (`test/env.mjs`), because its
+fixtures are prose tells by construction; `test/prose-scope.test.mjs` clears the variable
+to test the default, and the corpus, measurement and dogfood paths pass the scope
+explicitly. `npm run measure` reports the same precision and recall as 2.2.2.
+
 ## 2.2.2 - 2026-09-01
 
 A functioning-and-harm review of the whole plugin, run from one question: does any

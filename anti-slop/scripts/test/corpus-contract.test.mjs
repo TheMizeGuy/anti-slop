@@ -25,8 +25,9 @@ const VALID_RULE_IDS = new Set([
   "em-dash-density",
 ]);
 
+// Prose scope `all`, as in measure.mjs: the corpus labels the rules, not a project's policy.
 const scan = (entry) =>
-  scanContent(readFileSync(join(CORPUS_DIR, entry.file), "utf8"), entry.file);
+  scanContent(readFileSync(join(CORPUS_DIR, entry.file), "utf8"), entry.file, { proseScope: "all" });
 
 // ── Corpus shape ─────────────────────────────────────────────────────────────
 

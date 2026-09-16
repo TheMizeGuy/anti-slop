@@ -6,7 +6,7 @@ A Claude Code plugin that scans for security vulnerabilities, accessibility fail
 
 Loads pattern-matching rules during content generation. The rules target failure modes documented in published research.
 
-On the **writing** side: vocabulary tells (the words whose frequency in published text jumped after 2022, "delve" being the one readers name most often), sycophantic openers, structural cliches, filler phrases.
+On the **writing** side: vocabulary tells (the words whose frequency in published text jumped after 2022, "delve" being the one readers name most often), sycophantic openers, structural cliches, filler phrases. These rules target user-facing prose; internal documents are skipped unless a project opts them in (see Configuration).
 
 On the **code** side: SQL injection, XSS, path traversal, command injection, hardcoded credentials, `eval()`, swallowed errors, premature abstractions, comment slop, N+1 queries, missing timeouts, full library imports, `useEffect` misuse, shallow copy bugs, floating-point money, date/time errors, async race conditions.
 
@@ -102,11 +102,12 @@ Options:
 - `--fail-on any|high|medium|low|none`: minimum severity that triggers a nonzero exit (default `any`)
 - `--record`: write findings to `.anti-slop/scan-log.json` and `scores.json`, which is what `history` and `stats` read back. Default is off; a CI scan leaves no trace in your project directory unless you opt in
 - `--quiet`: suppress all output, exit code only
+- `--prose-scope user-facing|all`: whether prose files (`.md`, `.mdx`, `.txt`, `.rst`) are scanned. The default, `user-facing`, scans only the files listed under `userFacingProse` in `.anti-slop/config.json` and reports the rest as `skipped`; `all` scans every prose file. A skipped file is never reported as clean, is never recorded, and never affects the exit code. `ANTI_SLOP_PROSE_SCOPE` and the config key `proseScope` set the same thing; the flag outranks both
 - `-h`, `--help`: print the usage block, including this option list and the exit codes
 
 Exit codes: `0` clean or below the `--fail-on` threshold, `1` findings at or above the threshold, `2` usage error or unreadable file. The CLI takes files only, with no glob or directory recursion, so compose it with your own file list as in the `git diff` example above.
 
-What a green scan does and does not mean: the scanner runs the part of the catalog a regex can decide, and that is a strict subset. Reachable SQL injection, N+1 queries, missing timeouts, sentence rhythm, and over-engineering are all in the reference catalogs and none of them are scanner rules, so a passing `scan` is a floor rather than a security review. The skill and the `slop-detector` agent read the full catalogs; the coverage matrix in `references/empirical-rankings.md` records which rules sit in which layer.
+What a green scan does and does not mean: the scanner runs the part of the catalog a regex can decide, and that is a strict subset. Reachable SQL injection, N+1 queries, missing timeouts, sentence rhythm, and over-engineering are all in the reference catalogs and none of them are scanner rules, so a passing `scan` is a floor rather than a security review. A skipped prose file is not a scanned one: under the default prose scope, markdown and text files outside `userFacingProse` are reported as skipped and contribute nothing. The skill and the `slop-detector` agent read the full catalogs; the coverage matrix in `references/empirical-rankings.md` records which rules sit in which layer.
 
 #### Deliberate exceptions
 
@@ -125,11 +126,15 @@ Drop a `.anti-slop/config.json` in your project to adjust scanner and dashboard 
 ```json
 {
   "allowedWords": ["leverage", "ecosystem"],
+  "proseScope": "user-facing",
+  "userFacingProse": ["docs/release-notes/**", "README.md"],
   "dashboard": false
 }
 ```
 
 `allowedWords` exempts specific banned words (including hyphenated ones like `cutting-edge`) the scanner would otherwise flag; it does not cover banned phrases. `dashboard` set to `false` disables the web dashboard entirely; omit it (or set it to `true`) to leave the dashboard available on demand.
+
+`proseScope` decides whether prose files (`.md`, `.mdx`, `.txt`, `.rst`) are scanned at all. The writing rules target user-facing prose, and most markdown in a working repository is not that: specs, plans, decision logs, evidence, handoffs, changelogs. Under `user-facing` (the default since 2.3.0) the scanner skips every prose file except those matching a glob in `userFacingProse`, and prints them as `skipped (prose scope: user-facing)` rather than clean. The globs are relative to the project root and support `**` (crosses directories), `*` and `?` (within one path segment): `docs/release-notes/**` opts in a directory, `**/*.md` opts in every markdown file, `README.md` opts in the root README only. `all` restores the pre-2.3.0 behaviour and scans every prose file. Precedence: `--prose-scope`, then the `ANTI_SLOP_PROSE_SCOPE` environment variable, then this key, then the default. Code files are not affected by any of this; their comment rules run under either scope.
 
 ## Walkthrough
 
@@ -161,6 +166,7 @@ A worked example, start to finish:
 |---|---|---|
 | `/slop-check` runs but no scan output appears | The command could not run `node`, or the plugin path is wrong | Confirm `node` is on PATH and that `scripts/slop-scanner.mjs` exists in the installed plugin directory; the scanner needs no install step of its own |
 | Every file scans clean even when it clearly has banned words | A `.anti-slop/config.json` in the project lists the word under `allowedWords`, or the lines carry `anti-slop-allow: <reason>` / `unslop-ignore` (see Deliberate exceptions above) | Check the project's `.anti-slop/config.json` and the inline markers; both are intentional per-project overrides, not bugs. `slop-scanner.mjs stats` lists what is being suppressed |
+| A markdown or text file prints `skipped (prose scope: user-facing)` | Prose files are scanned only when opted in (since 2.3.0; see Configuration) | List the file under `userFacingProse` in `.anti-slop/config.json`, set `proseScope` to `all`, or pass `--prose-scope all` for one run |
 | `dashboard` prints "Dashboard is disabled" | `.anti-slop/config.json` has `"dashboard": false` | Remove the key or set it to `true`, then run the command again |
 | `dashboard` reports "could not be started (no available port)" | No free port in the dashboard's deterministic per-project range | Free up local ports or retry; the dashboard is optional and scan/review still work without it |
 | CI scan exits 2 | A path in the file list is unreadable (often a deleted file from a diff) | Use `--diff-filter=d` on `git diff` before piping into `slop-scanner.mjs scan`, as shown in the CI usage example |

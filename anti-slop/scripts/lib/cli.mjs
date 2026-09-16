@@ -7,8 +7,8 @@
 
 import { readFileSync } from "fs";
 import { extname } from "path";
-import { scanContent, calculateScore, verdict } from "./scan.mjs";
-import { PROSE_EXTENSIONS } from "./rules.mjs";
+import { scanContent, calculateScore, verdict, proseScope, proseScopeFor } from "./scan.mjs";
+import { PROSE_EXTENSIONS, PROSE_SCOPES } from "./rules.mjs";
 import { loadLog, saveLog, saveScores, loadScores } from "./store.mjs";
 
 const FAIL_ON_LEVELS = ["any", "high", "medium", "low", "none"];
@@ -31,6 +31,12 @@ Scan options:
                        scores.json (default: no side effects). history and
                        stats read what this writes
   --quiet              Suppress all output; exit code only
+  --prose-scope SCOPE  user-facing|all -- whether prose files (.md, .mdx, .txt,
+                       .rst) are scanned. user-facing (default) scans only the
+                       files listed under userFacingProse in
+                       .anti-slop/config.json and reports the rest as skipped;
+                       all scans every prose file. ANTI_SLOP_PROSE_SCOPE and the
+                       config key proseScope set the same thing
   -h, --help           Show this message
 
 Scans take files only -- no glob or directory recursion; pipe a file list in:
@@ -46,11 +52,17 @@ Exit codes:
 class UsageError extends Error {}
 
 function parseArgs(argv) {
-  const opts = { format: "text", failOn: "any", record: false, quiet: false, help: false, files: [] };
+  // proseScope stays undefined unless the flag is given, so the environment variable and
+  // the project config keep their say (scan.mjs resolveProseScope).
+  const opts = { format: "text", failOn: "any", record: false, quiet: false, help: false, proseScope: undefined, files: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "-h" || a === "--help") {
       opts.help = true;
+    } else if (a === "--prose-scope") {
+      const v = argv[++i];
+      if (!PROSE_SCOPES.includes(v)) throw new UsageError(`--prose-scope must be one of ${PROSE_SCOPES.join("|")} (got ${v ?? "nothing"})`);
+      opts.proseScope = v;
     } else if (a === "--format") {
       const v = argv[++i];
       if (v !== "text" && v !== "json") throw new UsageError(`--format must be "text" or "json" (got ${v ?? "nothing"})`);
@@ -110,6 +122,15 @@ function recordRun(results, allEntriesByFile) {
   const violations = results.reduce((n, r) => n + r.violations.length, 0);
   const file = results.length === 1 ? results[0].file : `${results.length} files`;
   saveScores([{ score: worst, file, violations }]);
+}
+
+function formatSkippedLine(filePath, scope) {
+  return `${filePath}: skipped (prose scope: ${scope})\n`;
+}
+
+function formatSkippedHint(skipped, scope) {
+  return `${skipped.length} prose file(s) skipped under prose scope ${scope}: list them under ` +
+    "userFacingProse in .anti-slop/config.json, or pass --prose-scope all.\n";
 }
 
 function formatTextReport(result) {
@@ -249,19 +270,30 @@ export async function runCli(argv) {
   }
 
   const results = [];
+  const skipped = [];
   const allEntriesByFile = new Map();
+  const scanOpts = { collectSuppressed: true, proseScope: opts.proseScope };
+  const scope = proseScope(scanOpts);
   for (const filePath of opts.files) {
+    // A prose file outside the project's user-facing list is reported as skipped, never
+    // as clean, and contributes nothing to the totals, the exit code, or --record.
+    if (!proseScopeFor(filePath, scanOpts).inScope) {
+      skipped.push(filePath);
+      continue;
+    }
     const content = contents.get(filePath);
     // Suppressed entries (escape hatch / allowedWords) are logged under --record for rule
     // stats, but never reach output, score, or exit code.
-    const allEntries = scanContent(content, filePath, { collectSuppressed: true });
+    const allEntries = scanContent(content, filePath, scanOpts);
     const violations = allEntries.filter((v) => !v.suppressed);
     const score = calculateScore(violations);
     const tier = classifyVerdict(content, filePath, violations);
     if (opts.record) allEntriesByFile.set(filePath, allEntries);
     results.push({ file: filePath, score, verdict: tier, violations });
   }
-  if (opts.record) recordRun(results, allEntriesByFile);
+  // A run that skipped everything has no score row to write: "0 files" at 50/50 would
+  // read as a clean scan in `history`.
+  if (opts.record && results.length > 0) recordRun(results, allEntriesByFile);
 
   const totals = { files: results.length, violations: 0, bySeverity: { high: 0, medium: 0, low: 0 } };
   for (const r of results) {
@@ -277,12 +309,19 @@ export async function runCli(argv) {
 
   if (!opts.quiet) {
     if (opts.format === "json") {
-      process.stdout.write(`${JSON.stringify({ files: results, totals })}\n`);
+      const skippedRows = skipped.map((file) => ({ file, reason: "prose-scope" }));
+      process.stdout.write(`${JSON.stringify({ files: results, totals, skipped: skippedRows })}\n`);
     } else {
-      for (const r of results) process.stdout.write(formatTextReport(r));
+      // Input order, so a skipped file sits where the caller listed it.
+      const byFile = new Map(results.map((r) => [r.file, r]));
+      for (const filePath of opts.files) {
+        const r = byFile.get(filePath);
+        process.stdout.write(r ? formatTextReport(r) : formatSkippedLine(filePath, scope));
+      }
       // The aggregate was computed and then thrown away in text mode, so a multi-file CI
       // run printed per-file reports and no total. One file needs no summary of itself.
       if (results.length > 1) process.stdout.write(formatTotalsLine(totals));
+      if (skipped.length > 0) process.stdout.write(formatSkippedHint(skipped, scope));
     }
   }
 

@@ -63,9 +63,13 @@ test("the snapshot covers exactly the markdown this plugin ships", () => {
   );
 });
 
+// The shipped documentation is user-facing by definition, so the gate scans it under
+// prose scope `all` explicitly rather than through the suite's environment default.
+const DOGFOOD_OPTS = { proseScope: "all" };
+
 test("every shipped markdown file matches its recorded finding count", () => {
   for (const file of shippedMarkdown()) {
-    const violations = scanContent(readFileSync(join(PLUGIN_ROOT, file), "utf8"), file);
+    const violations = scanContent(readFileSync(join(PLUGIN_ROOT, file), "utf8"), file, DOGFOOD_OPTS);
     assert.equal(
       violations.length,
       EXPECTED_FINDINGS[file],
@@ -82,7 +86,7 @@ test("every shipped markdown file matches its recorded finding count", () => {
 test("the dogfood path has teeth: slop in a shipped-shaped file is still found", () => {
   const slop = "# Overview\n\nIt's not just fast, it's transformative. Let's dive in and delve " +
     "into the tapestry of options :contentReference[oaicite:1]{index=1}.\n";
-  const violations = scanContent(slop, "skills/anti-slop/references/probe.md");
+  const violations = scanContent(slop, "skills/anti-slop/references/probe.md", DOGFOOD_OPTS);
   assert.ok(violations.length >= 4, `expected the scanner to report on a shipped-shaped path, got ${violations.length}`);
   assert.ok(violations.map(ruleName).includes("model-tooling-artifact"));
 });

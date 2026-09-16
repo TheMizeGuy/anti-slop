@@ -1,6 +1,6 @@
 ---
 name: anti-slop
-version: 2.2.2
+version: 2.3.0
 description: Catches agentic development shortcomings in prose, code, and UI output: security holes, accessibility failures, regressions, banned vocabulary, structural cliches, and AI-default design tells. Applies whenever output is produced or revised. Activates on "write", "create", "build", "implement", "fix", "generate", "review", "refactor", "design", "edit". Context-aware: yields to domain conventions and project requirements.
 ---
 
@@ -24,7 +24,7 @@ The plugin ships three layers. Route by what the target is and what evidence is 
 | Layer | Trigger | How to run it |
 |---|---|---|
 | Inline self-check | Output you wrote or edited in this turn, before you hand it back | § Quick Self-Check below; `references/self-check.md` for the full checklist by output type |
-| Deterministic scan | The target is one or more files on disk | `node "${CLAUDE_PLUGIN_ROOT}/scripts/slop-scanner.mjs" scan <file...>` |
+| Deterministic scan | The target is one or more files on disk | `node "${CLAUDE_PLUGIN_ROOT}/scripts/slop-scanner.mjs" scan <file...>`; a prose file the project has not listed under `userFacingProse` prints as skipped (§ Prose scope) |
 | `slop-detector` agent | The target is a diff, a PR, a long response, or the structural tells above | Dispatch the `slop-detector` agent, or run `/slop-check <target>`, which runs both layers and reports both scores. Name the reference library in the dispatch prompt: `${CLAUDE_PLUGIN_ROOT}/skills/anti-slop/references` |
 
 The scanner needs no install and has zero runtime dependencies. It exits 0 when clean, 1 on findings, 2 on a usage error, and takes `--format json`, `--fail-on <level>`, and `--quiet`. It reads files only, never a directory or a glob, so pipe a file list in:
@@ -34,6 +34,12 @@ git diff --name-only --diff-filter=d | xargs node "${CLAUDE_PLUGIN_ROOT}/scripts
 ```
 
 Run both layers whenever both apply, and say which one produced a given score. For code, build and type-check before either: hallucinated APIs are the second-ranked code tell by verified share and only a compiler catches them.
+
+## Prose scope
+
+The writing rules govern user-facing prose: UI copy and microcopy, notifications and emails, marketing and store listings, release notes and tester-facing build notes, and public documentation. Internal documents are out of scope: specs, plans, ADRs and decision logs, evidence and audit reports, handoffs, changelogs, contributor docs, and CLAUDE.md. Do not scan them for writing tells, do not scrub em dashes or vocabulary in them, and do not report their density as a finding or explain it away in a pull request. Code files keep their comment rules on every surface.
+
+The scanner draws the same line: a `.md`, `.mdx`, `.txt`, or `.rst` file prints as `skipped (prose scope: user-facing)` unless the project lists it under `userFacingProse` in `.anti-slop/config.json` (globs relative to the project root, such as `docs/release-notes/**`) or sets `proseScope` to `all`. A skipped file is neither clean nor a finding; leave it alone. Pass `--prose-scope all` only when the user asks for a document to be reviewed as user-facing copy.
 
 ## Scope and Limitations
 
@@ -76,7 +82,7 @@ The banned-words list marks domain-specific terms inline. See the caveat at the 
 
 ### Vocabulary
 
-Avoid words from `references/banned-words.md` in general prose. These are statistically overrepresented in AI text. Replace with plain, specific language: "use" not "utilize," "start" not "embark," "show" not "showcase," "important" not "pivotal." Do not always pick the first alternative listed; vary replacements across outputs. When tempted by a fancy-sounding word, pick the one a person would say out loud.
+Avoid words from `references/banned-words.md` in user-facing prose (§ Prose scope). These are statistically overrepresented in AI text. Replace with plain, specific language: "use" not "utilize," "start" not "embark," "show" not "showcase," "important" not "pivotal." Do not always pick the first alternative listed; vary replacements across outputs. When tempted by a fancy-sounding word, pick the one a person would say out loud.
 
 ### Phrases
 
@@ -96,7 +102,7 @@ Mix sentence lengths. No three consecutive sentences of similar length. Break th
 
 ### Punctuation
 
-Use em dashes for their correct grammatical purpose (parenthetical insertions, abrupt breaks). Do not use them as a general-purpose connector substituting for commas, colons, or semicolons. Density is the tell, and the scanner's threshold is the measured one: **five or more em dashes in the document AND at least four per 1,000 words**, counted after code blocks, quotes, and backticked spans are stripped. Both conditions must hold, so a lone correct dash is clean and a long document is judged on rate rather than raw count. Do not self-check against a lower number; correcting below the measured threshold produces the em-dash-dodging contortion that is itself a tell (`references/writing-patterns.md` § The Over-Corrected Register). Limit exclamation marks to one per 1000 words.
+In user-facing prose (§ Prose scope), use em dashes for their correct grammatical purpose (parenthetical insertions, abrupt breaks). Do not use them as a general-purpose connector substituting for commas, colons, or semicolons. Density is the tell, and the scanner's threshold is the measured one: **five or more em dashes in the document AND at least four per 1,000 words**, counted after code blocks, quotes, and backticked spans are stripped. Both conditions must hold, so a lone correct dash is clean and a long document is judged on rate rather than raw count. Do not self-check against a lower number; correcting below the measured threshold produces the em-dash-dodging contortion that is itself a tell (`references/writing-patterns.md` § The Over-Corrected Register). Limit exclamation marks to one per 1000 words.
 
 ### Trust and Directness
 
@@ -173,10 +179,10 @@ This is the canonical minimum check. `references/self-check.md` carries the full
 Before finalizing any output, run through:
 
 - First word of the response: sycophantic or throat-clearing?
-- No banned words from `references/banned-words.md`, judged by concentration rather than a lone hit?
+- No banned words from `references/banned-words.md` in user-facing prose, judged by concentration rather than a lone hit?
 - Sentence lengths vary?
 - Not forcing lists to exactly three items?
-- Em dashes counted? (the scanner fires at five or more AND four per 1,000 words; a lone correct dash is clean)
+- Em dashes counted in user-facing prose? (the scanner fires at five or more AND four per 1,000 words; a lone correct dash is clean; an internal document is out of scope)
 - No "It's not just X, it's Y" antithesis (the strongest sentence tell)?
 - Active voice with concrete subjects (passive fine when appropriate)?
 - Uncertainty stated where it is real? (what was not verified, what could still fail; false confidence is the mirror tell)

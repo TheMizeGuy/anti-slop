@@ -1,4 +1,5 @@
-import { extname } from "path";
+import { extname, isAbsolute, relative, sep } from "path";
+import { realpathSync } from "fs";
 import { loadProjectConfig } from "./store.mjs";
 import {
   BANNED_WORDS,
@@ -17,6 +18,8 @@ import {
   EMOJI_FILE_GUARD,
   EMOJI_ESCALATE_COUNT,
   PROSE_EXTENSIONS,
+  PROSE_SCOPES,
+  DEFAULT_PROSE_SCOPE,
   CODE_SURFACE_EXTENSIONS,
   WEB_SURFACE_EXTENSIONS,
   NATIVE_UI_EXTENSIONS,
@@ -342,7 +345,89 @@ function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle,
   return suppressed;
 }
 
+// ── Prose scope (rules.mjs PROSE_SCOPES) ──
+// Precedence: the caller's opts (the CLI flag), then ANTI_SLOP_PROSE_SCOPE, then the
+// project config, then the default. An unrecognised value at any level is ignored rather
+// than failing the scan, the same way a malformed config file reads as empty.
+function resolveProseScope(opts, config) {
+  for (const candidate of [opts.proseScope, process.env.ANTI_SLOP_PROSE_SCOPE, config.proseScope]) {
+    if (PROSE_SCOPES.includes(candidate)) return candidate;
+  }
+  return DEFAULT_PROSE_SCOPE;
+}
+
+export function proseScope(opts = {}) {
+  return resolveProseScope(opts, loadProjectConfig());
+}
+
+// A small glob dialect, enough for a config file: `**` crosses directories, `*` and `?`
+// stay inside one segment, everything else is literal. Anchored to the whole path, so
+// `docs/**` takes a directory, `**/*.md` takes every markdown file, and `README.md` takes
+// the root README and nothing else. No dependency, and no `path.matchesGlob`, which
+// still prints an experimental warning on Node 22.
+export function globToRegExp(glob) {
+  let source = "";
+  for (let i = 0; i < glob.length; i++) {
+    const c = glob[i];
+    if (c === "*" && glob[i + 1] === "*") {
+      i += 1;
+      if (glob[i + 1] === "/") { i += 1; source += "(?:.*/)?"; } else source += ".*";
+    } else if (c === "*") {
+      source += "[^/]*";
+    } else if (c === "?") {
+      source += "[^/]";
+    } else {
+      source += c.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+    }
+  }
+  return new RegExp(`^${source}$`);
+}
+
+function toPosix(p) {
+  return String(p).split(sep).join("/").replace(/^\.\//, "");
+}
+
+// The path as the caller gave it, plus its project-relative form when it was absolute:
+// `git diff --name-only` hands the CLI relative paths, an editor or a command hands it
+// absolute ones, and one config has to match both. Both ends are also resolved through
+// realpath, because macOS hands out symlinked temp and volume paths (/var, /tmp) while
+// getcwd() returns the resolved form, and `relative()` across that seam yields `../..`.
+function candidatePaths(filePath) {
+  const paths = new Set([toPosix(filePath)]);
+  if (!isAbsolute(filePath)) return [...paths];
+  const roots = new Set([process.cwd()]);
+  const targets = new Set([filePath]);
+  try { roots.add(realpathSync(process.cwd())); } catch { /* cwd gone: the given path still counts */ }
+  try { targets.add(realpathSync(filePath)); } catch { /* not on disk: an embedder scanning a buffer */ }
+  for (const root of roots) {
+    for (const target of targets) {
+      const rel = relative(root, target);
+      if (rel && !rel.startsWith("..") && !isAbsolute(rel)) paths.add(toPosix(rel));
+    }
+  }
+  return [...paths];
+}
+
+// Exported for the CLI, which reports a skipped prose file as skipped rather than clean:
+// a "clean" line claims the file was read.
+export function proseScopeFor(filePath, opts = {}) {
+  const prose = PROSE_EXTENSIONS.has(extname(filePath).toLowerCase());
+  const config = loadProjectConfig();
+  const scope = resolveProseScope(opts, config);
+  if (!prose || scope === "all") return { scope, prose, inScope: true };
+  const globs = Array.isArray(config.userFacingProse) ? config.userFacingProse : [];
+  const paths = candidatePaths(filePath);
+  const inScope = globs.some((glob) => {
+    const re = globToRegExp(toPosix(glob));
+    return paths.some((p) => re.test(p));
+  });
+  return { scope, prose, inScope };
+}
+
 // ── Scanner ──
+// opts.proseScope ("user-facing" | "all", default per proseScopeFor): under "user-facing"
+// a prose file the project has not opted in returns no findings at all, suppressed
+// entries included, so nothing is scored or recorded for it.
 // opts.collectSuppressed (default false): when true, additionally appends entries for
 // findings that a deliberate suppression choice hid -- an escape-hatched line or an
 // allowedWords config entry -- flagged { suppressed: true, suppressedBy }. Default-off
@@ -351,6 +436,7 @@ export function scanContent(content, filePath, opts = {}) {
   const violations = [];
   const ext = extname(filePath).toLowerCase();
   const isProse = PROSE_EXTENSIONS.has(ext);
+  if (isProse && !proseScopeFor(filePath, opts).inScope) return violations;
   // Markup-with-script surfaces (.html/.htm/.vue/.svelte/.astro) are code surfaces too:
   // their <script> blocks are the most common home for the very defects the code table
   // exists to catch, and <img> -- the whole target syntax of img-no-dimensions -- lives

@@ -50,8 +50,10 @@ function scanLabeled(entry, corpusDir) {
   // Pass the LABELED path (not the resolved absolute path) as the scan's filePath: this
   // is what decides extension-based modality detection and the isTestFile skipInTests
   // gate, so a corpus author's choice of path in labels.json is what actually governs
-  // scanner behavior for that sample -- exactly like a real project file would.
-  const violations = scanContent(content, entry.file);
+  // scanner behavior for that sample -- exactly like a real project file would. The
+  // prose fixtures are labeled tells, so they are scanned under prose scope `all`: the
+  // measurement is of the rules, and the user-facing default is a project policy.
+  const violations = scanContent(content, entry.file, { proseScope: "all" });
   const fired = new Set(violations.map(ruleName));
   const expected = new Set(expectedIds(entry));
   const tp = [...fired].filter((r) => expected.has(r));
