@@ -8,11 +8,9 @@ Claude Code plugin that catches agentic-dev shortcomings (security, accessibilit
 - `.claude-plugin/` at root — marketplace manifests.
 - `anti-slop/scripts/slop-scanner.mjs` — the CLI entry point and the module that re-exports the rule tables (never rename; the command and docs point at this path). Subcommands: `scan`, `history`, `stats`, `dashboard`. Logic lives in `scripts/lib/`: `rules.mjs` (rule data + precompiled regexes), `scan.mjs` (scanContent/score/verdict), `store.mjs` (per-project `.anti-slop/` data + `~/.anti-slop/registry.json`; `ANTI_SLOP_REGISTRY_DIR` env override for tests), `dashboard.mjs` + `dashboard.html` (on-demand stats dashboard).
 
-## Model policy (future-proof — do not regress)
+## Model policy
 
-- The `slop-detector` agent does not pin a model — its frontmatter reads `model: inherit`, so it always runs on the session model, whichever Claude model the invoking session uses now or in the future.
-- Never replace `inherit` with a pinned model name or a dated model ID. If an override is ever truly unavoidable, use an undated alias (`opus`, `sonnet`) and record why here.
-- Nothing in this plugin may call out to, or wait on, a specific model.
+- Agent frontmatter carries no model pin. The dispatching session chooses the model per dispatch (global `~/.claude/CLAUDE.md` § Models and agents); effort is never pinned.
 
 ## Commands
 
