@@ -2,6 +2,131 @@
 
 All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `anti-slop/.claude-plugin/plugin.json`, the SKILL.md frontmatter, and `anti-slop/scripts/package.json` — all five are bumped together. (It was five, then four when 2.0.0 removed the MCP Server constructor, then five again when 2.2.1 brought the scanner's package.json under the same gate.)
 
+## 2.4.0 - 2026-09-22
+
+A calibrated-judgment audit of every surface the plugin puts in front of a model, and the
+fixes it produced. TypeSafe's Jev model (typed yes/no and scored judgments with
+probabilities; it never generates text) scored every heading-delimited section of SKILL.md,
+the agent, the command and the thirteen references on eleven conditions (forbids a
+legitimate choice, worse if followed literally, names no alternative, unclear boundary, no
+reason given, internal conflict, padding, a cosmetic pattern graded as a defect, needs an
+input it does not supply, an absolute rule with an unstated exception, gives a method) and
+a three-level action score; every banned word and phrase on whether it is ordinary English
+and whether the replacement loses meaning; every scanner rule on whether its description
+names a fix and whether a reader would understand it; sixteen doctrine pairs across files
+on whether they conflict; and forty-five failures of agentic development on whether the
+catalogue covers them. The harness is `tools/jev-audit/` at the repo root (a maintainer
+tool, outside the shipped tree), and every flagged item was read by hand before it became
+an edit. Before and after, on the same model (`jev-1.13.0`) with unchanged sections served
+from cache so the comparison isolates the edits:
+
+| Measure | Before | After |
+|---|--:|--:|
+| Mean action score over all sections (0 leave, 1 edit, 2 rewrite) | 0.67 | 0.59 |
+| Sections at edit or above / at rewrite | 130 / 3 | 100 / 1 |
+| Doctrine pairs read as conflicting (0.65 or above) | 2 | 0 |
+| Banned-word entries read as ordinary English or the precise term | 155 of 223 | 28 of the 55 that stay banned; the 84 plain-word preferences are no longer bans |
+| Scanner rules whose description names a fix (mean probability) | 0.16 | 0.78 |
+| Scanner rules a reader understands from the description alone (mean probability) | 0.40 | 0.63 |
+| Gap candidates uncovered and in scope (of 45) | 29 | 5 |
+
+**Every scanner finding now carries its fix.** The doctrine in
+`confidence-and-evidence.md` § The remediation floor has said since 1.7.0 that a finding
+which only names the offence gets closed by deletion, and the scanner's own text output
+printed exactly that: `[SEVERITY] desc`, with no rule id, no line, no confidence class and
+no remediation. Every rule in `rules.mjs` now declares a `fix` (the four inlined families,
+banned words, banned phrases, em-dash density and emoji, carry one each as constants), every
+violation object carries `fix` and `line`, and the text report prints
+`[SEVERITY] desc  (rule-id, line N, Confidence class)` followed by an indented `fix:` line.
+`test/rule-metadata.test.mjs` fails on a rule without one. Descriptions that leaned on
+internal jargon or overstated certainty were reworded (`uppercase-overline` no longer cites
+"Strongest-10 #4"; `innerhtml-usage` reads "XSS if the value is untrusted").
+
+**Three new scanner rules**, each an accessibility or type-safety defect generated code
+commonly ships and no rule caught, each with a positive fixture and a clean control in the
+corpus: `viewport-zoom-lock` (a viewport meta with `user-scalable=no`, `user-scalable=0`
+or `maximum-scale=1`, WCAG 1.4.4; Hard defect, medium), `positive-tabindex` (`tabindex` or
+JSX `tabIndex` set to a positive integer, WCAG 2.4.3; Quality defect, medium; `0` and `-1`
+stay clean) and `cast-to-any` (a TypeScript `as any` cast; Quality defect, medium, skipped
+in test files, case-sensitive so Kotlin and Swift `as Any` never match). `node measure.mjs` before and after: precision 100% both, recall 99.2% both (117 and 120 true positives; the one known false negative is unchanged), baseline regenerated with exactly three new rows.
+
+**The banned-words list is three tiers, and the third is not a ban.** Jev read 155 of the
+223 entries as ordinary English or the precise term, and the file's own framing ("avoid
+these in general prose") contradicted the concentration doctrine three paragraphs down.
+`banned-words.md` now states the split the scanner and `self-check.md` already used:
+single-hit tells (the 32 stems `BANNED_WORDS` flags on sight), cluster tells (the 23 stems
+`LOW_CONFIDENCE_WORDS` flags at two or more) and plain-word preferences, which are never a
+finding and never reported. Thirty entries with no inflated sense and a meaning-changing
+replacement (`validate`, `optimize`, `mitigate`, `aggregate`, `interpret`, `differentiate`,
+`correlate`, `quantify`, `benchmark`, `align`, `reconcile`, `elaborate`, `deliberate`,
+`formulate`, `ascertain`, `tailor`, `framework` and the rest) are deleted outright; the
+scanner lists are unchanged. `banned-phrases.md` no longer opens with "never use any of
+these": it sorts its sections into single-occurrence tells, position tells (the reflexive
+first or last sentence) and plain-word preferences, and nine sections gain a "not a tell
+when" line (a transition that does its job once, an attribution followed by a citation, a
+declarative followed by the specifics). SKILL.md § Vocabulary and the agent's check list
+carry the same tiers.
+
+**Doctrine conflicts, resolved at the weaker side.** Two pairs Jev read as conflicting
+above the flag line, one more in the review band, and a hand read confirmed all three: the self-check asked for active voice "throughout" while
+SKILL.md allows the passive when the agent is unknown; the self-check banned bold in running
+prose while the pedagogical exception allows a key term; `writing-patterns.md` told every
+writer to use contractions while the register table says a formal spec takes none. Each
+checklist item or fix now carries its exception. Two more were softened below the flag
+line: `design-patterns.md` recommended "warm colors" and "serif fonts" two sections after
+naming cream-and-warm-accent and the fashionable serif as the current default, and both
+"Instead" lines now say anchor on the brand or a stated reason instead.
+
+**Rules that forbade a legitimate choice, or gave no alternative.** Every file's "avoid
+all of these" preamble is replaced by how to apply the file (class, presence versus
+concentration, register, the escape hatch). Exceptions added where a rule was absolute:
+passive voice, binary contrasts that correct an assumption, fragments in a casual register,
+recapping an ambiguous question in one clause, elegant variation between things that
+differ, a helper used once that is complex enough to deserve a name, a `!important` against
+a third-party widget, a bold key term in a tutorial, exclamation marks in dialogue, a
+feature flag removed because the task is its retirement, a log line removed with its code
+path, a default changed because the request asked. Alternatives added where a pattern had
+none: testing the mock and trivial tests gain GOOD examples, race conditions gain the
+cache-the-promise form, the strongest-ten list points at each entry's remediation. Two
+sections pushed toward worse output and are rewritten: `design-patterns.md` § Over-Engineering
+Simple Layouts used `repeat(auto-fit, minmax(300px, 1fr))` as its BAD example, the exact
+form § Fixed Geometry recommends; and § Identical Testimonial Cards advised mixing star
+ratings "for authenticity", which is fabrication. Pricing psychology advice ("$27, $147")
+is gone; the pricing, CTA, dashboard, footer, skeleton and 404 entries now give a test
+instead of a second set of defaults. `writing-patterns.md` § Temporal Flatness says never to
+invent a citation to satisfy it, and § Emoji Abuse no longer describes the block-list
+coverage 2.3.1 removed.
+
+**Gaps closed in the catalogue** (doc entries; the coverage matrix in
+`empirical-rankings.md` records which have a rule): resource leaks, blocking calls in async
+code, catastrophic regex backtracking (with the plugin's own 2.3.2 glob as the example),
+multi-step writes without a transaction, log levels, hardcoded environment values,
+module-level mutable state, open redirects, shell scripts without `set -euo pipefail`,
+unpinned dependencies and `latest` tags, expand-migrate-contract for schema changes,
+comments addressed to the user, physical CSS properties where logical ones belong (RTL),
+hardcoded user-visible strings, inputs without a matching `type` or `inputmode`, infinite
+scroll with no exit, the invented "Trusted by" logo bar, and a new `writing-patterns.md`
+§ Agent Closing Messages (verification claimed but not shown, a next-steps list that hands
+back work the request covered, a recap of tool output the reader saw, the trailing offer),
+which the `slop-detector` agent now checks on a `last response` target. SKILL.md
+§ Error Handling defines what "swallows" means and names the fire-and-forget exception,
+§ Rhythm and Structure carries the countable form of its rules and scopes them to
+expository prose, and § Design and UI Rules opens with the anchor rule before the list of
+tells. `confidence-and-evidence.md` reconciles the two definitions of severity the doctrine
+carried (functional cost for a defect, strength of the unchosen pattern for a smell).
+
+Of the five candidates the gap battery still reads as uncovered, four are covered by a
+sentence inside a larger section (the invented logo bar, a new endpoint's auth and rate
+limit, verification claimed but not run, dependency pinning) that the battery's
+first-sentence summary of each section does not reach, and one, print stylesheets, is a
+decision not to add.
+
+Not changed, by decision: the scanner's word lists, severities and confidence classes,
+which the corpus baseline measures and which the audit read on descriptions alone; print
+stylesheets and terminal-UI conventions, which Jev placed outside the stated scope; and the
+`Authenticity` review dimension, which the audit did not read as conflicting with the
+plugin's stated goal.
+
 ## 2.3.2 - 2026-09-16
 
 Fixes from an independent review of 2.3.0 and 2.3.1 (a second reviewer with the diff, the

@@ -1,6 +1,6 @@
 ---
 name: anti-slop
-version: 2.3.2
+version: 2.4.0
 description: Catches agentic development shortcomings in prose, code, and UI output: security holes, accessibility failures, regressions, banned vocabulary, structural cliches, and AI-default design tells. Applies whenever output is produced or revised. Activates on "write", "create", "build", "implement", "fix", "generate", "review", "refactor", "design", "edit". Context-aware: yields to domain conventions and project requirements.
 ---
 
@@ -27,7 +27,7 @@ The plugin ships three layers. Route by what the target is and what evidence is 
 | Deterministic scan | The target is one or more files on disk | `node "${CLAUDE_PLUGIN_ROOT}/scripts/slop-scanner.mjs" scan <file...>`; a prose file the project has not listed under `userFacingProse` prints as skipped (§ Prose scope) |
 | `slop-detector` agent | The target is a diff, a PR, a long response, or the structural tells above | Dispatch the `slop-detector` agent, or run `/slop-check <target>`, which runs both layers and reports both scores. Name the reference library in the dispatch prompt: `${CLAUDE_PLUGIN_ROOT}/skills/anti-slop/references` |
 
-The scanner needs no install and has zero runtime dependencies. It exits 0 when clean, 1 on findings, 2 on a usage error, and takes `--format json`, `--fail-on <level>`, and `--quiet`. It reads files only, never a directory or a glob, so pipe a file list in:
+The scanner needs no install and has zero runtime dependencies. It exits 0 when clean, 1 on findings, 2 on a usage error, and takes `--format json`, `--fail-on <level>`, and `--quiet`. Every finding carries its rule id, line, confidence class, and a one-line fix: apply the fix, and never delete the construct to clear the match. It reads files only, never a directory or a glob, so pipe a file list in:
 
 ```bash
 git diff --name-only --diff-filter=d | xargs node "${CLAUDE_PLUGIN_ROOT}/scripts/slop-scanner.mjs" scan
@@ -69,7 +69,7 @@ These rules target general-purpose output. Domain-specific work overrides vocabu
 - **Pedagogical/teaching contexts**: hand-holding phrases, rephrasing ("In other words..."), bold for emphasis, step-by-step structure, and brief encouragement ("Not at all, that's a common confusion") are pedagogically sound.
 - **Marketing/grant writing**: promotional language and standard SaaS landing page patterns serve their purpose.
 - **ML/data science**: "optimize," "aggregate," "converge," "benchmark," "enhance," "calibrate," "differentiate," "extrapolate," "correlate" are precise technical vocabulary.
-- **Instruction documents** (CLAUDE.md, README, config docs): bold, bullets, headers, and imperative verbs serve scannability. Formatting rules for prose do not apply.
+- **Instruction documents** (CLAUDE.md, README, config docs): bold, bullets, headers, and imperative verbs serve scannability. Formatting rules for prose do not apply. The vocabulary and structure rules still do: a public README is user-facing prose under § Prose scope, and only the formatting exemption reaches it.
 - **Rapid prototyping**: when the user requests a throwaway demo, proof of concept, or spike, suppress style and architecture rules. Keep security rules active.
 - **Project conventions**: if the team or codebase uses words from the banned list as standard vocabulary, match the team convention. The plugin yields to project-level CLAUDE.md rules.
 - **Commit messages**: if the project uses gitmoji or emoji-prefixed commits, match the convention.
@@ -82,11 +82,11 @@ The banned-words list marks domain-specific terms inline. See the caveat at the 
 
 ### Vocabulary
 
-Avoid words from `references/banned-words.md` in user-facing prose (§ Prose scope). These are statistically overrepresented in AI text. Replace with plain, specific language: "use" not "utilize," "start" not "embark," "show" not "showcase," "important" not "pivotal." Do not always pick the first alternative listed; vary replacements across outputs. When tempted by a fancy-sounding word, pick the one a person would say out loud.
+`references/banned-words.md` splits its list in three, and the split is the rule. Single-hit tells (`delve`, `embark`, `showcase`, `pivotal`, `tapestry`) are avoided in user-facing prose (§ Prose scope) on one occurrence. Cluster tells (`utilize`, `leverage`, `robust`, `comprehensive`, `nuanced`) pass once and are thinned when two or more gather in a document. The rest of the file is a plain-word preference and never a finding, so a sentence is not rewritten to dodge `validate` or `optimize`. Replace with plain, specific language: "use" not "utilize," "start" not "embark." Do not always pick the first alternative listed; vary replacements across outputs. When tempted by a fancy-sounding word, pick the one a person would say out loud, and keep the fancy word when it is the precise term.
 
 ### Phrases
 
-Avoid phrases from `references/banned-phrases.md`. No throat-clearing openers ("Here's the thing:"). No emphasis crutches ("Let that sink in."). No filler ("It's worth noting"). No meta-commentary ("Let me walk you through...").
+Avoid phrases from `references/banned-phrases.md`. No throat-clearing openers ("Here's the thing:"). No emphasis crutches ("Let that sink in."). No filler ("It's worth noting"). No meta-commentary ("Let me walk you through..."). The file sorts them into single-occurrence tells, position tells (the reflexive first or last sentence of a piece), and plain-word preferences judged by clustering; a phrase in the middle of a conversation that carries a real turn is ordinary English.
 
 ### Sycophancy
 
@@ -98,11 +98,11 @@ Active voice with concrete subjects in most sentences. Passive voice is fine whe
 
 ### Rhythm and Structure
 
-Mix sentence lengths. No three consecutive sentences of similar length. Break the uniform paragraph template (topic, explanation, example, transition). Don't force lists to exactly three items, and don't artificially avoid three either. The tell is when *every* list in a piece lands on three. No binary contrasts ("Not X. Y."; just state Y). No hedging seesaws.
+Vary sentence length on purpose: in any passage longer than five sentences, at least one under ten words and one over twenty-five, and no run of three within three words of each other (`references/self-check.md` § Rhythm carries the countable form). Break the uniform paragraph template (topic, explanation, example, transition); read only the first sentence of each paragraph, and if every one announces a topic and none makes a claim, the template is running the piece. Don't force lists to exactly three items, and don't artificially avoid three either; the tell is when *every* list in a piece lands on three. A binary contrast ("Not X. Y.") that corrects an assumption the reader held is information; one performed for drama on an undisputed point is the tell, so state Y. A hedging seesaw (position, hedge, hedge back) says nothing; take the position and give the counterpoint one sentence. These are expository-prose rules: casual and conversational registers keep their fragments and their rhythm (`references/choosing-with-intent.md`).
 
 ### Punctuation
 
-In user-facing prose (§ Prose scope), use em dashes for their correct grammatical purpose (parenthetical insertions, abrupt breaks). Do not use them as a general-purpose connector substituting for commas, colons, or semicolons. Density is the tell, and the scanner's threshold is the measured one: **five or more em dashes in the document AND at least four per 1,000 words**, counted after code blocks, quotes, and backticked spans are stripped. Both conditions must hold, so a lone correct dash is clean and a long document is judged on rate rather than raw count. Do not self-check against a lower number; correcting below the measured threshold produces the em-dash-dodging contortion that is itself a tell (`references/writing-patterns.md` § The Over-Corrected Register). Limit exclamation marks to one per 1000 words.
+In user-facing prose (§ Prose scope), use em dashes for their correct grammatical purpose (parenthetical insertions, abrupt breaks). Do not use them as a general-purpose connector substituting for commas, colons, or semicolons. Density is the tell, and the scanner's threshold is the measured one: **five or more em dashes in the document AND at least four per 1,000 words**, counted after code blocks, quotes, and backticked spans are stripped. Both conditions must hold, so a lone correct dash is clean and a long document is judged on rate rather than raw count. Do not self-check against a lower number; correcting below the measured threshold produces the em-dash-dodging contortion that is itself a tell (`references/writing-patterns.md` § The Over-Corrected Register). In expository prose, limit exclamation marks to one per 1,000 words; dialogue and casual chat keep their own.
 
 ### Trust and Directness
 
@@ -128,7 +128,7 @@ No abstraction layers for single implementations. No factory/builder/strategy pa
 
 ### Error Handling
 
-No try-catch that swallows errors. No null checks for values the type system guarantees (but do check at trust boundaries). Handle errors at boundaries, not at every internal layer. No catch-all handlers that log and continue; propagate or handle meaningfully.
+A catch block swallows an error when it neither rethrows, returns a value the caller checks, nor records enough context to act on. That is a bug rather than a style point, because the failure now surfaces somewhere else with its cause gone. Handle errors at boundaries (the request handler, the job runner, the CLI entry) rather than at every internal layer: each intermediate catch hides the origin and duplicates the log line. A catch-all that logs and continues is acceptable only on a fire-and-forget path where the caller has agreed that a missing result is a result. No null checks for values the type system guarantees, but do check at trust boundaries (API input, database rows, deserialized data), where declared types enforce nothing.
 
 ### Hygiene
 
@@ -150,7 +150,7 @@ For code anti-patterns with examples, see `references/code-patterns.md`. For Rea
 
 ## Design and UI Rules
 
-No purple-to-blue gradients (Tailwind's default). No unquestioned default sans, which now means Space Grotesk, Manrope, Outfit, and DM Sans as much as Inter and Roboto. No cookie-cutter hero sections. No three-column icon grids. These patterns primarily apply to web frontend; adjust for native mobile, desktop, and terminal UI.
+The rule that does more than every tell below: anchor the design on something real (the brand, a reference site, a screenshot the user likes) and match it; with no anchor, commit to a named direction and say what was chosen (`references/choosing-with-intent.md`). The tells are what an unanchored page reaches for. No purple-to-blue gradients (Tailwind's default). No unquestioned default sans, which now means Space Grotesk, Manrope, Outfit, and DM Sans as much as Inter and Roboto. No cookie-cutter hero sections. No three-column icon grids. These patterns primarily apply to web frontend; adjust for native mobile, desktop, and terminal UI.
 
 The strongest *emerging* design tell is the cream-background + serif-display + warm-accent "tasteful default" (sage green through 2025, rusty orange in 2026) that the previous wave of anti-AI advice converged on; it now reads as AI faster than purple. Empirically the loudest complaints are generic sameness, the un-themed shadcn/Tailwind default kit, and purple — not the memes (bento grids, mesh gradients), which the data clears as low-signal or rejected. See `references/design-patterns.md`.
 
@@ -179,7 +179,7 @@ This is the canonical minimum check. `references/self-check.md` carries the full
 Before finalizing any output, run through:
 
 - First word of the response: sycophantic or throat-clearing?
-- No banned words from `references/banned-words.md` in user-facing prose, judged by concentration rather than a lone hit?
+- No single-hit words from `references/banned-words.md` in user-facing prose, and cluster words at most once? (the plain-word preferences in that file are not a check)
 - Sentence lengths vary?
 - Not forcing lists to exactly three items?
 - Em dashes counted in user-facing prose? (the scanner fires at five or more AND four per 1,000 words; a lone correct dash is clean; an internal document is out of scope)
@@ -192,7 +192,7 @@ Before finalizing any output, run through:
 - No unnecessary abstractions or premature patterns?
 - No unverified APIs or invented packages? (build or type-check first; no scan sees these)
 - No SQL injection, XSS, hardcoded credentials, or eval with user input?
-- UI: focus indicator present, alt text written, contrast checked?
+- UI: focus indicator present, alt text written, contrast checked, pinch zoom not locked, no positive tabindex?
 - Design choices specific to the project, not AI defaults?
 - If modifying existing code: changed only what was asked? Tests fix the code, not weakened assertions?
 
