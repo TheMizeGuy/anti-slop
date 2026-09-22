@@ -1,0 +1,55 @@
+// Coverage-gap candidates: failures of agentic development that the plugin might not
+// cover. Code proposes; Jev judges coverage against the catalogue and scope.
+export const GAP_CANDIDATES = [
+  // prose and agent messages
+  "Apologising reflexively in a response ('I apologize for the confusion') before answering",
+  "Converting prose into a table or a three-level nested bullet hierarchy where sentences would do",
+  "Bolded lead-in labels on every bullet ('**Performance:** the cache...') used as a paragraph template",
+  "A 'Note:' or admonition callout box inserted into documentation for ordinary sentences",
+  "Ending an agent session with a 'next steps' list that hands unfinished work back to the user instead of finishing it",
+  "Reporting that tests passed or a check ran when it was not actually run",
+  "Comments in code that address the user or the conversation ('as requested', 'per your instructions', 'as discussed')",
+  // code correctness and hygiene
+  "Type casts that silence the compiler ('as any', 'as unknown as T', a non-null assertion '!') instead of fixing the type",
+  "Snapshot tests or assertions on 'was called' as the only tests for new behaviour",
+  "Reimplementing a helper that already exists elsewhere in the repository instead of reusing it",
+  "Adding a package dependency for something a few lines of local code would do",
+  "Hardcoded localhost URLs, ports, file paths, or environment-specific values in application code",
+  "Global mutable state or a module-level singleton introduced to share data between functions",
+  "Resource leaks: files, sockets, or database connections opened without a context manager or a close in a finally block",
+  "Blocking calls inside async code (time.sleep in an async function, synchronous file or network I/O on the event loop)",
+  "A regular expression with nested quantifiers that backtracks catastrophically on crafted input",
+  "Multi-step database writes with no transaction, so a failure midway leaves partial data",
+  "A schema migration with no down migration or one that drops or renames a column in a single step",
+  "Unpinned dependency versions, 'latest' tags in Dockerfiles, or lockfiles not committed",
+  // security
+  "TLS certificate verification disabled (verify=False, rejectUnauthorized: false) or debug mode left on in production configuration",
+  "Passwords hashed with MD5 or SHA-1, or compared with a non-constant-time comparison",
+  "JSON Web Tokens accepted with the 'none' algorithm, no expiry check, or a secret hardcoded in source",
+  "An open redirect: a URL taken from the request used as a redirect target without validation",
+  "XML parsed with external entities enabled (XXE)",
+  "A new public endpoint added with no rate limiting or no authentication at all",
+  "Shell scripts without 'set -euo pipefail', so a failed command does not stop the script",
+  "World-writable file permissions (chmod 777) or secrets written to a world-readable file",
+  // web and design
+  "A viewport meta tag with user-scalable=no or maximum-scale=1, which blocks pinch zoom",
+  "Positive tabindex values that override the natural focus order",
+  "User-visible strings hardcoded in components instead of externalised for translation, or sentences built by string concatenation that break in other languages",
+  "Web layouts that break in right-to-left languages because of physical (left/right) instead of logical (start/end) properties",
+  "Input fields for email, phone, or numbers without the matching type or inputmode attribute for mobile keyboards",
+  "A fake 'Trusted by' logo bar or invented customer logos on a landing page",
+  "Infinite scroll with no way to reach the footer or a stable position",
+  "A confirmation dialog or a toast notification on every action, including trivial ones",
+  "Print styles: a document page with no print stylesheet, so printing produces navigation chrome and dark backgrounds",
+  // native and cross-platform
+  "Android Jetpack Compose layout tells (hardcoded dp sizes, no window size classes)",
+  "Terminal user interfaces (TUI) that assume a fixed terminal width or ignore NO_COLOR",
+  // repo and process
+  "Commit messages or PR titles that name the AI tool or session instead of the change",
+  "Adding a CI workflow, Dockerfile, or deployment config the task did not ask for",
+  "A README that lists generic features with badges and emoji headings instead of saying what the project does",
+  "Log lines at the wrong level (errors logged as info, expected conditions logged as errors)",
+  "Data science or notebook code: cells that depend on execution order, hidden global state, hardcoded local paths",
+  "Rust or Go code: unwrap() on every Result, panics in library code, ignored error returns ('_ = err')",
+  "Feature flags, configuration options, or extension points added for hypothetical future needs nobody asked for",
+];

@@ -8,3 +8,7 @@ node_modules/
 **/.remember/
 .claude/
 .DS_Store
+
+# Jev audit tool: raw API responses and per-run reports stay local
+tools/jev-audit/cache/
+tools/jev-audit/out/
