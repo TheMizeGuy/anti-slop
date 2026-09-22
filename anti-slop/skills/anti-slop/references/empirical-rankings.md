@@ -88,7 +88,7 @@ Verified share = raw share discounted by how often the cited quote really meant 
 | Placeholder comments left in (`// rest of your code`) | 1.6% | **bug** | Yes |
 | Leftover chat artifacts (` ``` ` fences, "As an AI", "Note:") | 1.2% | cosmetic | Yes |
 
-**Two axes, kept independent.** *Severity* = how loudly it reads as AI. *Class* = whether the code is actually wrong: **bug** (broken; fix it regardless of severity), **substance** (wrong-for-the-job, needs a human reading the diff against its neighbors), **cosmetic** (the chat voice leaking in, the light pass). A swallowed error is medium-severity but a bug; an emoji is the highest-precision cosmetic tell but harmless. The rule: never polish cosmetics while a swallowed error or hallucinated call ships.
+**Two axes, kept independent.** *Severity* = how loudly it reads as AI, which is the smell scale in `confidence-and-evidence.md` § Confidence classes; for a bug-class tell the cost is functional and the class column says so. *Class* = whether the code is actually wrong: **bug** (broken; fix it regardless of severity), **substance** (wrong-for-the-job, needs a human reading the diff against its neighbors), **cosmetic** (the chat voice leaking in, the light pass). A swallowed error is medium-severity but a bug; an emoji is the highest-precision cosmetic tell but harmless. The rule: never polish cosmetics while a swallowed error or hallucinated call ships.
 
 ### Code: do NOT flag
 
@@ -176,7 +176,7 @@ Sources (accessed 2026-07-03): Wikipedia "Signs of AI writing" (en.wikipedia.org
 
 ## Coverage matrix
 
-The systematic answer to a question this catalogue documented rules for and never answered: **which tells can a scan reach at all?** Without it the not-assessed rule is aspirational, because nothing says which families a clean scan was silent about. Written against the 2.2.1 rule inventory.
+The systematic answer to a question this catalogue documented rules for and never answered: **which tells can a scan reach at all?** Without it the not-assessed rule is aspirational, because nothing says which families a clean scan was silent about. Written against the 2.2.1 rule inventory and updated for the 2.4.0 additions.
 
 Read the columns as: **scanner rule** = a deterministic rule exists and fires on one file's text. **Agent-reachable** = the `slop-detector` agent can judge it from source with `Read`/`Grep`/`Glob`. **Needs runtime or build** = neither layer can settle it without a compiler, a browser, or a running app.
 
@@ -194,9 +194,11 @@ Read the columns as: **scanner rule** = a deterministic rule exists and fires on
 | Hallucinated APIs and packages | **No** | **No** | **Yes** (build, type-check, or registry lookup) |
 | Tutorial-shaped code, over-engineering, style ignores the codebase | **No** | Yes (needs the neighbouring files) | no |
 | Swallowed errors, placeholder stubs, dead branches, `forEach(async)` | Yes | Yes | no |
+| `as any` casts and `catch (e: any)` | Yes (`cast-to-any` 2.4.0, `catch-any`) | Yes | no |
+| Resource leaks, writes with no transaction, blocking calls in async code, catastrophic regex, hardcoded environment values | **No** | Yes | Sometimes |
 | Narrating, banner, apologetic, deferral comments | Yes | Yes | no |
 | `eval`, `innerHTML`, `dangerouslySetInnerHTML`, `shell=True`, unsafe deserialize | Yes | Yes | no |
-| SQL injection, path traversal, SSRF, IDOR, insecure randomness | **No** (see `confidence-and-evidence.md` § the families the catalogue teaches) | Yes | no |
+| SQL injection, path traversal, SSRF, open redirect, IDOR, insecure randomness | **No** (see `confidence-and-evidence.md` § the families the catalogue teaches) | Yes | no |
 | N+1 queries, missing timeouts, unbounded queries, race conditions | **No** | Partly (needs block scope the agent has and the scanner does not) | Sometimes |
 | Hardcoded secrets | Yes (Pattern smell; cannot prove liveness) | Yes | **Yes** to confirm |
 | AI purple, gradients, generic fonts, cream-serif default, frosted nav, gradient text | Yes | Yes | no |
@@ -206,7 +208,9 @@ Read the columns as: **scanner rule** = a deterministic rule exists and fires on
 | Strongest-10 entries 3, 5, 6, 8, 10 and most AI Component Fingerprints | **No** | Yes | no |
 | Fixed page shells, fixed grid tracks, `100vh` shells, token drift, uniform radius | Yes (2.1.0) | Yes | no |
 | Missing alt, `outline: none`, dead controls | Yes (2.1.0) | Yes | no |
-| Contrast ratios, tap-target sizes, focus order, keyboard reachability | **No** | Partly (arithmetic from source literals only) | **Yes** for any asserted number |
+| Pinch-zoom lock in the viewport meta, positive `tabindex` | Yes (2.4.0, `viewport-zoom-lock`, `positive-tabindex`) | Yes | no |
+| Physical properties where logical ones belong (RTL), hardcoded user-visible strings, inputs without a matching type | **No** | Yes | no |
+| Contrast ratios, tap-target sizes, keyboard reachability | **No** | Partly (arithmetic from source literals only) | **Yes** for any asserted number |
 | Missing empty/error/loading states, cross-file component coherence | **No** | Partly (needs the sibling files) | no |
 | Density and waste: viewport utilisation, page length, action distance | **No** | Taste note only, unless source literals give arithmetic | **Yes** for a graded finding |
 | Native fixed geometry, idiom branching, fixed grid columns, repeating symbol effects, fixed font sizes | Yes | Yes | no |

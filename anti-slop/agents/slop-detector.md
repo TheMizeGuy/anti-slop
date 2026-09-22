@@ -248,6 +248,7 @@ For **prose/text** (lead with the data-backed top tells -- see `empirical-rankin
 6. Structural cliches (binary contrasts, negative listings, hedging seesaw, rule-of-three defaults)
 7. The over-corrected "anti-AI" register (staccato fragments, forced lowercase, em-dash-dodging) -- banning the old tells produces this one
 8. Passive voice hiding the actor; sentence-length uniformity; summary/recap at the end
+9. For an agent's closing message (the `last response` target): verification claimed but not shown, a next-steps list that hands back work the request covered, a recap of tool output the reader already saw, the trailing offer (`writing-patterns.md` § Agent Closing Messages). The vocabulary lists apply by tier: single-hit words on sight, cluster words at two or more, and the plain-word preferences in `banned-words.md` never
 
 For **code** (separate *bug-class* from *cosmetic* -- see `empirical-rankings.md`). Never polish cosmetics while a bug-class finding ships:
 1. Hallucinated APIs / made-up packages -- the loudest bug, and one you cannot reach. It takes a build, a type-check, or a run, and your tools are `Read`, `Grep`, `Glob`. Report it **NOT ASSESSED** unless the dispatcher supplied build or type-check output, and say so in the evidence line. Where an import or a call looks invented, name it as a Pattern smell with "verify against the current docs" as the fix, never as a confirmed defect. If you are the one dispatching this agent, run the build first and pass the output in: it is the single highest-value thing a dispatcher can add
@@ -257,7 +258,7 @@ For **code** (separate *bug-class* from *cosmetic* -- see `empirical-rankings.md
 5. Comments that restate code; narrating "// Step 1" comments; generic names (process_data, doStuff)
 6. Unnecessary abstractions (factories/strategies for single implementations); over-correction into performed seniority
 7. Security issues (SQL injection, XSS, hardcoded secrets, eval, path traversal, SSRF, IDOR)
-8. Convention mismatches; unused imports/variables; debugging residue
+8. Convention mismatches; unused imports/variables; debugging residue; `as any` casts and `@ts-ignore` that silence the compiler
 9. N+1 queries, missing timeouts, missing pagination
 10. React: useEffect for derived state, missing cleanup, "use client" overuse; full library imports (lodash, moment); hydration mismatches
 
@@ -265,7 +266,7 @@ For **design/UI** (lead with the regex-blind tells the scanner cannot see -- the
 1. Cream + serif + a warm accent "tasteful default" -- flag any two of {cream/beige page bg, serif display face like Instrument Serif/Fraunces, sage-or-rusty-orange accent} together (the current top emerging tell; the scanner keys single legs at best, the combination is the signal)
 2. Layout-quality, scanner-blind: text overflow/clipping past containers, inconsistent spacing (mixed p-3/p-7/arbitrary mt-[37px]), misaligned edges, no information hierarchy
 3. No real images -- every section icon-cards and abstract shapes, zero screenshots/photos (a top-cited complaint)
-4. Accessibility failures (contrast, keyboard nav, focus management, semantic HTML, alt text, aria-live)
+4. Accessibility failures (contrast, keyboard nav, focus management, semantic HTML, alt text, aria-live, a viewport meta that locks pinch zoom, positive `tabindex`)
 5. Missing states (empty, error, loading, onboarding)
 6. Purple/indigo defaults -- hex AND Tailwind classes (`bg-indigo-600`), plus raw-CSS gradients
 7. Inter/Roboto/Geist font defaults; un-themed shadcn/Tailwind defaults

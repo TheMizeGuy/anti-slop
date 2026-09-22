@@ -1,6 +1,6 @@
 # Writing Anti-Patterns
 
-Structural, tonal, and formatting patterns that mark text as AI-generated. Avoid all of these.
+Structural, tonal, and formatting patterns that mark text as AI-generated. Three things decide whether one of them is a finding: the register (`choosing-with-intent.md`: a fragment is native in a text message and a tell in a spec), concentration (one instance of almost anything is the writer's prose), and position (an opener or a closer filled by reflex). Read each entry's fix as the direction to move in, not a rule to satisfy mechanically; § The Over-Corrected Register is what mechanical satisfaction produces.
 
 ## What the data ranks highest
 
@@ -15,7 +15,7 @@ Two principles govern how hard to push any of this:
 
 The single most-cited AI writing tell. Essentially absent from on-topic posts before 2024, then 6.7% in 2025 — "the ChatGPT era in one punctuation mark." Use em dashes for their correct grammatical purpose (a parenthetical insertion, an abrupt break). The tell is **density**: several per short passage, or the em dash standing in for every comma, colon, and semicolon.
 
-**Fix:** cut it — use a comma, a period, or parentheses. Two cautions the data is explicit about: do not just swap in a colon (people now flag that too), and do not contort the sentence to dodge the dash (the contortion is the newer tell). If you genuinely write with em dashes, that is a choice; keep it and mark the line `anti-slop-allow: <reason>`.
+**Fix, when the density is over the scanner's threshold (five in the document and four per 1,000 words):** cut the surplus and keep the dashes doing a parenthetical's job; a comma, a period, or parentheses take the rest. Below the threshold there is nothing to fix. Two cautions the data is explicit about: do not just swap in a colon (people now flag that too), and do not contort the sentence to dodge the dash (the contortion is the newer tell). If you genuinely write with em dashes, that is a choice; keep it and mark the line `anti-slop-allow: <reason>`.
 
 ## Structural Anti-Patterns
 
@@ -32,6 +32,8 @@ The "Not X. Y." reversal structure. AI uses this constantly for false drama. Inc
 
 **Slop:** "The problem isn't technical. It's cultural."
 **Fix:** "The problem is cultural." (Just state the point.)
+
+**Not a tell when:** the negation carries information the reader did not have. "The outage was not the database; it was DNS" corrects an assumption. The tell is the reversal performed for drama on a point nobody disputed.
 
 **Slop:** "It's not about the code. It's about the people."
 **Fix:** "The people matter more than the code here."
@@ -95,6 +97,8 @@ Sentence fragments for fake emphasis. Performative simplicity. Includes the two-
 **Slop:** "These aren't opinions. They're from published research."
 **Fix:** Just present the research. The reader can tell the difference between opinions and citations without being told.
 
+**Not a tell when:** the register is casual and the fragment is native to it. "Faster builds. Fewer bugs." in a chat reply is how people write; the same line in a specification performs.
+
 ### Rhetorical Questions Answered Immediately
 
 Posing a question, then answering it in the next sentence. Socratic posturing.
@@ -127,6 +131,8 @@ Restating the user's question before answering it. The user knows what they aske
 
 **Slop:** "You asked about implementing authentication in Next.js. Authentication is an important aspect of web development. Here's how to..."
 **Fix:** Start with the implementation. Skip the recap.
+
+**Not a tell when:** the question was ambiguous and the answer opens by naming the reading it took, in one clause ("Taking 'the config' to mean `config/http.ts`: ..."). That is information the reader needs to check the answer.
 
 ### Summary at the End
 
@@ -205,13 +211,27 @@ Adding markdown headers to a 3-sentence response. Headers serve navigation in lo
 
 Bolding key words in running prose to highlight "important" parts. Reads like a textbook, not a person writing.
 
-**Fix:** If the sentence is well-written, the emphasis is in the words themselves. Bold is for labels, definitions, and navigation -- not emphasis.
+**Fix:** If the sentence is well-written, the emphasis is in the words themselves. Bold is for labels, definitions, and navigation -- not emphasis. A key term bolded on first use in a tutorial for beginners is teaching, not this tell (`SKILL.md` § Context Exceptions).
 
 ### Bullet Point Lists for Everything
 
 Converting prose into bullet points. Bullets are for reference material (steps, lists of items). Explanations, arguments, and analysis belong in paragraphs. The listicle scaffold is the loud version: "5 ways to...", "7 signs you...", "3 reasons...". A numbered-listicle headline over what should be prose is a named tell.
 
 **Fix:** Use bullets only for actually list-like content: steps, features, options, requirements. Never for arguments or explanations. Drop the "N ways to" framing and write the paragraph.
+
+### Bolded Lead-In Labels
+
+`**Performance:** the cache...`, `**Security:** all inputs are...`, `**Note:** this only applies...`, on every bullet of a list, so the list reads as a table with the labels bolded. Real but low-cited in the corpus (`empirical-rankings.md`: 0.8% regex share, 0.3% cited), and judged by clustering: one labelled bullet is a label, a list where every bullet carries one is the template.
+
+**Slop:** "- **Speed:** the new index cuts query time. - **Safety:** the migration is reversible. - **Cost:** storage grows by 2 GB."
+**Fix:** "The new index cuts query time, the migration is reversible, and storage grows by 2 GB." Or keep the bullets and drop the labels, which the sentences already carry.
+
+### Admonition Boxes for Ordinary Sentences
+
+A `> **Note:**` callout, a `:::tip` block, or a bold "Important:" lead-in wrapped around a sentence that is not a warning. Generated documentation reaches for the box because it looks like documentation; the reader gets a page where every third paragraph shouts. An admonition marks a sentence the reader must not miss (data loss, a security boundary, a step that cannot be undone), and a page has few of those.
+
+**Slop:** "> **Note:** The config file is located at `config/app.yml`."
+**Fix:** "The config file is `config/app.yml`." Keep the box for the sentence about the command that deletes the database.
 
 ### Excessive Code Blocks
 
@@ -235,7 +255,7 @@ Common offenses:
 
 **Fix:** No emoji anywhere unless the user explicitly uses them and the context calls for matching their style. Use words for status ("PASS", "FAIL", "WARNING"), text for headings, proper icon components for UI, and conventional prefixes for commits. Emoji are decorative noise that adds zero information and marks output as AI-generated.
 
-**How the scanner grades it.** Severity escalates with the count: a handful is low, more than five is medium, because one glyph in a CLI banner is a choice and twenty across a file is the house style. Coverage extends past the pictographic blocks to the arrows, technical symbols, and geometric shapes that carry the same load (a heavy check mark, a warning triangle, a black circle standing in for a status dot) while stopping short of the punctuation and typographic ranges, which would fire on ordinary text. A file that is *about* emoji, this one included, is guarded by the word appearing in it, because a catalogue that cannot quote its own examples is not a catalogue. `console-log-emoji` covers the log-output leg separately, since a glyph in a log line survives longer than one in a comment and breaks more parsers.
+**How the scanner grades it.** Severity escalates with the count: a handful is low, more than five is medium, because one glyph in a CLI banner is a choice and twenty across a file is the house style. An emoji is what Unicode renders as one: a character with default emoji presentation, a pictograph forced to emoji presentation by U+FE0F, a keycap sequence, or a flag, with a joined sequence (a family, a flag built from parts) counted once. Typographic arrows, the command-key symbol, heavy check marks, and geometric shapes are text and are not matched; the block list that once matched them flagged 187 plain right arrows across one fleet in two weeks. A bare play or pause sign used as a control is the `media-control-glyph` design tell instead. A file that is *about* emoji, this one included, is guarded by the word appearing in it, because a catalogue that cannot quote its own examples is not a catalogue. `console-log-emoji` covers the log-output leg separately, since a glyph in a log line survives longer than one in a comment and breaks more parsers.
 
 ### Markdown in Non-Markdown Contexts
 
@@ -331,7 +351,7 @@ Using elaborate verbs instead of "is" or "has." "Serves as" instead of "is." "Fe
 
 Using different synonyms for the same thing to avoid repetition. "The function," "the method," "the routine," "the procedure" all meaning the same function. This confuses readers -- they wonder if these are different things.
 
-**Fix:** Repeat the same word if it means the same thing. Repetition is clear. Variation creates ambiguity.
+**Fix:** Repeat the same word if it means the same thing. Repetition is clear. Variation creates ambiguity. The exception is when the words mean different things: a function and the method that wraps it are two things and get two names.
 
 ### -ing Appended Analysis
 
@@ -344,6 +364,8 @@ Tacking present participle phrases onto the end of sentences: "...highlighting t
 "Was implemented," "has been shown," "can be achieved." Hides the actor.
 
 **Fix:** Name who did it. "We implemented," "The study showed," "You can achieve."
+
+**Not a tell when:** the agent is unknown ("the server was compromised"), irrelevant ("the bill was passed"), or the patient is the topic of the paragraph. The tell is the passive that hides an actor the reader needs.
 
 ### Uniform Sentence Length
 
@@ -360,7 +382,7 @@ AI text says "in recent years" instead of naming a year. "Some researchers" inst
 **Slop:** "In recent years, a growing body of evidence has shown that some researchers find AI-generated pull requests harder to review."
 **Fix:** "Google's 2025 DORA report put review time up 91% on teams at high AI adoption." One date, one source, one number, and the sentence is now checkable.
 
-**Fix, generally:** Name the year. Name the person. Cite the specific paper. If the specifics aren't known, say so directly rather than hiding behind vague attribution.
+**Fix, generally:** Name the year. Name the person. Cite the specific paper. If the specifics aren't known, say so directly rather than hiding behind vague attribution. Never invent a citation to satisfy this rule: a hallucinated paper is a worse tell than a vague one, the reader can check it, and "I could not find the source for this" stated plainly is the honest form.
 
 ### The Knowledge-Style Mismatch
 
@@ -387,7 +409,7 @@ Human writing naturally contains colloquialisms, incomplete thoughts, opinions s
 **Slop:** "This approach offers several advantages while introducing certain trade-offs that should be carefully considered."
 **Fix:** "It is faster and I do not love how much state it keeps, but nothing else finished in under a second." An actual opinion, stated flat, is the thing generated prose keeps sanding off.
 
-**Fix, generally:** Write naturally. Use contractions. Leave in some rough edges. A slightly imperfect voice sounds human; a perfectly polished one sounds generated. Note the failure mode on the other side: manufactured roughness is § The Over-Corrected Register below, and it reads as generated just as fast.
+**Fix, generally:** Write in the register the piece needs (`choosing-with-intent.md`). In a casual or conversational register that means contractions, an opinion stated flat, and a rough edge left in; in a formal specification it means none of those, and the formality is not a tell. A slightly imperfect voice sounds human; a perfectly polished one sounds generated. Note the failure mode on the other side: manufactured roughness is § The Over-Corrected Register below, and it reads as generated just as fast.
 
 ### The Over-Corrected Register (Trying Not to Sound Like AI)
 
@@ -437,6 +459,15 @@ The register is `choosing-with-intent.md`'s conversational-professional: plain, 
 **Slop:** `- [sparkle] Enhanced the scanning experience with powerful new capabilities`
 **Fix:** `- scan now accepts multiple files and exits 1 on any finding`
 
+### README Openers
+
+- **A feature list before a sentence about what the thing is.** "## Features" with eight bullets, each starting with an emoji or a bolded label, above a paragraph that never says what the project does or who it is for.
+- **A badge row as the first line.** Build, coverage, version, license, and a chat badge before a single word of prose.
+- **Marketing register on a tool.** "Blazing fast", "batteries included", "the modern way to".
+
+**Slop:** "# Widgetizer\n\n[build] [coverage] [npm] [license]\n\n## Features\n- Blazing fast\n- Zero config\n- Fully typed"
+**Fix:** "Widgetizer turns a Figma frame into a React component. It reads the frame over the Figma API and writes one file per component, with the tokens the frame uses." Say what it does, who it is for, and the one command that runs it; the badges can follow.
+
 ### Code-Review Comments
 
 - **The sycophantic opener, in its native habitat.** "Great catch!", "Nice work on this!", "Love this approach!" before the actual comment. The phrases are banned by `banned-phrases.md`; the surface is worth naming because it is where they survive longest.
@@ -446,6 +477,18 @@ The register is `choosing-with-intent.md`'s conversational-professional: plain, 
 
 **Slop:** "Great catch on the null check! I wonder if it might potentially be worth considering whether we could maybe extract this into a helper?"
 **Fix:** "This block is repeated in `sync.ts` at line 40. Worth a helper, or leave it until there is a third." State the observation, then the ask, then the option to decline.
+
+### Agent Closing Messages
+
+The last message of an agentic session is the one the person reads, often without having seen any of the tool output. § Summary at the End says why it is the deliverable rather than a recap. Its own tells:
+
+- **Verification claimed, not shown.** "All tests pass" with no command and no result line. The reader cannot tell a run from a guess, and the guess is the more common of the two.
+- **A next-steps list that hands back work the request covered.** "Next steps: wire the handler, add the migration." That list is the unfinished half of the task, and writing it down is stopping short dressed as planning. Work that genuinely needs the owner (a credential, a product decision) is named as such, with the reason.
+- **A recap of tool output the reader already saw**, or a restatement of the plan before the result.
+- **The trailing offer** ("Let me know if you'd like me to..."), which `banned-phrases.md` § Sycophantic Openers covers and which survives longest here.
+
+**Slop:** "I've implemented the upload feature! All tests pass. Next steps: add error handling to the upload path and update the docs. Let me know if you'd like me to do that!"
+**Fix:** "The upload path now rejects files over 10 MB with a 413 (`upload.ts:42`). `node --test test/upload.test.mjs`: 14 passed. Not done: the docs still say 5 MB; I left them because the limit is under discussion in #212." What changed, what was run with its result, what was left and why.
 
 ## Creative Writing Tells
 
@@ -459,3 +502,5 @@ When generating fiction, narrative, or creative content:
 - **AI fiction vocabulary:** `whispering`, `tendrils`, `etched`, `nestled`, `palpable`, `symphony` (metaphor), `kaleidoscope` (metaphor), `gossamer`, `iridescent`, `luminous`, `ephemeral`, `ethereal`, `cascade` (metaphor), `ember`, `silhouette`, `enigmatic`.
 
 **Fix:** Show don't tell. Let characters act rather than emote. Avoid wrapping every story in a bow. Use specific, surprising details rather than stock descriptions.
+
+In fiction the register decides. A story told in a lush voice may use any of these on purpose, and a lone `nestled` is the author's word. The tell is the stock set arriving together where nothing specific was seen. `banned-words.md` § Creative Writing carries the word list under the same rule.

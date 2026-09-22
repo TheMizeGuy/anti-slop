@@ -8,7 +8,7 @@ Two framing rules. Judge most word and phrase tells by **concentration** — a l
 
 ### Vocabulary
 
-The banned-words list splits in two, and a self-check should split with it. The first group is flagged on a single hit. The second is the high-frequency set that people use normally, flagged only at two or more and at low severity. The split is `BANNED_WORDS` minus `LOW_CONFIDENCE_WORDS` in `scripts/lib/rules.mjs`; `empirical-rankings.md` § Writing: do NOT flag on a lone hit carries the corpus numbers behind it. `ensure`, `crucial`, and `enhance` are on neither list. They carry legal and technical weight, `banned-words.md` marks them domain-conditional, and treating them as top-priority tells produces exactly the over-correction this file warns about.
+The banned-words list splits in three, and a self-check checks the first two. The first group is flagged on a single hit. The second is the high-frequency set that people use normally, flagged only at two or more and at low severity. The split is `BANNED_WORDS` minus `LOW_CONFIDENCE_WORDS` in `scripts/lib/rules.mjs`; `empirical-rankings.md` § Writing: do NOT flag on a lone hit carries the corpus numbers behind it. The third group, the plain-word preferences in `banned-words.md` (`ensure`, `crucial`, `enhance` and the rest), is on neither list and is not a check: those words carry legal and technical weight, and treating them as tells produces exactly the over-correction this file warns about.
 
 - [ ] No single-hit words? (`delve`, `elevate`, `embark`, `unveil`, `showcase`, `spearhead`, `orchestrate`, `galvanize`, `transcend`, `pivotal`, `cutting-edge`, `groundbreaking`, `transformative`, `unprecedented`, `unparalleled`, `multifaceted`, `landscape`, `tapestry`, `synergy`, `testament`, `interplay`, `paradigm`)
 - [ ] Fewer than two from the low-confidence set? (`utilize`, `leverage`, `harness`, `seamless`, `foster`, `facilitate`, `streamline`, `comprehensive`, `robust`, `navigate`, `nuanced`, `meticulous`, `realm`, `holistic`, `myriad`, `plethora`, `paramount`, `intricate`, `vibrant`, `captivating`, `profound`, `empower`, `cultivate`)
@@ -33,10 +33,10 @@ The banned-words list splits in two, and a self-check should split with it. The 
 ### Structure
 
 - [ ] Not forcing lists to exactly three items? (If every list has three items, something is wrong.)
-- [ ] No binary contrasts? (Not X. Y. / The problem isn't X. It's Y.)
+- [ ] No binary contrasts performed for drama? (Not X. Y. / The problem isn't X. It's Y. A contrast that corrects an assumption the reader held is information.)
 - [ ] No "It's not just X, it's Y" / "not only X but also Y" antithesis? (the #1 sentence tell)
 - [ ] No hedging seesaw? (Presenting both sides, then hedging, then hedging again)
-- [ ] No dramatic fragmentation? (One. Word. Sentences. For. Drama.)
+- [ ] No dramatic fragmentation in expository prose? (One. Word. Sentences. For. Drama. Fragments are native to a casual register.)
 - [ ] No rhetorical questions answered immediately?
 - [ ] No topic-explanation-example-transition template in every paragraph?
 - [ ] No summary/recap at the end that restates what was just said?
@@ -61,7 +61,7 @@ Every item here is countable on purpose. Rhythm is the second most-cited tell an
 
 ### Voice
 
-- [ ] Active voice throughout? (Every sentence has a concrete subject doing something)
+- [ ] Active voice by default? (Passive is fine when the agent is unknown, irrelevant, or the patient is the topic; the tell is the passive that hides an actor the reader needs)
 - [ ] No false agency? (Decisions don't "emerge," data doesn't "tell us")
 - [ ] No passive voice hiding actors? ("Was implemented"; by whom?)
 - [ ] Specific rather than vague? (Real numbers, named things, concrete details)
@@ -72,7 +72,7 @@ Every item here is countable on purpose. Rhythm is the second most-cited tell an
 ### Formatting
 
 - [ ] No unnecessary markdown headers? (Short responses don't need them)
-- [ ] No bold used for emphasis in running prose?
+- [ ] No bold used for emphasis in running prose? (A key term bolded on first use in a tutorial is teaching, not this)
 - [ ] No emoji anywhere (prose, code, commits, logs, UI strings, headings)?
 - [ ] Bullet points only for list-like content (no "5 ways to..." listicle scaffolding)?
 - [ ] No horizontal-rule dividers (---) between every section?
@@ -98,7 +98,7 @@ Every item here is countable on purpose. Rhythm is the second most-cited tell an
 
 - [ ] No abstraction layers for single implementations?
 - [ ] No factory/builder/strategy with only one concrete case?
-- [ ] No helper functions used exactly once?
+- [ ] No trivial helper used exactly once? (A function earns its name by a second caller or by being complex enough to deserve one)
 - [ ] No configuration objects for trivial fixed values?
 - [ ] Code matches the codebase's existing patterns and conventions?
 - [ ] No parameter, option, or config key that takes the same value at every call site today?
@@ -126,6 +126,7 @@ Every item here is countable on purpose. Rhythm is the second most-cited tell an
 - [ ] Did the "clean code" instinct add ceremony rather than remove it? (Re-read the diff for the over-correction items in § Hygiene above.)
 - [ ] All API methods verified to exist?
 - [ ] All packages verified to exist in the registry?
+- [ ] No `as any` cast to silence the compiler? (Narrow with a guard or type the value; a genuine reinterpretation carries a comment beside the cast)
 - [ ] No deprecated APIs used unknowingly?
 - [ ] Framework conventions followed?
 - [ ] No mixed patterns from different frameworks?
@@ -152,6 +153,9 @@ Every item here is countable on purpose. Rhythm is the second most-cited tell an
 - [ ] No shallow copies where deep copies are needed (nested mutations)?
 - [ ] Decimal/integer arithmetic for money (not floating-point)?
 - [ ] No race conditions in concurrent/async code?
+- [ ] No blocking call inside async code? (`time.sleep`, synchronous file or network I/O on the event loop)
+- [ ] Files, sockets, and connections closed on every path? (A context manager, `using`, or `finally`)
+- [ ] Multi-step writes inside a transaction?
 
 ### Testing (if writing tests)
 
@@ -218,11 +222,11 @@ Every item here is countable on purpose. Rhythm is the second most-cited tell an
 
 - [ ] No magic number pixel values?
 - [ ] Design tokens or CSS variables used?
-- [ ] No !important overrides?
+- [ ] No !important overuse? (One against a third-party widget is pragmatism; the scanner counts from two)
 - [ ] No excessive selector nesting?
 - [ ] No duplicate styles?
 - [ ] No `outline: none` without a replacement focus indicator?
-- [ ] Font sizes in rem/em, not px?
+- [ ] Text sizes in rem/em, not px? (Hairlines, borders, and icon boxes in px are fine)
 - [ ] All animations wrapped in @media (prefers-reduced-motion: reduce)?
 
 ### Accessibility
@@ -238,6 +242,8 @@ Every item here is countable on purpose. Rhythm is the second most-cited tell an
 - [ ] Semantic HTML used? (`<button>`, `<nav>`, `<main>`, not div-for-everything)
 - [ ] Heading hierarchy correct? (h1 > h2 > h3, no skipped levels)
 - [ ] Touch targets at least 24x24px with spacing (WCAG 2.5.8 AA)?
+- [ ] Pinch zoom not blocked? (No `user-scalable=no` or `maximum-scale=1` in the viewport meta, WCAG 1.4.4)
+- [ ] No positive `tabindex`? (Focus order follows the DOM; `0` and `-1` are the only values)
 - [ ] No hover-only interactions without touch alternatives?
 - [ ] Skip navigation link present?
 - [ ] HTML element has lang attribute?

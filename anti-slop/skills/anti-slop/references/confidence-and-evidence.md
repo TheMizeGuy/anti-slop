@@ -19,6 +19,13 @@ Severity says what a finding costs if it is real. Confidence says how sure we
 are that it is real *here*. They are independent axes and must never be
 collapsed into one.
 
+What "costs" means depends on the class. For a defect the cost is functional: a
+hole, a bug, an interface that does not work. For a Pattern smell the cost is
+the genericness itself, so its severity follows how strongly the pattern reads
+as unchosen in the corpus ranking (`empirical-rankings.md`), which is why a
+purple gradient is medium and a lone `py-20` is low. The two scales share the
+same three words, and the class column is what says which scale a finding is on.
+
 | Class | Meaning | Typical source |
 |---|---|---|
 | **Hard defect** | Objective, should be fixed | Swallowed exception, `eval()`, unfinished `// rest of your code` stub, an `<img>` with no dimensions |
@@ -63,7 +70,9 @@ to make the tell stop matching is to delete the behaviour, and that is always
 the wrong answer.
 
 1. **Every finding names its remediation.** A finding that only names the offence
-   is incomplete, and an incomplete finding gets closed by deletion.
+   is incomplete, and an incomplete finding gets closed by deletion. Since 2.4.0 the
+   scanner holds itself to this: every rule carries a `fix`, and every finding prints
+   it beside the rule id, the line, and the confidence class.
 2. **A remediation may never reduce responsiveness, keyboard reachability,
    screen-reader output, contrast, hit-target size, or motion-preference
    handling.** If the only way to clear a tell is to make one of those worse, the
@@ -132,14 +141,15 @@ expensive: tell families this catalogue documents in full, with worked examples,
 deterministic rule matches at all. A scan is silent on every one of them, and silence here
 reads exactly like a pass.
 
-As of 2.2.1, and still after 2.1.0 added rules for command injection, unsafe deserialization,
-`dangerouslySetInnerHTML`, and the comment-slop family, these remain un-ruled:
+As of 2.4.0, after 2.1.0 added rules for command injection, unsafe deserialization,
+`dangerouslySetInnerHTML`, and the comment-slop family, and 2.4.0 added the pinch-zoom lock,
+positive `tabindex`, and `as any` rules, these remain un-ruled:
 
 | Family | Taught in | Why there is no rule |
 |---|---|---|
 | SQL injection by string concatenation | `code-patterns.md` § SQL Injection | The interpolation shape is indistinguishable from safe query building without knowing whether the value is user-controlled |
 | Path traversal | `code-patterns.md` § Path Traversal | Same: the defect is an untrusted source, not a syntax |
-| SSRF | `code-patterns.md` § SSRF | Requires knowing which URLs the caller controls |
+| SSRF and open redirect | `code-patterns.md` § SSRF, § Open Redirect | Requires knowing which URLs the caller controls |
 | IDOR / broken access control | `code-patterns.md` § Broken Access Control | The defect is an *absent* ownership check; absence is not matchable in one line |
 | Insecure randomness | `code-patterns.md` § Insecure Randomness | `Math.random()` is correct for most uses; only the security context makes it wrong |
 | N+1 queries | `code-patterns.md` § N+1 Queries | Needs the loop body and the call it makes, which is block scope |
