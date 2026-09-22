@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Invoice search</title>
+</head>
+<body>
+  <header>
+    <a href="/">Ledger</a>
+  </header>
+
+  <main>
+    <h1>Search invoices</h1>
+
+    <!-- The DOM order IS the focus order, so every control joins it at 0. -->
+    <form action="/invoices" method="get">
+      <label for="q">Invoice number or customer</label>
+      <input id="q" name="q" type="search" tabindex="0">
+
+      <label for="from">Issued after</label>
+      <input id="from" name="from" type="date">
+
+      <label for="to">Issued before</label>
+      <input id="to" name="to" type="date">
+
+      <button type="submit">Search</button>
+    </form>
+
+    <!-- -1 keeps the panel out of the tab ring until the dialog moves focus to it. -->
+    <div id="results" role="region" aria-label="Results" tabindex="-1">
+      <p>Results are limited to the last 24 months. Older invoices are in the archive export.</p>
+    </div>
+  </main>
+
+  <template id="print-frame">
+    <!-- A print sheet caps the zoom at 5, which still leaves a usable range. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+  </template>
+</body>
+</html>

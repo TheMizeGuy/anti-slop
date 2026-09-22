@@ -15,7 +15,8 @@
       "authored-here-in-1.7.0": "hero-triplet-verbatim, responsive-type-clean, uniform-control-radius, native/FixedGeometryShell, native/AdaptiveShell.",
       "authored-here-in-2.1.0": "marketing-defaults, motion-rhythm, gallery-unlabelled, legacy-theme.css, tokens-clean.css, hatched-wordmark, near-miss-controls (design); render-user-card.tsx, ingest_records.py, pasted-snippet.js, hatched-onboarding.js, order-lookup.py, safe-render.tsx, safe-pipeline.py (code); native/LegacyProfileView, native/MeasuredCardStack; plain-register, plain-register-clean (prose). Five design fixtures were also PROMOTED from coverage-boundary to positive in the same release -- uncommitted-radius, token-drift, missing-states, fixed-desktop-shell, vh-bottom-bar -- because 2.1.0 shipped a rule for the tell each of them had been recording as unreachable.",
       "authored-here-in-2.2.1": "bootstrap-unthemed.css, chosen-border-gray.css, hero-scroll-poster.html (design). The first two are the positive/clean-control pair the 2.2.0 Bootstrap rule shipped without; the third is the positive for hero-scroll-hint, which 2.2.1 split out of generic-microcopy.",
-      "authored-here-in-2.2.2": "site-settings.py and config-labels.py (code): the positive/clean-control pair for the hardcoded-secret key widening to snake_case, SCREAMING_CASE and *_KEY names. first-person-idioms-clean.md (prose): the clean control for the assistant-boilerplate narrowing (a person's idioms and a third-person statement of a model's cutoff stay silent)."
+      "authored-here-in-2.2.2": "site-settings.py and config-labels.py (code): the positive/clean-control pair for the hardcoded-secret key widening to snake_case, SCREAMING_CASE and *_KEY names. first-person-idioms-clean.md (prose): the clean control for the assistant-boilerplate narrowing (a person's idioms and a third-person statement of a model's cutoff stay silent).",
+      "authored-here-in-2.4.0": "zoom-lock-tabindex.html and viewport-clean.html (design): the positive/clean-control pair for viewport-zoom-lock and positive-tabindex, the two accessibility rules 2.4.0 added. cast-to-any.ts and typed-narrowing.ts (code): the pair for cast-to-any, the TypeScript sibling of catch-any."
     }
   },
   "fixtures": [
@@ -1162,6 +1163,53 @@
       "expected": [],
       "maxIncidentalFindings": 0,
       "note": "Near-miss control for the prose rules added or widened in 2.1.0: 'Interest compounds annually' (subject outside the collocation list), 'held the space open' (not the bare metaphor), 'The signal that the sensor emits' (not 'sends a signal that'), a single collocation (below minCount), 'It's not about money.' as one clause with no second clause to complete the antithesis, and a [1] footnote, a :::note admonition and an attributedString identifier, none of which is a model tooling token."
+    },
+    {
+      "file": "design/zoom-lock-tabindex.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "viewport-zoom-lock",
+          "severity": "medium",
+          "confidence": "Hard defect"
+        },
+        {
+          "id": "positive-tabindex",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "The two accessibility rules of 2.4.0 on one realistic page. The viewport meta carries both blocking legs (maximum-scale=1 and user-scalable=no) and counts once; the form hand-numbers its four controls, which is the tell positive-tabindex names. Paired with design/viewport-clean.html."
+    },
+    {
+      "file": "design/viewport-clean.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "The correct form of both 2.4.0 accessibility rules: width=device-width with initial-scale=1 and nothing else, tabindex=\"0\" joining the natural order, tabindex=\"-1\" on a script-focused region, and a maximum-scale=5 cap that still leaves the user a usable zoom range."
+    },
+    {
+      "file": "code/cast-to-any.ts",
+      "modality": "code",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "cast-to-any",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "A non-test path, so the skipInTests gate does not silence the rule. Three casts in the three shapes that actually appear: a return value, a loop element, and a property read off a declared type. Paired with code/typed-narrowing.ts."
+    },
+    {
+      "file": "code/typed-narrowing.ts",
+      "modality": "code",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "The prescribed alternative to every cast in code/cast-to-any.ts: a user-defined type guard, an `as unknown` two-step narrowing, and `catch (e: unknown)` with an instanceof check. `as Record<string, unknown>` and `as unknown` are both casts the rule must not match."
     }
   ]
 }

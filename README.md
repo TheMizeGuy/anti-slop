@@ -23,7 +23,7 @@ Rules yield to domain context. Academic writing gets its hedging language. Legal
 | **Skill** (`anti-slop`) | Core rules, activates automatically on writes/edits/builds |
 | **Agent** (`slop-detector`) | Deep semantic review, scored on five dimensions at 10 points each; a dimension the evidence cannot reach is reported NOT ASSESSED and leaves the denominator |
 | **Command** (`/slop-check`) | Manual review — point it at a file, diff, or PR |
-| **Scanner CLI** (`slop-scanner.mjs`) | Fast deterministic scanner — regex-based pattern matching for banned words, phrases, design tells, native UI tells, code smells, security issues. Four subcommands: `scan`, `history`, `stats`, `dashboard`. Zero runtime dependencies, so it runs from a clone or an installed plugin with no `npm install` |
+| **Scanner CLI** (`slop-scanner.mjs`) | Fast deterministic scanner — regex-based pattern matching for banned words, phrases, design tells, native UI tells, code smells, security issues. Every finding carries its rule id, the line it sits on, its confidence class, and a one-sentence fix, in both the text and the JSON output. Four subcommands: `scan`, `history`, `stats`, `dashboard`. Zero runtime dependencies, so it runs from a clone or an installed plugin with no `npm install` |
 | **Web Dashboard** | Optional, off by default. Nothing starts on its own; `slop-scanner.mjs dashboard` starts it on demand at a per-project deterministic port, prints the URL, and serves until Ctrl-C. Shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, recent findings |
 | **13 reference files** | ~225 banned words, ~220 banned phrases, plus pattern catalogs for writing, code, design, frontend, native (SwiftUI/UIKit) UI, regressions, density and economy, self-check checklists, empirical rankings, confidence and evidence rules, and choosing-with-intent guidance |
 
@@ -149,13 +149,17 @@ A worked example, start to finish:
    src/components/Header.tsx
    Scan score: 40/50 | SOME | 4 violation(s)
 
-   [HIGH] Possible hardcoded credential (1x)
-   [MEDIUM] Banned AI-tell word "leverage" found 2x
-   [MEDIUM] useEffect setting state (likely derived state) (1x)
-   [LOW] High em dash density (6 dashes, 5.2/1k words) -- the #1 AI writing tell
+   [LOW] Banned AI-tell word "leverage" found 2x  (leverage, line 8, Pattern smell)
+     fix: Say the plain thing; a lone hit is the writer's prose and only a cluster is the tell
+   [MEDIUM] z-index escalation (999+) (1x)  (z-index-escalation, line 12, Quality defect)
+     fix: Use a named scale (`--z-dropdown: 100`, `--z-modal: 200`), or move the element in the tree so it stacks without a magic number.
+   [HIGH] Possible hardcoded credential (1x)  (hardcoded-secret, line 3, Pattern smell)
+     fix: Read it from the environment or a secrets manager, and rotate any value that reached a commit
+   [MEDIUM] useEffect setting state (likely derived state) (1x)  (useeffect-setstate, line 9, Pattern smell)
+     fix: Derive the value during render instead of storing it; keep the effect for work that genuinely reaches outside React.
    ```
 
-   A clean file reports `src/components/Header.tsx: clean` and exits 0.
+   Each finding takes two lines: the offence, then the rule id, the line, the confidence class, and the remediation. A clean file reports `src/components/Header.tsx: clean` and exits 0.
 5. Claude then dispatches the `slop-detector` agent for the semantic pass the scanner cannot do (sentence rhythm, sycophancy, tutorial-shaped code, hallucinated APIs). The agent replies with its own `Review score: N/M` on the five judgment dimensions (directness, specificity, authenticity, economy, soundness) plus concrete fixes per finding.
 6. Claude presents both scores together, labeled (`Scan score` and `Review score` measure different things and are not comparable), and offers to apply the fixes.
 7. Optional: run `slop-scanner.mjs stats` for per-rule active vs suppressed counts, `history` for recent scores, or `dashboard` for the same over time in a browser.

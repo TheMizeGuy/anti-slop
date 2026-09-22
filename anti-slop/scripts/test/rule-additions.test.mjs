@@ -574,3 +574,104 @@ test("generic-microcopy: the rest of the family still fires without the scroll l
   assert.ok(fires("generic-microcopy", '<h1>Welcome back!</h1>', "Dashboard.tsx"));
   assert.ok(fires("generic-microcopy", '<p>Join thousands of happy people</p>', "Landing.tsx"));
 });
+
+// ── 2.4.0 additions ──────────────────────────────────────────────────────────
+// Two accessibility defects and one type-safety defect that generated code ships often
+// and no rule reached. Each is asserted in both directions, and the negative direction
+// carries the CORRECT form of the same construct rather than an unrelated clean file:
+// that is what catches a rule which has learned to match the construct, not the defect.
+
+test("viewport-zoom-lock: a viewport meta that blocks pinch zoom is a finding", () => {
+  const scalable = '<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">';
+  const zero = '<meta name="viewport" content="width=device-width, user-scalable=0">';
+  const capped = '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">';
+  const cappedFloat = '<meta name="viewport" content="width=device-width, maximum-scale=1.0">';
+  for (const html of [scalable, zero, capped, cappedFloat]) {
+    assert.ok(fires("viewport-zoom-lock", html, "index.html"), `expected a finding on: ${html}`);
+  }
+});
+
+test("viewport-zoom-lock: the correct viewport meta and a usable zoom cap are NOT findings", () => {
+  assert.ok(!fires("viewport-zoom-lock", '<meta name="viewport" content="width=device-width, initial-scale=1">', "index.html"));
+  // A cap of 5 still leaves the user a range; 1 is the one that removes the control.
+  assert.ok(!fires("viewport-zoom-lock", '<meta name="viewport" content="width=device-width, maximum-scale=5">', "index.html"));
+  assert.ok(!fires("viewport-zoom-lock", '<meta name="viewport" content="width=device-width, maximum-scale=1.5">', "index.html"));
+  // maximum-scale=10 must not match through the "1" that starts it.
+  assert.ok(!fires("viewport-zoom-lock", '<meta name="viewport" content="width=device-width, maximum-scale=10">', "index.html"));
+  // The attributes without the viewport meta around them are some other API's options.
+  assert.ok(!fires("viewport-zoom-lock", "const opts = { userScalable: false };", "map.js"));
+});
+
+test("positive-tabindex: a hand-numbered focus order is a finding, in markup and in JSX", () => {
+  assert.ok(fires("positive-tabindex", '<input id="q" tabindex="3">', "search.html"));
+  assert.ok(fires("positive-tabindex", '<input id="q" tabIndex={2} />', "Search.tsx"));
+  assert.ok(fires("positive-tabindex", "<input id='q' tabindex='1'>", "search.html"));
+});
+
+test("positive-tabindex: 0 and -1 are the two correct values and stay clean", () => {
+  assert.ok(!fires("positive-tabindex", '<input id="q" tabindex="0">', "search.html"));
+  assert.ok(!fires("positive-tabindex", '<div role="region" tabindex="-1">Results</div>', "search.html"));
+  assert.ok(!fires("positive-tabindex", "<div ref={panel} tabIndex={-1} />", "Search.tsx"));
+  assert.ok(!fires("positive-tabindex", "<div ref={panel} tabIndex={0} />", "Search.tsx"));
+});
+
+test("cast-to-any: a TypeScript escape cast is a finding", () => {
+  assert.ok(fires("cast-to-any", "const invoice = raw as any;", "src/ledger.ts"));
+  assert.ok(fires("cast-to-any", "total += (row as any).cents;", "src/ledger.ts"));
+});
+
+test("cast-to-any: unknown, a longer identifier, and Swift/Kotlin `as Any` are NOT findings", () => {
+  assert.ok(!fires("cast-to-any", "const raw = payload as unknown;", "src/ledger.ts"));
+  assert.ok(!fires("cast-to-any", "const v = input as anyValue;", "src/ledger.ts"));
+  // Case-sensitive on purpose: the existential cast is the correct idiom on both platforms.
+  assert.ok(!fires("cast-to-any", "let boxed = value as Any", "Model.swift"));
+  assert.ok(!fires("cast-to-any", "val boxed = value as Any", "Model.kt"));
+});
+
+test("cast-to-any and catch-any never double-report the same line", () => {
+  const found = names("try { go(); } catch (e: any) { log(e); }", "src/ledger.ts");
+  assert.ok(found.includes("catch-any"), `expected catch-any, got ${JSON.stringify(found)}`);
+  assert.ok(!found.includes("cast-to-any"), "a catch binding is catch-any's finding, not a cast");
+});
+
+test("cast-to-any: the corpus pair fires on the positive and stays silent on the control", () => {
+  assert.ok(fires("cast-to-any", corpus("code/cast-to-any.ts"), "code/cast-to-any.ts"));
+  assert.deepEqual(names(corpus("code/typed-narrowing.ts"), "code/typed-narrowing.ts"), []);
+});
+
+test("the 2.4.0 accessibility pair fires on the corpus positive and stays silent on the control", () => {
+  const found = names(corpus("design/zoom-lock-tabindex.html"), "design/zoom-lock-tabindex.html");
+  assert.deepEqual(found.sort(), ["positive-tabindex", "viewport-zoom-lock"]);
+  assert.deepEqual(names(corpus("design/viewport-clean.html"), "design/viewport-clean.html"), []);
+});
+
+// ── The remediation floor, end to end (2.4.0) ────────────────────────────────
+// The rule tables are checked for a `fix` in rule-metadata.test.mjs. This is the other
+// half: that the fix and the line actually reach the emitted violation, for a family from
+// each of the four tables and for the four families inlined in scan.mjs.
+
+test("every emitted violation carries a fix and the line it was found on", () => {
+  const samples = [
+    ["Great question! We delve into the tapestry here.\n\nIn conclusion \u{1F680}.\n", "post.md"],
+    ["const a = 1;\nelement.innerHTML = userInput;\n", "src/render.js"],
+    ["h1 { background-clip: text; color: transparent; }\n", "page.css"],
+    ["let w = UIScreen.main.bounds.width\n", "View.swift"],
+  ];
+  for (const [content, path] of samples) {
+    const violations = scanContent(content, path, { proseScope: "all" });
+    assert.ok(violations.length > 0, `expected findings for ${path}`);
+    for (const v of violations) {
+      assert.ok(typeof v.fix === "string" && v.fix.length > 0, `${path} finding has no fix: ${JSON.stringify(v)}`);
+      assert.ok(Number.isInteger(v.line) && v.line >= 1, `${path} finding has no line: ${JSON.stringify(v)}`);
+    }
+  }
+});
+
+test("the reported line is the line the tell is actually on", () => {
+  const js = ["const a = 1;", "const b = 2;", "// a naive implementation, for now", "eval(input);"].join("\n");
+  const found = scanContent(js, "src/run.js");
+  assert.equal(found.find((v) => v.name === "eval-usage").line, 4);
+  // A comment tell on a code surface is scanned through extractComments, which preserves
+  // the line count precisely so this number is the file's line and not the comment's index.
+  assert.equal(found.find((v) => v.name === "apologetic-comment").line, 3);
+});

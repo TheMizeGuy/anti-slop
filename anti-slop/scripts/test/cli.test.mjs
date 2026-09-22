@@ -44,6 +44,42 @@ test("A2: scan on a slop file exits 1 with a readable 'Scan score: N/50' report"
   }
 });
 
+// ── The text report is the surface a model reads (2.4.0) ─────────────────────
+// Through 2.3.2 a text finding was `[SEVERITY] desc` and nothing else: no rule id to look
+// up, no line to open, no confidence class to weigh it against, and no remediation. That
+// is the incomplete finding references/confidence-and-evidence.md says gets closed by
+// deletion, and it is why every finding now prints its context line and an indented fix.
+test("a text finding names its rule, line, confidence and fix", () => {
+  const dir = scratchDir();
+  try {
+    writeFileSync(join(dir, "app.js"), "const a = 1;\nelement.innerHTML = userInput;\n");
+    const result = runCli(["app.js"], dir);
+    assert.equal(result.status, 1);
+    const finding = result.stdout.split("\n").find((l) => l.startsWith("[HIGH]"));
+    assert.ok(finding, `no finding line in:\n${result.stdout}`);
+    assert.match(finding, /\(innerhtml-usage, line 2, Hard defect\)$/);
+    assert.match(result.stdout, /^ {2}fix: \S.*$/m, `no indented fix line in:\n${result.stdout}`);
+    // The fix must follow its own finding, not float at the end of the report.
+    const lines = result.stdout.split("\n");
+    assert.match(lines[lines.indexOf(finding) + 1], /^ {2}fix: /);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// The header is quoted verbatim by commands/slop-check.md and the README walkthrough, so
+// it is pinned separately from the finding lines that now sit under it.
+test("the scan header line is unchanged by the finding format", () => {
+  const dir = scratchDir();
+  try {
+    writeFileSync(join(dir, "slop.md"), SLOP_MD);
+    const result = runCli(["slop.md"], dir);
+    assert.match(result.stdout, /^Scan score: \d+\/50 \| [A-Z]+ \| \d+ violation\(s\)$/m);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 // ── A2: --format json shape, nothing else on stdout ──
 
 test("A2: --format json emits the D5 JSON shape and nothing else on stdout", () => {
@@ -265,14 +301,17 @@ test("A3: an unreadable file aborts before anything is recorded", () => {
 // `desc`, dropping `confidence` or changing `count` to `hits` kept the suite green and
 // broke every downstream consumer of --format json.
 
+// `fix` and `line` joined every shape in 2.4.0: a finding that names only the offence is
+// incomplete under the remediation floor, and a consumer of --format json now gets the
+// remediation and the location without re-deriving either.
 const VIOLATION_KEYS = {
-  "banned-word": ["confidence", "count", "desc", "severity", "type", "word"],
-  "banned-phrase": ["confidence", "count", "desc", "line", "phrase", "severity", "type"],
-  "text-construct": ["confidence", "count", "desc", "name", "severity", "type"],
-  "emoji": ["confidence", "count", "desc", "severity", "type"],
-  "design-tell": ["confidence", "count", "desc", "mode", "name", "severity", "type"],
-  "native-tell": ["confidence", "count", "desc", "mode", "name", "severity", "type"],
-  "code-pattern": ["confidence", "count", "desc", "name", "severity", "type"],
+  "banned-word": ["confidence", "count", "desc", "fix", "line", "severity", "type", "word"],
+  "banned-phrase": ["confidence", "count", "desc", "fix", "line", "phrase", "severity", "type"],
+  "text-construct": ["confidence", "count", "desc", "fix", "line", "name", "severity", "type"],
+  "emoji": ["confidence", "count", "desc", "fix", "line", "severity", "type"],
+  "design-tell": ["confidence", "count", "desc", "fix", "line", "mode", "name", "severity", "type"],
+  "native-tell": ["confidence", "count", "desc", "fix", "line", "mode", "name", "severity", "type"],
+  "code-pattern": ["confidence", "count", "desc", "fix", "line", "name", "severity", "type"],
 };
 
 test("D5: every violation type in --format json carries its exact documented key set", () => {
@@ -293,6 +332,8 @@ test("D5: every violation type in --format json carries its exact documented key
         assert.ok(expected, `unknown violation type "${v.type}" in JSON output: ${JSON.stringify(v)}`);
         assert.deepEqual(Object.keys(v).sort(), expected, `${v.type} key set drifted: ${JSON.stringify(v)}`);
         assert.equal(typeof v.desc, "string");
+        assert.ok(typeof v.fix === "string" && v.fix.length > 0, `${v.type} carries no fix: ${JSON.stringify(v)}`);
+        assert.ok(Number.isInteger(v.line) && v.line >= 1, `${v.type} carries no line: ${JSON.stringify(v)}`);
         assert.ok(Number.isInteger(v.count));
         assert.ok(["high", "medium", "low"].includes(v.severity));
         seen.add(v.type);
@@ -318,7 +359,7 @@ test("D5: a suppressed entry never reaches JSON output, and carries its own two 
     const [entry] = JSON.parse(readFileSync(join(dir, ".anti-slop", "scan-log.json"), "utf8"));
     assert.deepEqual(
       Object.keys(entry).sort(),
-      ["confidence", "count", "desc", "file", "line", "phrase", "severity", "suppressed", "suppressedBy", "timestamp", "type"],
+      ["confidence", "count", "desc", "file", "fix", "line", "phrase", "severity", "suppressed", "suppressedBy", "timestamp", "type"],
     );
   } finally {
     rmSync(dir, { recursive: true, force: true });

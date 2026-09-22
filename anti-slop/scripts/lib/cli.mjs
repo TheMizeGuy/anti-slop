@@ -133,11 +133,35 @@ function formatSkippedHint(skipped, scope) {
     "userFacingProse in .anti-slop/config.json, or pass --prose-scope all.\n";
 }
 
+// ── One finding, two lines ──
+// The doctrine (references/confidence-and-evidence.md § The remediation floor) is that a
+// finding naming only the offence is incomplete, and an incomplete finding gets closed by
+// deletion. Through 2.3.2 this printed `[SEVERITY] desc` and nothing else: no rule id to
+// look up, no line to open, no confidence class to weigh it by, and no fix -- so a reader
+// working from the text output had the offence and the delete key. The second line is the
+// remediation, indented under its finding.
+//
+// Same rule-id convention as measure.mjs ruleName() and lib/dashboard.html: which field
+// identifies a rule varies by violation type.
+function ruleId(v) {
+  return v.name || v.word || v.phrase || v.type || "unknown";
+}
+
+function formatFinding(v) {
+  const facts = [ruleId(v)];
+  // Every family carries a line; a violation from an embedder that somehow does not gets
+  // the rest of its context rather than the string "line null".
+  if (Number.isInteger(v.line)) facts.push(`line ${v.line}`);
+  if (v.confidence) facts.push(v.confidence);
+  const head = `[${v.severity.toUpperCase()}] ${v.desc}  (${facts.join(", ")})`;
+  return v.fix ? `${head}\n  fix: ${v.fix}` : head;
+}
+
 function formatTextReport(result) {
   if (result.violations.length === 0) {
     return `${result.file}: clean\n`;
   }
-  const report = result.violations.map((v) => `[${v.severity.toUpperCase()}] ${v.desc}`).join("\n");
+  const report = result.violations.map(formatFinding).join("\n");
   return `${result.file}\nScan score: ${result.score}/50 | ${result.verdict} | ${result.violations.length} violation(s)\n\n${report}\n\n`;
 }
 

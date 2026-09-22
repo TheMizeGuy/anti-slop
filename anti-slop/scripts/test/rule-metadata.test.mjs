@@ -14,6 +14,10 @@ import {
   NATIVE_PATTERNS,
   WEB_SURFACE_EXTENSIONS,
   NATIVE_UI_EXTENSIONS,
+  BANNED_WORD_FIX,
+  BANNED_PHRASE_FIX,
+  EMDASH_FIX,
+  EMOJI_FIX,
 } from "../lib/rules.mjs";
 import { scanContent, fileGuardOk } from "../lib/scan.mjs";
 
@@ -67,6 +71,38 @@ test("every table-driven rule declares a valid confidence class", () => {
       CONFIDENCE_CLASSES.includes(rule.confidence),
       `rule "${rule.name}" has confidence ${JSON.stringify(rule.confidence)}, which is not one of the four classes`,
     );
+  }
+});
+
+// ── The remediation floor (2.4.0) ────────────────────────────────────────────
+// references/confidence-and-evidence.md § The remediation floor: a finding that names only
+// the offence is incomplete, and an incomplete finding gets closed by deletion. The
+// scanner's own output violated that doctrine for every release up to 2.3.2 -- a rule with
+// no `fix` prints an offence and nothing a reader can act on except the delete key.
+// 160 characters is the ceiling because the fix shares a terminal line with its finding;
+// past that it wraps and stops being one sentence anybody reads.
+test("every table rule carries a one-sentence fix", () => {
+  for (const rule of ALL_TABLE_RULES) {
+    assert.equal(typeof rule.fix, "string", `rule "${rule.name}" declares no fix`);
+    assert.ok(rule.fix.trim().length > 0, `rule "${rule.name}" declares an empty fix`);
+    assert.ok(
+      rule.fix.length <= 160,
+      `rule "${rule.name}" has a ${rule.fix.length}-character fix; the ceiling is 160`,
+    );
+  }
+});
+
+// The four families inlined in scan.mjs have no rule object to hang a fix on, so theirs
+// live beside their confidence constants. Without this they are the one way a finding can
+// still reach a reader with no remediation, and nothing above would notice.
+test("the four non-table rule families declare a fix too", () => {
+  const familyFixes = {
+    BANNED_WORD_FIX, BANNED_PHRASE_FIX, EMDASH_FIX, EMOJI_FIX,
+  };
+  for (const [name, fix] of Object.entries(familyFixes)) {
+    assert.equal(typeof fix, "string", `${name} is not a string`);
+    assert.ok(fix.trim().length > 0, `${name} is empty`);
+    assert.ok(fix.length <= 160, `${name} is ${fix.length} characters; the ceiling is 160`);
   }
 });
 

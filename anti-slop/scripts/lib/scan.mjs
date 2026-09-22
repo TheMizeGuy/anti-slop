@@ -28,6 +28,10 @@ import {
   BANNED_PHRASE_CONFIDENCE,
   EMDASH_CONFIDENCE,
   EMOJI_CONFIDENCE,
+  BANNED_WORD_FIX,
+  BANNED_PHRASE_FIX,
+  EMDASH_FIX,
+  EMOJI_FIX,
 } from "./rules.mjs";
 
 // ── Concentration gate ──
@@ -78,13 +82,17 @@ function stripStringLiterals(line) {
 // Both comment shapes count: a whole line whose first token is a marker, and the tail of
 // a line after an unquoted marker. Trailing comments are the most common comment form in
 // real code, and scanning only full-line comments made every one of them invisible.
+// Line count is PRESERVED (a line contributing no comment becomes ""), the same way
+// stripProseNoise preserves it: a finding reports the line it was found on, and dropping
+// the non-comment lines made every code-surface line number off by however many lines of
+// actual code preceded the match. Blank lines change no match count.
 function extractComments(content) {
   const out = [];
   for (const line of content.split("\n")) {
-    if (ESCAPE_HATCH.test(line)) continue;
+    if (ESCAPE_HATCH.test(line)) { out.push(""); continue; }
     if (LEADING_COMMENT.test(line)) { out.push(line); continue; }
     const tail = stripStringLiterals(line).match(TRAILING_COMMENT);
-    if (tail) out.push(tail[0]);
+    out.push(tail ? tail[0] : "");
   }
   return out.join("\n");
 }
@@ -145,6 +153,27 @@ function globalize(re) {
   return re.flags.includes("g") ? re : new RegExp(re.source, re.flags + "g");
 }
 
+// ── Where a finding is (the remediation floor's other half) ──
+// A finding that names no location is one the reader has to go looking for, which is the
+// same failure as a finding that names no fix. Every violation object carries `line`: the
+// 1-based line of its FIRST contributing match, counted against a haystack that preserves
+// the original line count (stripProseNoise, extractComments and the per-line loops all do).
+//
+// A fresh RegExp per call rather than globalize(): exec() advances lastIndex, and the
+// per-word and per-rule regexes are module-level objects shared across every scan.
+function freshGlobal(re) {
+  return new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+}
+
+function lineAtIndex(text, index) {
+  return text.slice(0, index).split("\n").length;
+}
+
+function firstMatchLine(text, re) {
+  const m = freshGlobal(re).exec(text);
+  return m ? lineAtIndex(text, m.index) : null;
+}
+
 function resolveSeverity(sev, count) {
   return typeof sev === "function" ? sev(count) : sev;
 }
@@ -164,18 +193,24 @@ function hasContextException(lowerWord, contentLower) {
 // `count` (a per-line predicate for tells whose arithmetic a regex cannot state -- see
 // `token-drift-spacing`, which has to know that 13 is off a 4px grid and 16 is not), and
 // the default `pattern` match count.
+// Returns { count, line }: the total and the 1-based line of the first line that
+// contributed to it, which is what the finding reports.
 function countLinePattern(lines, pat) {
   const g = pat.classAll || pat.count ? null : globalize(pat.pattern);
   let count = 0;
-  for (const line of lines) {
-    if (ESCAPE_HATCH.test(line)) continue;
-    if (pat.suppress && pat.suppress.test(line)) continue;
-    if (pat.classAll) { count += countClassAll(line, pat.classAll); continue; }
-    if (pat.count) { count += pat.count(line); continue; }
-    const m = line.match(g);
-    if (m) count += m.length;
+  let line = null;
+  for (let i = 0; i < lines.length; i++) {
+    const text = lines[i];
+    if (ESCAPE_HATCH.test(text)) continue;
+    if (pat.suppress && pat.suppress.test(text)) continue;
+    let hits = 0;
+    if (pat.classAll) hits = countClassAll(text, pat.classAll);
+    else if (pat.count) hits = pat.count(text);
+    else { const m = text.match(g); hits = m ? m.length : 0; }
+    if (hits > 0 && line === null) line = i + 1;
+    count += hits;
   }
-  return count;
+  return { count, line };
 }
 
 // ── Suppressed-finding capture (opts.collectSuppressed) ──
@@ -202,10 +237,11 @@ function extractEscapeHatchedProse(content) {
   return out.join("\n");
 }
 
-// Mirror of extractComments that selects only the escape-hatched comment lines.
+// Mirror of extractComments that selects only the escape-hatched comment lines, and
+// preserves the line count for the same reason it does.
 function extractEscapeHatchedComments(content) {
   return content.split("\n")
-    .filter(l => /^\s*(\/\/|#|\*|\/\*|<!--|--)/.test(l) && ESCAPE_HATCH.test(l))
+    .map(l => (/^\s*(\/\/|#|\*|\/\*|<!--|--)/.test(l) && ESCAPE_HATCH.test(l) ? l : ""))
     .join("\n");
 }
 
@@ -215,15 +251,19 @@ function extractEscapeHatchedComments(content) {
 function countLinePatternOnEscapedLines(lines, pat) {
   const g = pat.classAll || pat.count ? null : globalize(pat.pattern);
   let count = 0;
-  for (const line of lines) {
-    if (!ESCAPE_HATCH.test(line)) continue;
-    if (pat.suppress && pat.suppress.test(line)) continue;
-    if (pat.classAll) { count += countClassAll(line, pat.classAll); continue; }
-    if (pat.count) { count += pat.count(line); continue; }
-    const m = line.match(g);
-    if (m) count += m.length;
+  let line = null;
+  for (let i = 0; i < lines.length; i++) {
+    const text = lines[i];
+    if (!ESCAPE_HATCH.test(text)) continue;
+    if (pat.suppress && pat.suppress.test(text)) continue;
+    let hits = 0;
+    if (pat.classAll) hits = countClassAll(text, pat.classAll);
+    else if (pat.count) hits = pat.count(text);
+    else { const m = text.match(g); hits = m ? m.length : 0; }
+    if (hits > 0 && line === null) line = i + 1;
+    count += hits;
   }
-  return count;
+  return { count, line };
 }
 
 // Additive-only: computes what WOULD have fired for two deliberate-suppression paths
@@ -252,8 +292,10 @@ function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle,
       if (lowConf && count < 2) continue;
       suppressed.push({
         type: "banned-word", word, count,
+        line: firstMatchLine(hatchedText, BANNED_WORD_REGEXES.get(word)),
         severity: lowConf ? "low" : "medium",
         confidence: BANNED_WORD_CONFIDENCE,
+        fix: BANNED_WORD_FIX,
         desc: `Banned AI-tell word "${word}" found ${count}x`,
         suppressed: true, suppressedBy: "escape-hatch",
       });
@@ -280,6 +322,7 @@ function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle,
         type: "banned-phrase", phrase, line: lineNum, count,
         severity: "medium",
         confidence: BANNED_PHRASE_CONFIDENCE,
+        fix: BANNED_PHRASE_FIX,
         desc: `Banned phrase "${phrase}" found ${count}x (first at line ${lineNum})`,
         suppressed: true, suppressedBy: "escape-hatch",
       });
@@ -289,12 +332,13 @@ function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle,
   if (isStyle) {
     for (const pat of DESIGN_PATTERNS) {
       if (!fileGuardOk(pat, content)) continue;
-      const count = countLinePatternOnEscapedLines(lines, pat);
+      const { count, line } = countLinePatternOnEscapedLines(lines, pat);
       if (meetsThreshold(pat, count)) {
         suppressed.push({
-          type: "design-tell", name: pat.name, count,
+          type: "design-tell", name: pat.name, count, line,
           severity: resolveSeverity(pat.severity, count),
           confidence: pat.confidence, mode: pat.mode,
+          fix: pat.fix,
           desc: `${pat.desc} (${count}x)`,
           suppressed: true, suppressedBy: "escape-hatch",
         });
@@ -306,12 +350,13 @@ function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle,
     for (const pat of CODE_PATTERNS) {
       if (isTestFile && pat.skipInTests) continue;
       if (!fileGuardOk(pat, content)) continue;
-      const count = countLinePatternOnEscapedLines(lines, pat);
+      const { count, line } = countLinePatternOnEscapedLines(lines, pat);
       if (meetsThreshold(pat, count)) {
         suppressed.push({
-          type: "code-pattern", name: pat.name, count,
+          type: "code-pattern", name: pat.name, count, line,
           severity: resolveSeverity(pat.severity, count),
           confidence: pat.confidence,
+          fix: pat.fix,
           desc: `${pat.desc} (${count}x)`,
           suppressed: true, suppressedBy: "escape-hatch",
         });
@@ -334,8 +379,10 @@ function collectSuppressedViolations({ content, lines, isProse, isCode, isStyle,
       if (lowConf && count < 2) continue;
       suppressed.push({
         type: "banned-word", word, count,
+        line: firstMatchLine(textToScan, BANNED_WORD_REGEXES.get(word)),
         severity: lowConf ? "low" : "medium",
         confidence: BANNED_WORD_CONFIDENCE,
+        fix: BANNED_WORD_FIX,
         desc: `Banned AI-tell word "${word}" found ${count}x`,
         suppressed: true, suppressedBy: "allowed-words",
       });
@@ -485,8 +532,10 @@ export function scanContent(content, filePath, opts = {}) {
         type: "banned-word",
         word,
         count,
+        line: firstMatchLine(textToScan, BANNED_WORD_REGEXES.get(word)),
         severity: lowConf ? "low" : "medium",
         confidence: BANNED_WORD_CONFIDENCE,
+        fix: BANNED_WORD_FIX,
         desc: `Banned AI-tell word "${word}" found ${count}x`,
       });
     }
@@ -518,6 +567,7 @@ export function scanContent(content, filePath, opts = {}) {
         count,
         severity: "medium",
         confidence: BANNED_PHRASE_CONFIDENCE,
+        fix: BANNED_PHRASE_FIX,
         desc: `Banned phrase "${phrase}" found ${count}x (first at line ${lineNum})`,
       });
     }
@@ -536,8 +586,10 @@ export function scanContent(content, filePath, opts = {}) {
           type: "text-construct",
           name: pat.name,
           count,
+          line: firstMatchLine(proseScan, pat.pattern),
           severity: pat.severity,
           confidence: pat.confidence,
+          fix: pat.fix,
           desc: `${pat.desc} (${count}x)`,
         });
       }
@@ -550,8 +602,10 @@ export function scanContent(content, filePath, opts = {}) {
         type: "text-construct",
         name: "em-dash-density",
         count: emdashes,
+        line: firstMatchLine(proseScan, /—/g),
         severity: density >= EMDASH_MIN_DENSITY * 2 ? "medium" : "low",
         confidence: EMDASH_CONFIDENCE,
+        fix: EMDASH_FIX,
         desc: `High em dash density (${emdashes} dashes, ${density.toFixed(1)}/1k words) -- the #1 AI writing tell`,
       });
     }
@@ -563,13 +617,16 @@ export function scanContent(content, filePath, opts = {}) {
   // exactly that), whereas a `.emoji` CSS class or an EMOJI_MAP constant is a source file
   // naming a symbol while shipping the glyphs. Code and markup opt out per line instead.
   const emojiSilenced = isProse && !fileGuardOk(EMOJI_FILE_GUARD, content);
-  const emojiMatches = emojiSilenced ? null : stripEscapeHatchLines(content).match(EMOJI_REGEX);
+  const emojiHaystack = emojiSilenced ? null : stripEscapeHatchLines(content);
+  const emojiMatches = emojiHaystack === null ? null : emojiHaystack.match(EMOJI_REGEX);
   if (emojiMatches) {
     violations.push({
       type: "emoji",
       count: emojiMatches.length,
+      line: firstMatchLine(emojiHaystack, EMOJI_REGEX),
       severity: emojiMatches.length > EMOJI_ESCALATE_COUNT ? "medium" : "low",
       confidence: EMOJI_CONFIDENCE,
+      fix: EMOJI_FIX,
       desc: `${emojiMatches.length} emoji found in ${filePath}`,
     });
   }
@@ -579,15 +636,17 @@ export function scanContent(content, filePath, opts = {}) {
   if (isStyle) {
     for (const pat of DESIGN_PATTERNS) {
       if (!fileGuardOk(pat, content)) continue;
-      const count = countLinePattern(lines, pat);
+      const { count, line } = countLinePattern(lines, pat);
       if (meetsThreshold(pat, count)) {
         violations.push({
           type: "design-tell",
           name: pat.name,
           count,
+          line,
           severity: resolveSeverity(pat.severity, count),
           confidence: pat.confidence,
           mode: pat.mode,
+          fix: pat.fix,
           desc: `${pat.desc} (${count}x)`,
         });
       }
@@ -596,15 +655,17 @@ export function scanContent(content, filePath, opts = {}) {
   if (isNative) {
     for (const pat of NATIVE_PATTERNS) {
       if (!fileGuardOk(pat, content)) continue;
-      const count = countLinePattern(lines, pat);
+      const { count, line } = countLinePattern(lines, pat);
       if (meetsThreshold(pat, count)) {
         violations.push({
           type: "native-tell",
           name: pat.name,
           count,
+          line,
           severity: resolveSeverity(pat.severity, count),
           confidence: pat.confidence,
           mode: pat.mode,
+          fix: pat.fix,
           desc: `${pat.desc} (${count}x)`,
         });
       }
@@ -614,7 +675,7 @@ export function scanContent(content, filePath, opts = {}) {
     for (const pat of CODE_PATTERNS) {
       if (isTestFile && pat.skipInTests) continue;
       if (!fileGuardOk(pat, content)) continue;
-      const count = countLinePattern(lines, pat);
+      const { count, line } = countLinePattern(lines, pat);
       // Same gate as the design table: every code rule shipped before 2.1.0 declares no
       // mode and behaves exactly as the old `count > 0`, while `banner-comment` -- a Taste
       // note whose whole claim is "this file is divided by ASCII art" -- needs two.
@@ -623,8 +684,10 @@ export function scanContent(content, filePath, opts = {}) {
           type: "code-pattern",
           name: pat.name,
           count,
+          line,
           severity: resolveSeverity(pat.severity, count),
           confidence: pat.confidence,
+          fix: pat.fix,
           desc: `${pat.desc} (${count}x)`,
         });
       }
