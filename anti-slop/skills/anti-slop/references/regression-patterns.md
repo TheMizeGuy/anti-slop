@@ -2,7 +2,7 @@
 
 How AI coding tools break working code. The CodeRabbit State of AI vs. Human Code Generation Report (December 2025, 470 GitHub PRs) found AI PRs contain 1.7x more issues, 75% more logic errors, and 8x more performance problems than human PRs. Multiple benchmarks confirm that AI models routinely introduce regressions during long-term code maintenance.
 
-These rules apply when modifying existing code, fixing bugs, or refactoring. The core principle: **change only what was asked. Preserve everything else.**
+These rules apply when modifying existing code, fixing bugs, or refactoring. The core principle: **change only what was asked. Preserve everything else.** A change the request asked for is not a regression, however much behaviour it alters; the rules below are about what changes uninvited. The exceptions to every rule here live in § The Cardinal Rules (a security fix that interacts with the change, a test that encodes the wrong contract), and a rule read without them is stricter than it means to be.
 
 ## The Cardinal Rules
 
@@ -81,7 +81,7 @@ A documented pattern: an AI changed `expect(total).toBe(90)` to `expect(total).t
 
 ## Silent Behavioral Regressions
 
-Changes that produce no errors but alter behavior in ways nothing catches until production.
+Changes that produce no errors but alter behavior in ways nothing catches until production. Every "do not change" below carries the same exception: unless the request is to change it. Then update every dependent (monitoring rule, dashboard query, client, test) in the same change and say so in the commit message.
 
 ### Error Messages and Status Codes
 
@@ -107,7 +107,7 @@ Monitoring, alerting, and client code depend on exact error strings and HTTP sta
 - Do not change log levels (warn to info, error to warn) -- monitoring dashboards depend on these
 - Do not change log field names in structured logging -- dashboards query on field names
 - Do not change metric names -- Grafana/Prometheus queries depend on exact names
-- Do not remove logging statements during refactoring
+- Do not remove logging statements during refactoring, unless the code path goes with them; then the commit message says which dashboards and alerts lose a signal
 
 ### Conditional Logic and Feature Flags
 
@@ -115,6 +115,7 @@ Monitoring, alerting, and client code depend on exact error strings and HTTP sta
 - Never remove environment-conditional code (`NODE_ENV === 'development'`)
 - Never remove A/B test logic
 - Never remove backwards-compatibility code paths without explicit approval
+- The exception is flag retirement: when the task is the flag's removal and the owner confirms the rollout finished, delete the branch and the flag together, in one change that names the flag
 
 ## Security Regressions
 
@@ -149,6 +150,17 @@ AI updates a package version or migrates imports without updating all consumers.
 - When migrating imports or APIs, grep for ALL import sites, not just the file being edited
 - Run the full test suite after dependency changes, not just the file-level tests
 - Never run a different package manager than the one the project uses (check which lock file exists)
+- Pin what you add: an unpinned version range, a `latest` tag in a Dockerfile, or a lockfile left out of the commit means the code that was verified is not the code that installs next week
+
+## Schema Migrations
+
+A generated migration drops or renames a column in one step, with no down migration, and the deploy that carries it cannot be rolled back: the old code reads a column that is gone, and the data that was in it is gone with it.
+
+**Rules:**
+- Never drop or rename a column in one step. Expand (add the new column, have the code write to both), migrate the data, then contract (remove the old column) in separate deploys
+- Every migration carries a down migration, or a comment stating why one is impossible and what the recovery is instead
+- A migration that rewrites a large table runs in batches, with the lock it takes named in the pull request
+- Flag any schema change to the user before proceeding; it is critical-risk under § The Blast Radius Principle
 
 ## Deployment and Infrastructure Configuration
 

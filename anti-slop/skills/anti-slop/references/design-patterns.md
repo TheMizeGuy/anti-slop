@@ -2,6 +2,8 @@
 
 Patterns that mark frontend output as AI-generated. These primarily apply to web frontend (HTML/CSS/JS). Adjust for other platforms (native mobile, desktop, terminal UI). The "generic AI website" problem comes from LLMs reproducing the median aesthetic from their training corpus, predominantly Tailwind CSS tutorials and SaaS landing pages.
 
+How to apply this file: almost everything here is a Pattern smell, a correlation with generated output rather than a proof that the page is wrong, and § Presence and concentration says which tells count on one instance and which need repetition. The accessibility and functional sections are the exception: those are defects. The fix for a tell is a decision with a reason (`choosing-with-intent.md`), never a different default, and a choice made on purpose is marked `anti-slop-allow: <reason>` and left alone.
+
 ## What the evidence actually ranks highest
 
 A corpus study of 3M+ Reddit posts and 3,033 comments (see `empirical-rankings.md`) found the strongest real complaints are, in order: **generic sameness ("all looks the same"), the un-themed shadcn/Tailwind default kit, AI purple, and gradients.** Two surprises worth internalizing:
@@ -42,7 +44,7 @@ AI defaults to purple/indigo gradients on white backgrounds. This traces directl
 - Timid, evenly-distributed color choices
 - No bold accent colors
 
-**Instead:** Choose colors based on the project's brand and purpose. Use warm colors, unusual combinations, or high-contrast palettes when appropriate. A restaurant website doesn't need tech-purple.
+**Instead:** Anchor the palette on the brand, or on a reference the user named. With neither, choose a direction you can give a reason for and state the reason (`choosing-with-intent.md`). A palette chosen because it is "not purple" is the next default: the cream-and-warm-accent look two sections up is what that move produced last time. A restaurant website doesn't need tech-purple, and it doesn't need this year's tasteful average either.
 
 **The default has broadened, not moved.** Framework indigo/violet remains the loudest palette tell in the corpus, and it is the one with scanner rules (`ai-purple-hex`, `ai-purple-class`, `purple-gradient-default`, `purple-blue-gradient`). But 2026 surveys of generated sites put Tailwind `blue-600` (`#2563EB`) ahead of it by raw volume, with an all-`slate` neutral ramp underneath. There is deliberately **no rule for blue**, and there should not be one: blue is the most common legitimate brand colour in software, a concentration rule on it would fire on a large share of correctly branded interfaces, and its remediation ("pick a different colour") is exactly the reset-the-clock move that `empirical-rankings.md` finding 1 warns against. The point is unchanged and is not about any hex. An unchosen primary plus an unchosen neutral ramp is the tell, and swapping indigo for blue changes nothing. The test stays "can I say why this project uses this colour."
 
@@ -57,7 +59,7 @@ AI reaches for Inter, Roboto, or system sans-serif every time. No distinctive pa
 - No display or serif fonts
 - Identical weight hierarchies (400/600/700)
 
-**Instead:** Pick fonts that match the project's personality. Consider serif fonts, display fonts, monospace for technical products. Use distinctive weight and size hierarchies.
+**Instead:** A pairing chosen for a reason: the brand's face where one exists, otherwise a display face and a body face picked for this product and named in a comment or a token. Use distinctive weight and size hierarchies. A serif chosen because it is the brand's, or because it fits this product and someone can say why, is a choice; the same serif reached for as the move away from Inter is the counterpart trap two paragraphs down.
 
 **The default sans has broadened past Inter.** `generic-font` matches the geometric-and-neutral set that generated pages reach for interchangeably: Inter, Geist, Roboto, Space Grotesk, Manrope, Plus Jakarta Sans, Outfit, DM Sans. They are all competent faces and none of them is banned; the tell is that swapping one for another is the move a page makes when nobody chose a typeface. **Remediation is a decision with a source**, not a different entry from the same list: the brand's face if there is one, a pairing (a display face plus a separate body face) if there is not, and a stated reason either way. Note that the rule matches on the family name, so `Inter Tight` matches through `Inter`, which is correct: it is the same family.
 
@@ -228,6 +230,8 @@ Hardcoded pixel values scattered through styles without explanation or system.
 }
 ```
 
+A number with a comment naming its source (`padding: 17px; /* matches the logo inset */`) is a decision, and one of them is not a finding. The finding is a file full of unrelated values with no scale behind them.
+
 ### !important Overrides
 
 Using `!important` to force styles instead of fixing specificity.
@@ -246,6 +250,8 @@ Using `!important` to force styles instead of fixing specificity.
 }
 ```
 
+One `!important` against a third-party widget's inline styles is pragmatism, which is why the scanner's `important-overuse` counts from two. The finding is the file that reaches for it instead of reading the cascade.
+
 ### Excessive Nesting
 
 ```css
@@ -260,33 +266,40 @@ Using `!important` to force styles instead of fixing specificity.
 }
 ```
 
+Three levels is a selector; seven is a specificity war that every later rule has to win.
+
 ### Duplicate Styles
 
 The same styles defined in multiple places because the AI generates each component in isolation without checking what already exists.
 
-**Rule:** Before adding styles, check if a utility class, component class, or design token already handles it.
+**Rule:** Before adding styles, check if a utility class, component class, or design token already handles it. Two components that share three declarations are not a duplicate worth a token; the finding is the same block copied because nobody looked.
 
 ### Over-Engineering Simple Layouts
 
-Using CSS Grid with template areas for a simple two-column layout. Flexbox with multiple wrappers for centering. Complex media queries for simple responsive behavior.
+Using CSS Grid with named template areas and a breakpoint for a layout that is one row of two items. Flexbox with multiple wrappers for centering. Complex media queries for simple responsive behavior.
 
 ```css
-/* BAD */
+/* BAD -- named areas and a breakpoint to put two things side by side */
 .container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  grid-template-rows: auto;
-  grid-gap: 1rem;
-  align-items: start;
-  justify-items: center;
+  grid-template-areas: "main aside";
+  grid-template-columns: 2fr 1fr;
+}
+@media (max-width: 640px) {
+  .container { grid-template-areas: "main" "aside"; grid-template-columns: 1fr; }
 }
 
-/* GOOD (if it's just a two-column layout) */
+/* GOOD -- the same behaviour, no breakpoint */
 .container {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
 }
+.container > main { flex: 2 1 20rem; }
+.container > aside { flex: 1 1 12rem; }
 ```
+
+The test is whether the layout has a structure the simpler tool cannot express. A page with a header spanning two columns and a sidebar under it is what template areas are for; a card grid is what `repeat(auto-fit, minmax(20rem, 1fr))` is for (§ Fixed Geometry recommends exactly that form); two boxes in a row are flex. Reaching for the most general tool first is the tell.
 
 ## Functional Anti-Patterns
 
@@ -337,18 +350,23 @@ AI-generated UI frequently fails accessibility. These are functional defects, no
 - Placeholder text used as the only label (disappears on input, not reliably read by screen readers)
 - Animations without `@media (prefers-reduced-motion: reduce)` wrapping
 - No `@media (forced-colors: active)` consideration for high-contrast mode
+- A viewport meta with `user-scalable=no` or `maximum-scale=1`, which blocks pinch zoom (WCAG 1.4.4)
+- Inputs for email, phone, or numbers without the matching `type` or `inputmode`, so the mobile keyboard is the wrong one and autofill has nothing to match
 
 **Rule:** Check contrast for text AND UI components. Use semantic HTML. Trap focus in modals. Announce dynamic changes. Test with keyboard only.
 
-**Two of these have scanner rules, and both remediations add behaviour rather than removing it.**
+**Four of these have scanner rules, and every remediation adds behaviour rather than removing it.**
 
 - `outline-none` matches `outline: none` / `outline: 0` in a file that defines no `:focus-visible` rule. **Remediation: replace the ring, never remove it.** `:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }` satisfies WCAG 2.4.7 and looks better than the browser default, which is usually why the outline was killed in the first place. A file that already defines `:focus-visible` is silenced, because suppressing the default in favour of a designed ring is the correct pattern.
 - `missing-alt` matches an `<img>` with no `alt` attribute at all, and separately an `alt` whose value is `image`, `photo`, `picture`, `icon`, or `graphic`, which is the placeholder a generated page writes when it has nothing to say. **Remediation: write what the image conveys**, in the context where it sits ("Q3 revenue by region, with EMEA flat"). For a decorative image, `alt=""` is the correct answer and is deliberately not matched. Deleting the `<img>` is never the fix.
+- `viewport-zoom-lock` matches a viewport meta carrying `user-scalable=no`, `user-scalable=0`, or `maximum-scale=1`, which blocks pinch zoom and fails WCAG 1.4.4 Resize Text. **Hard defect**, medium severity, presence-flagged: there is no reading on which locking zoom helps the person holding the phone. **Remediation: delete both attributes.** `width=device-width, initial-scale=1` is the whole viewport meta, and the layout bug that prompted the lock (usually a fixed-width element) is the thing to fix.
+- `positive-tabindex` matches `tabindex` (or JSX `tabIndex`) set to a positive integer, which pulls the element ahead of everything else in the focus order and fails WCAG 2.4.3 Focus Order as soon as a second element does the same. **Quality defect**, medium severity. `tabindex="0"` (in the natural order) and `tabindex="-1"` (focusable by script only) are correct and are not matched. **Remediation: `tabindex="0"` or none, and fix the DOM order** so the natural sequence is the intended one.
 
 ### Mobile-Unfriendly Designs
 
 Designs that look good at desktop width but break on mobile:
 - Fixed widths instead of responsive
+- Pinch zoom locked with `user-scalable=no` or `maximum-scale=1` in the viewport meta (the `viewport-zoom-lock` rule)
 - Hover-only interactions (no touch equivalent)
 - Small tap targets (24x24 CSS px minimum with spacing per WCAG 2.5.8 AA; 44x44 CSS px per WCAG 2.5.5 AAA and platform guidelines)
 - Horizontal scrolling from overflow
@@ -451,7 +469,7 @@ A small colored pill (`rounded-full px-3 py-1 text-sm bg-primary/10`) above the 
 
 Always one filled primary button ("Get Started") + one ghost/outline secondary ("Learn More"), side by side, centered below the subtitle. AI never generates a single CTA, never three CTAs.
 
-**Instead:** Sometimes one CTA is enough. Sometimes none (let the content lead to action naturally). Vary button styles, sizes, and placement based on what the page needs.
+**Instead:** One call to action per distinct thing the page wants the visitor to do, which is usually one. A second button exists only when a second action genuinely exists (a demo booking beside a signup, a download beside a purchase), and it is named after that action rather than "Learn More". A page whose content leads to the action can have none.
 
 ### Stats Row
 
@@ -477,13 +495,13 @@ SVG wave or curved shape between page sections, usually in a light gray or the p
 
 4 columns: Brand + description + social icons, then "Product", "Company", "Legal" link groups. Dark background (`bg-gray-900`). Always "All rights reserved." Always the same 4 social icons (Twitter, GitHub, LinkedIn, Discord).
 
-**Instead:** Match footer tone to the overall design (light footers exist). Vary column count and grouping based on actual site structure. Include newsletter signup, office addresses, or trust badges when relevant. Skip "All rights reserved" (legally redundant).
+**Instead:** Match footer tone to the overall design (light footers exist). Column count and grouping follow the site's actual structure: a four-page site does not need four link columns. Include newsletter signup, office addresses, or trust badges when they are real. Skip "All rights reserved" (legally redundant). The tell is the template with nothing behind it; vary where the site gives a reason and keep the convention where it does not.
 
 ### Dashboard Layout Trinity
 
 `w-64` dark sidebar + `h-16` header with search + bell + avatar + 4 stats cards + Recharts chart + "Recent Orders" table. This exact layout appears across every AI dashboard generation.
 
-**Instead:** Custom sidebar width based on content. Collapsible sidebar with icon-only mode. Stats relevant to the actual domain. Custom chart library matching brand colors. Real empty states when data is absent.
+**Instead:** Ask what the operator comes to this screen for and put that above the fold; four stat cards and a recent-orders table are the answer for a shop, not for a monitoring console or a ledger. The sidebar is as wide as its longest real label, the chart shows the figure the operator acts on, and the empty state is designed before the populated one. The shadcn dashboard this layout copies is a documentation example, not a product.
 
 ### Uniform Spacing Scale
 
@@ -497,25 +515,25 @@ The section-padding leg of this has a rule: `uniform-section-padding` fires at t
 
 Always 3 cards. Always 5 yellow stars. Always 2-3 sentence hyperbolic quotes. Always circular `w-10 h-10` avatar. Names from a small pool ("Sarah Johnson", "Michael Chen"). Always "CEO at TechCorp."
 
-**Instead:** Mix star ratings (4.5, 4.8) for authenticity. Use real photos. Feature one large testimonial with supporting smaller ones. Embed real tweets or third-party reviews. Include specific metrics ("Saved 40 hours/month") rather than generic praise.
+**Instead:** Real quotes from real people, with their names, and permission on file. With none, no testimonial section: an invented quote is a falsehood on the page rather than a design choice, and invented ratings mixed to look plausible are the same falsehood with decimals. Where real quotes exist, one large testimonial with supporting smaller ones, or embedded third-party reviews, reads as considered, and a specific figure ("saved 40 hours a month") carries more than adjectives.
 
 ### Pricing Table Convention
 
 Always 3 tiers. Middle one always highlighted with "Most Popular" floating badge (`absolute -top-3 rounded-full`). Always monthly/annual toggle saving "20%". Always checkmark feature lists.
 
-**Instead:** Vary tier count based on actual product (2 or 4 work too). Use a comparison table for detailed feature differences. Lead with the recommended plan rather than giving equal weight to all tiers. Use non-round pricing ($27, $147) based on pricing psychology.
+**Instead:** Tier count, emphasis, and the billing toggle follow the product's real plans: two plans get two columns, and a plan is highlighted only when the product can say why it is the right one for most buyers. Where the differences between plans are detailed, a comparison table reads better than three columns of check marks. "Most Popular" appears only when it is true.
 
 ### Skeleton/Loading Defaults
 
 CSS border spinner (`animate-spin border-4 border-t-primary`) or `animate-pulse bg-gray-200` skeletons with fractional widths (`w-3/4`, `w-1/2`). The stepped-fraction pattern is a strong AI tell.
 
-**Instead:** Custom branded loading animations. Shimmer/gradient skeleton effects instead of pulse. Progressive loading where content appears as it loads. Context-specific skeleton shapes matching actual content layout.
+**Instead:** Skeleton shapes that match the layout they stand in for, so the page does not jump when content arrives, and progressive loading where content appears as it lands. A shimmer or a branded animation is a choice, not a requirement: the tell is the stepped-fraction template with nothing behind it, and a plain pulse on a skeleton that mirrors the real layout is fine.
 
 ### 404/Error Page Formula
 
 Giant gray "404" text (`text-8xl text-gray-200`), "Page not found", "Sorry, we couldn't find..." description, "Go home" + "Go back" buttons. No illustration, no personality.
 
-**Instead:** Custom illustration or animation. Brand-consistent messaging with personality. Contextual suggestions (search, popular pages). Error reporting mechanism.
+**Instead:** Say what happened in the product's voice, and give the visitor a way forward that fits this site: a search box, the pages people actually came for, a link back to where they were. An illustration or an animation is welcome when the brand has one and unnecessary when it does not; the tell is the formula with nothing behind it, and a plain page that helps beats a decorated page that does not.
 
 ## The 10 Strongest AI Design Fingerprints (Ranked)
 
@@ -532,7 +550,7 @@ For reference, the patterns most reliably marking output as AI-generated:
 9. The **verbatim** run `text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight` on a hero heading -- the unmodified string, not a responsive type scale
 10. 4-column footer with "Product / Company / Legal" headers
 
-None of these are wrong individually. The tell is when they all appear together on the same project with no variation or customization.
+None of these are wrong individually. The tell is when they all appear together on the same project with no variation or customization. Each has its remediation in its own section above (the AI Component Fingerprints and Visual Design entries), and the one that needs the most care is entry 9, below.
 
 ### What entry 9 is, and what it is not
 
@@ -660,6 +678,8 @@ CSS `radial-gradient(circle, #e5e7eb 1px, transparent 1px)` with `background-siz
 AI produces pages in this exact order regardless of project type: nav, hero, logo bar, stats row, feature grid, alternating L-R features, testimonials, pricing, FAQ accordion, CTA repeat, footer. A restaurant, portfolio, e-commerce store, and SaaS product all get this same structure.
 
 **Instead:** Let the content determine the page structure. A portfolio leads with work samples. A restaurant leads with the menu or a reservation CTA. An e-commerce site leads with products. The page structure should match what the user came to do.
+
+The logo bar deserves its own sentence: a "Trusted by" strip of invented or borrowed company logos is a falsehood, not a tell. Delete it until there are real customers who agreed to appear, and then show those.
 
 ### The Bootstrap Fingerprint
 

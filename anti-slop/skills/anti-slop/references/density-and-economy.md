@@ -1,10 +1,8 @@
 # Density and Economy
 
-The dimension that catches WASTE rather than BREAKAGE.
-
 ## Why this file exists
 
-Every other rule in this plugin is a rule against excess: too many buzzwords, too many em
+This is the dimension that catches waste rather than breakage. Every other rule in this plugin is a rule against excess: too many buzzwords, too many em
 dashes, too much gradient, too many `!important`s, shadows on everything. All of them
 describe output doing too much of something.
 
@@ -141,6 +139,13 @@ qualifications were correct and hard-won, they just do not belong in front of th
 
 The distances are viewport-relative in spirit: what matters is whether a person can hold
 the association without tracking across the screen. Report the measured distance, always.
+
+The remediation for each row: a row action lives in the row, or in a sticky action column
+that scrolls with it, never in a toolbar at the top of a long table; two controls that scope
+the same object sit together, beside that object; a control inside `<nav>` that performs an
+action rather than a link moves out of the landmark into the content it acts on; and the primary action reads
+as primary (filled, first) while the destructive one reads as destructive (outlined or red,
+last, with a confirmation only when the loss is real).
 
 ## How to measure
 

@@ -1,6 +1,8 @@
 # Code Anti-Patterns
 
-Patterns that mark code as AI-generated. Avoid all of these. Studies measuring AI code quality (GitClear 2024, OX Security 2025) consistently find higher defect rates, more logic errors, and more security vulnerabilities in AI-generated code than in human-written code.
+Patterns that mark code as AI-generated. Studies measuring AI code quality (GitClear 2024, OX Security 2025) consistently find higher defect rates, more logic errors, and more security vulnerabilities in AI-generated code than in human-written code.
+
+How to apply this file: the class of a pattern decides its urgency (a bug is fixed before any cosmetic finding is considered), presence versus concentration decides whether one instance is a finding (a swallowed error is a finding on sight; a narrating comment is a finding when the file is full of them), and the surrounding code decides what "normal" looks like here. A pattern chosen on purpose is not a finding: mark the line `anti-slop-allow: <reason>` and move on.
 
 ## Two axes: how loud, and whether it's actually wrong
 
@@ -37,6 +39,8 @@ for item in items:
     counter += 1
 return counter
 ```
+
+A comment that says why the code is the way it is, records a workaround, or warns about a trap stays. The tell is only the comment that repeats the line beneath it.
 
 ### Trivial JSDoc/Docstrings
 
@@ -102,7 +106,7 @@ function calculateTotal(items) { /* ... */ }
 // Good catch! Let me know if you'd like me to add tax handling.
 ```
 
-The model's chat voice leaking into source: a stray ` ``` ` fence, "Here's the updated/complete/fixed code," "As an AI language model," "Good catch!", "You're absolutely right," a comment-leading "Note:" / "Remember:" / "Important:", "I hope this helps," "Let me know if you'd like me to..." Delete every line that is the assistant talking — both the preamble and the closing offer. High precision, cosmetic class; harmless to execution but an immediate giveaway. Rules: `chat-artifact` for the voice, `assistant-boilerplate` for the as-an-AI and refusal forms.
+The model's chat voice leaking into source: a stray ` ``` ` fence, "Here's the updated/complete/fixed code," "As an AI language model," "Good catch!", "You're absolutely right," a comment-leading "Note:" / "Remember:" / "Important:", "I hope this helps," "Let me know if you'd like me to...", and comments addressed to the user rather than to the next reader of the file ("as requested," "per your instructions," "as discussed"). Delete every line that is the assistant talking — both the preamble and the closing offer. High precision, cosmetic class; harmless to execution but an immediate giveaway. Rules: `chat-artifact` for the voice, `assistant-boilerplate` for the as-an-AI and refusal forms.
 
 **Model tooling tokens are the same leak, one layer lower.** `oaicite`, `contentReference`, `attributableIndex`, `turn0search0`, `grok_card`, `ppl-ai-file-upload`, `[cite: 1]`: vendor-internal citation markup that arrives when the model pastes a snippet it was reading. The scanner matches them as `model-tooling-artifact` at **high** severity and **Hard defect** confidence, in code and prose alike, because unlike the chat voice these are not a style question. A person could not have typed them, and one of them in a source file is proof the file was pasted rather than written. **Remediation:** delete the token; where it stood in for a real citation, write the citation. Ordinary markup that looks similar (a `[1]` footnote, a `:::note` admonition, a variable named `attributedString`) does not match. `writing-patterns.md` § Leaked Model Tooling Tokens carries the prose side.
 
@@ -277,6 +281,8 @@ def user_endpoint(id: str):
         raise HTTPException(404)
 ```
 
+Each layer's catch hides where the failure started and writes its own copy of the log line, so one incident produces three stack traces and no origin. One handler at the boundary sees the whole failure once, with the context to turn it into a status code or a retry.
+
 ## API and Dependency Hallucination
 
 ### Hallucinated Methods
@@ -330,6 +336,8 @@ Two named cases worth knowing: `unused-imports` generated in place of the real `
 
 **Rule:** Never suggest a package without verifying it exists on npm, PyPI, or the relevant registry, at the version you are pinning. Check the publish date and the download count, not only that the name resolves: a package first published last week with 40 downloads and the exact name you were about to invent is the attack, not the library. If uncertain about a package name, flag it explicitly.
 
+**Pin what you add.** An unpinned version range, a `latest` tag in a Dockerfile, or a lockfile left out of the commit is the same defect one release later: the code that was verified is not the code that installs. Pin the version, commit the lockfile, and name the version in the pull request so the reviewer can check the same one.
+
 Sources (accessed 2026-08-23): Socket, "Slopsquatting: how AI hallucinations are fueling a new class of supply chain attacks", which reproduces the Lanyado et al. figures and the cross-registry result; arXiv 2605.17062, "The Range Shrinks, the Threat Remains: Re-evaluating LLM Package Hallucinations on the 2026 Frontier-Model Cohort".
 
 ### Deprecated API Usage
@@ -369,7 +377,23 @@ AI's iterative debugging loop leaves variant files:
 - `utils.py`, `utils_old.py`
 - `rateLimiter.py`, `rateLimiterSimple.py`, `rateLimiterEnhanced.py`
 
-**Rule:** One file per concept. Delete variants. If a file needs to change, change it in place.
+**Rule:** One file per concept. Delete variants. If a file needs to change, change it in place. Two copies drift the day they are created, the reviewer cannot tell which one is live, and the import that still points at the old one is the bug nobody looks for.
+
+### Shell Scripts Without Fail-Fast
+
+```bash
+#!/usr/bin/env bash
+# BAD -- a failed build still runs the deploy on the next line
+npm run build
+./deploy.sh
+
+# GOOD
+set -euo pipefail
+npm run build
+./deploy.sh
+```
+
+A generated shell script runs every line whether or not the previous one succeeded, references unset variables as empty strings, and reports the exit status of the last command in a pipeline rather than the first failure. `set -euo pipefail` at the top turns each of those into a stop. **Rule:** every script that runs commands in sequence starts with it, and a script that genuinely needs to continue past a failure says so with an explicit `|| true` on that line, where the reader can see the decision.
 
 ### Dead-Branch Scaffolding
 
@@ -400,6 +424,8 @@ Ignoring the codebase's existing patterns:
 
 **Rule:** Read the codebase first. Match its conventions. When unsure, look at adjacent files.
 
+The same blindness reimplements what the repository already has: a `formatDate`, a retry wrapper, a slug helper written fresh beside the one three directories over, because the model read the file it was editing and nothing else (arXiv 2601.21276 measured generated pull requests ignoring reuse opportunities that reviewers then rated positively). Search for the helper before writing it, and reuse it or extend it.
+
 "Make the model follow the existing code instead of guessing the average" is the single most-repeated fix in the entire code corpus. The tell it prevents is concrete: a change that follows existing patterns is small and nearly invisible; one that ignores them is the 2000-line PR that should have been 50. Feed the model the module it extends and the nearest sibling before generating. See `choosing-with-intent.md`.
 
 ### Redundant Type Annotations
@@ -418,6 +444,34 @@ const items = ["a", "b"]
 
 Only annotate types when the compiler can't infer or when the inferred type is wrong.
 
+### Hardcoded Environment Values
+
+```python
+# BAD -- the code knows where it was written, not where it runs
+API_URL = "http://localhost:8000"
+DATA_DIR = "/Users/dev/project/data"
+BUCKET = "acme-prod-uploads"
+
+# GOOD -- one place, one documented default
+API_URL = os.environ.get("API_URL", "http://localhost:8000")
+```
+
+A localhost URL, a port, an absolute path, or a bucket name in application code works on the machine that generated it and on no other. **Rule:** environment-specific values come from configuration or the environment, with a default that is documented next to the setting (`.env.example`, a settings module) and correct for local development. The exception is a constant that is genuinely the same everywhere, such as a port a standard assigns.
+
+### Module-Level Mutable State
+
+```javascript
+// BAD -- a module global passes data between functions, and between every test
+let currentUser = null
+export function login(u) { currentUser = u }
+export function audit(action) { log(currentUser.id, action) }
+
+// GOOD -- pass it, or scope it to the request
+export function audit(user, action) { log(user.id, action) }
+```
+
+A module-level variable written by one function and read by another is a hidden argument: it makes the call order matter, it leaks between requests in a server and between tests in a suite, and it appears in no signature. **Rule:** pass the value, or scope it to the request or the session object. A module-level constant is fine; a module-level variable that changes after load is the tell. A deliberate process-wide singleton (a connection pool, a metrics registry) is created once, in one place, and says so.
+
 ## Testing Anti-Patterns
 
 ### Testing the Mock
@@ -430,7 +484,16 @@ def test_get_user():
     service = UserService(mock_db)
     result = service.get_user(1)
     assert result.name == "Alice"  # Only proves the mock works
+
+# GOOD - drive a real seam and assert on what a caller sees
+def test_get_user():
+    db = InMemoryUserRepo([User(id=1, name="Alice")])
+    service = UserService(db)
+    assert service.get_user(1).name == "Alice"
+    assert service.get_user(2) is None
 ```
+
+The mock version still passes with the lookup deleted from the service, because the assertion only reads the mock back. Drive a real or in-memory boundary and assert on what the caller sees, including the case the code has to handle itself.
 
 ### Trivial Tests
 
@@ -442,7 +505,15 @@ def test_true_is_true():
 def test_constructor():
     obj = MyClass()
     assert obj is not None
+
+# GOOD - assert a behaviour the object has
+def test_new_cart_is_empty():
+    cart = Cart()
+    assert cart.total() == 0
+    assert list(cart.items()) == []
 ```
+
+A test earns its place by failing when a behaviour changes. `assert obj is not None` cannot fail unless the constructor raises, so it tests nothing the constructor does not already test.
 
 ### Implementation-Coupled Tests
 
@@ -530,7 +601,22 @@ if ip.is_private or ip.is_loopback or ip.is_link_local:
     raise ValueError("Internal addresses not allowed")
 ```
 
-AI generates URL-fetching code (webhooks, image imports, link previews) without checking the destination. Attackers probe internal networks and cloud metadata endpoints (169.254.169.254).
+AI generates URL-fetching code (webhooks, image imports, link previews) without checking the destination. Attackers probe internal networks and cloud metadata endpoints (169.254.169.254). Where the set of legitimate destinations is known (a payment provider, a list of registered webhook hosts), an allowlist of hosts is the stronger fix and the check above is the fallback for genuinely open URLs; resolve the hostname once and connect to the address you checked, or a DNS answer that changes between the check and the request walks past it.
+
+### Open Redirect
+
+```python
+# BAD (the request chooses where the user lands after login)
+return redirect(request.args.get("next"))
+
+# GOOD (relative paths only, or an allowlist of hosts)
+target = request.args.get("next", "/")
+if not target.startswith("/") or target.startswith("//"):
+    target = "/"
+return redirect(target)
+```
+
+A `next`, `return_to`, or `redirect_uri` parameter copied into a redirect lets a phishing link start on the real domain and end on the attacker's. The check is the same shape as SSRF: a relative path, or a host on an allowlist, and never the raw value.
 
 ### Insecure Deserialization
 
@@ -568,7 +654,7 @@ def get_order(order_id: int, current_user: User):
     return order
 ```
 
-AI generates auth middleware but not authorization logic. Checking if a user is authenticated is not the same as checking if they own the resource.
+AI generates auth middleware but not authorization logic. Checking if a user is authenticated is not the same as checking if they own the resource. The same gap opens on every new route: a generated endpoint ships with no authentication and no rate limit unless the prompt asked for both, so a new public endpoint is checked for its auth dependency and its limiter before it is checked for anything else.
 
 ### Hardcoded Credentials
 
@@ -619,6 +705,20 @@ result = ast.literal_eval(user_expression)
 # WARNING: ast.literal_eval does NOT evaluate expressions like "2 + 3".
 # It only parses literals: strings, numbers, tuples, lists, dicts, booleans, None.
 ```
+
+### Over-Broad File Permissions
+
+```bash
+# BAD -- world-writable, and the secret is world-readable
+chmod 777 /srv/app/uploads
+echo "$API_KEY" > /tmp/key.txt
+
+# GOOD
+chmod 750 /srv/app/uploads          # owner and group only
+install -m 600 /dev/null ~/.config/app/key && printf '%s' "$API_KEY" > ~/.config/app/key
+```
+
+`chmod 777` is the generated answer to a permission error, and it hands every process on the machine write access to the directory. A secret written to a file gets mode 600 before the write, never after. **Rule:** the narrowest mode that makes the operation work, and a comment naming the user and group that need it.
 
 ### Sensitive Data in Logs
 
@@ -863,6 +963,86 @@ async function getData(key) {
 
 Clean async/await syntax masks the fact that multiple callers can enter the check simultaneously.
 
+```javascript
+// GOOD -- cache the promise, not the value: the second caller awaits the first fetch
+const cache = {}
+function getData(key) {
+  cache[key] ??= fetchFromDB(key).catch((err) => { delete cache[key]; throw err })
+  return cache[key]
+}
+```
+
+**Rule:** where two callers can pass the same check before either finishes, the check and the write have to be one step. In async code that means storing the promise (so the second caller joins the first) or serialising the section with a lock or a queue; in a database it means a unique constraint or `INSERT ... ON CONFLICT`, never a read followed by a write.
+
+### Resource Leaks
+
+```python
+# BAD -- the handle is closed on the happy path and on no other
+f = open(path)
+data = f.read()
+process(data)
+f.close()
+
+conn = pool.get()
+rows = conn.execute(query)      # an exception here keeps the connection out of the pool
+pool.put(conn)
+
+# GOOD
+with open(path) as f:
+    process(f.read())
+
+with pool.connection() as conn:
+    rows = conn.execute(query)
+```
+
+The happy path closes the handle and the error path does not, so the leak shows up only under load, as a pool that runs dry or a process at its file-descriptor limit, with the stack trace pointing somewhere else. **Rule:** a file, socket, or connection opened in a function is closed by a construct that runs on every exit: a context manager, `using` or try-with-resources, `defer`, or a `finally` block. A connection taken from a pool goes back in the same construct.
+
+### Blocking Calls in Async Code
+
+```python
+# BAD -- the whole event loop waits
+async def fetch_report(client):
+    time.sleep(2)                       # blocks every other task for two seconds
+    text = open(TEMPLATE).read()        # synchronous disk I/O on the loop
+    return await client.get(URL)
+
+# GOOD
+async def fetch_report(client):
+    await asyncio.sleep(2)
+    text = await asyncio.to_thread(Path(TEMPLATE).read_text)
+    return await client.get(URL)
+```
+
+An `async` function that calls a blocking API stalls every task sharing the loop, and nothing errors: throughput collapses at the first slow call. In Node the same shape is `fs.readFileSync` or a synchronous `child_process` call on a request path. **Rule:** inside an `async` function, every wait is an `await`; blocking work moves to the async variant of the API or to a worker thread.
+
+### Catastrophic Regex Backtracking
+
+```javascript
+// BAD -- nested quantifiers over untrusted input
+const EMAIL = /^([a-zA-Z0-9]+)*@/;          // (a+)* is the classic shape
+const PATH  = /^(\/[^/]*)*$/;               // fine on a match, exponential on a near-miss
+
+// GOOD -- one quantifier per position, or a parser
+const EMAIL = /^[a-zA-Z0-9]+@/;
+```
+
+A group that can match the same text in more than one way, quantified again, backtracks through every split when the input fails to match at the end, so a forty-character string takes seconds and a hundred-character string never returns. This plugin shipped one: its prose-scope glob compiler turned a run of `**/` segments into a chain of optional greedy groups, and twelve segments cost nine seconds on a non-match (2.3.2, in the changelog). **Rule:** no nested quantifiers over input the code does not control. Collapse repeated segments before compiling, prefer a character class to an alternation, and put a length cap in front of any regex that runs on user input.
+
+### Cast to any
+
+```typescript
+// BAD -- the compiler stops checking at this expression
+const user = (await res.json()) as any;
+render(user.profile.displayName);         // an undefined access ships without a warning
+
+// GOOD -- narrow with a guard, or type the boundary
+const body: unknown = await res.json();
+if (!isUser(body)) throw new ApiError("unexpected user payload");
+render(body.profile.displayName);
+```
+
+`as any` is `catch (e: any)` (§ Swallowing Errors) applied to any expression: every property access after it is unchecked, and the failure surfaces at runtime in a place the cast never mentions. The scanner matches it as `cast-to-any`, **Quality defect**, medium severity, skipped in test files, where a mock is often cast on purpose. **Remediation:** narrow with a type guard, or give the value a type at the boundary it crosses. A genuine reinterpretation carries a comment beside the cast saying why the two types disagree; `as unknown as T` is not matched, and gets the same comment.
+
 ## Comment Anti-Patterns (Additional)
 
 ### Apologetic Comments
@@ -968,3 +1148,32 @@ page = User.objects.all()[:100]  # Paginate
 ```
 
 List endpoints and queries need LIMIT/pagination. An unbounded `.all()` on a million-row table will crash the service.
+
+### Multi-Step Writes Without a Transaction
+
+```python
+# BAD -- a failure between the two writes leaves an order with no payment row
+db.execute("INSERT INTO orders ...", order)
+db.execute("INSERT INTO payments ...", payment)   # raises: the order exists, the payment does not
+
+# GOOD -- one transaction, both writes or neither
+with db.transaction():
+    db.execute("INSERT INTO orders ...", order)
+    db.execute("INSERT INTO payments ...", payment)
+```
+
+**Rule:** writes that only make sense together happen inside one transaction, and the transaction boundary sits at the operation the caller thinks of as one action. Where two systems are involved (a database and a queue), the pattern is an outbox table or an idempotent retry, never two unrelated writes in sequence.
+
+### Log Levels
+
+```python
+# BAD
+logger.info(f"Payment provider returned 500: {resp.text}")   # an outage, logged as routine
+logger.error(f"User {user_id} not found")                    # a 404, paged as an incident
+
+# GOOD
+logger.error("payment provider failed", extra={"status": resp.status_code, "provider": name})
+logger.info("user lookup missed", extra={"user_id": user_id})
+```
+
+A level is a routing decision: `error` reaches the person on call, `warn` reaches the dashboard, `info` reaches the log. An outage logged at `info` goes unseen until a customer reports it, and an expected condition logged at `error` trains the on-call person to ignore the channel. **Rule:** `error` for a failure someone has to act on, `warn` for a degraded path that recovered on its own, `info` for the normal course of events, and the same level for the same condition across the codebase.

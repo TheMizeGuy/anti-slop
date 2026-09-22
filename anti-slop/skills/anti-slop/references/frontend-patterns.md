@@ -2,6 +2,8 @@
 
 Patterns specific to frontend frameworks, CSS, performance, HTML semantics, and UX that AI generates incorrectly. A 2025 University of Michigan study found 70-80% of AI-generated UI fails WCAG AA without explicit accessibility instructions. Deque Systems (2024) reported 3-5x more accessibility violations per page in AI code than hand-authored code. A 500-repository audit by StackInsight found 86% of frontend repos have at least one missing cleanup pattern.
 
+How to apply this file: these are defects rather than tells, so one instance counts, and the bug-class entries (a leak, a class that never reaches the stylesheet, a hydration mismatch) come before anything cosmetic. Check which framework and browser versions the project actually runs before flagging a modern-CSS or React idiom as missing; a project on an older browser floor is not wrong for staying off `@container`.
+
 ## React Anti-Patterns
 
 ### useEffect Addiction
@@ -77,11 +79,11 @@ AI also mixes Pages Router patterns (getServerSideProps, useRouter from next/rou
 
 ### State Management Confusion
 
-AI puts server data in useState+useEffect (should be React Query), UI toggles in Redux (should be local state), and form state in raw useState (should be React Hook Form or server actions). Each category has a correct tool; AI mixes them randomly.
+Each kind of state has a home, and the tell is mixing them: server data cached in `useState` and refetched by hand in `useEffect`, a UI toggle routed through the global store, form state scattered across a dozen `useState` calls. Server data belongs in a cache with invalidation (React Query or SWR are the usual choices), a toggle belongs in the component that owns it, and a form belongs in one form-state object (a form library or server actions). The specific libraries are examples: the project's existing choice wins over any of them, and the finding is a new kind of state wired a third way in a codebase that already has two.
 
 ### Hydration Mismatches
 
-AI generates code that renders differently on server vs client: Date/time formatting, Math.random(), typeof window checks, browser-specific APIs. The "fix" of `suppressHydrationWarning` silences the warning without fixing the bug.
+AI generates code that renders differently on server vs client: Date/time formatting, Math.random(), typeof window checks, browser-specific APIs. The "fix" of `suppressHydrationWarning` silences the warning without fixing the bug. It is correct on a single value that is meant to differ between server and client (a rendered "last updated" timestamp) and wrong as a blanket over a component whose markup differs.
 
 ## CSS Anti-Patterns
 
@@ -125,6 +127,8 @@ AI defaults to older approaches when modern CSS handles the job natively:
 - **`@layer`**: AI fights specificity with `!important` or deeply nested selectors. Cascade layers (`@layer base, components, utilities`) give explicit control over ordering.
 - **Subgrid**: AI duplicates track definitions in nested grids. `grid-template-columns: subgrid` inherits the parent's tracks.
 
+When not to: each of these has a browser floor, and a project whose stated floor predates the feature is not wrong for staying on the older approach; check `browserslist` or the support policy before writing the finding. Container queries earn their place where a component is placed at more than one width; a component that lives in one place responds to the viewport as well as it ever did.
+
 ### Animation Performance
 
 Prefer animating `transform` and `opacity` (GPU-composited, cheapest). Properties like `filter` and `clip-path` are also compositor-friendly in modern browsers. Avoid animating layout-triggering properties (`width`, `height`, `top`, `left`, `margin`, `padding`) on every frame. For simple state changes, `background-color` and `color` (paint-only, no layout) are acceptable.
@@ -141,10 +145,10 @@ Micro-interactions (hover, focus, toggle): under 200ms. Medium transitions (pane
 
 ### Font Loading
 
-- No `font-display: swap` blocks rendering up to 3 seconds
-- Loading unused font weights (all 100-900 when only 400/700 needed)
-- No `<link rel="preload" as="font" crossorigin>` for critical fonts
-- Missing fallback font metric matching (`size-adjust`, `ascent-override`)
+- No `font-display: swap`: the text stays invisible for up to 3 seconds while the font downloads
+- Loading unused font weights (all 100-900 when only 400/700 are used): every extra weight is a file the reader waits for and never sees
+- No `<link rel="preload" as="font" crossorigin>` for critical fonts: the font is discovered late, after the stylesheet, so the swap happens in front of the reader
+- Missing fallback font metric matching (`size-adjust`, `ascent-override`): the layout shifts when the web font replaces the fallback
 
 ### Dark Mode Failures
 
@@ -164,7 +168,7 @@ h1 { font-size: 24px; }
 h1 { font-size: clamp(1.5rem, 1rem + 2vw, 3rem); }
 ```
 
-Also: no `max-width: 65ch` for readable line length, no vertical rhythm, px font sizes instead of rem (ignores user's browser font-size preference, an accessibility issue).
+Also: no `max-width: 65ch` for readable line length, no vertical rhythm, text sizes in px instead of rem (ignores the user's browser font-size preference, an accessibility issue; borders, hairlines, and icon boxes in px are fine).
 
 **The fix is a fluid ramp, never a fixed size.** A stepped scale is a finding about *how*
 the scale is expressed; being responsive is not the defect. Replacing
@@ -174,6 +178,20 @@ holds for the verbatim Tailwind hero run in `design-patterns.md` entry 9. This i
 general rule in `confidence-and-evidence.md`: a remediation may never reduce
 responsiveness, keyboard reachability, screen-reader output, contrast, hit-target size, or
 motion-preference handling.
+
+### Physical Properties Where Logical Ones Belong
+
+```css
+/* BAD -- reads correctly only left-to-right */
+.sidebar { margin-left: 1rem; padding-right: 2rem; text-align: left; }
+.badge { position: absolute; left: 0; }
+
+/* GOOD -- follows the writing direction */
+.sidebar { margin-inline-start: 1rem; padding-inline-end: 2rem; text-align: start; }
+.badge { position: absolute; inset-inline-start: 0; }
+```
+
+In a product that ships in Arabic, Hebrew, or Persian, or that has an i18n layer at all, every `left` and `right` is a layout that mirrors wrong under `dir="rtl"`: the sidebar sits on the wrong side, the badge overlaps the text, the alignment fights the reading direction. The logical properties cost nothing in a left-to-right product and are right in both. A project that is English-only and says so is exempt; the finding is the physical property in a codebase that already carries translations.
 
 ## Performance Anti-Patterns
 
@@ -263,13 +281,15 @@ AI generates `<div>` for everything. Use semantic elements:
 | `<div class="modal">` | `<dialog>` |
 | div-based accordion | `<details>` / `<summary>` |
 
+Landmarks are how a screen-reader user moves around a page: `<nav>`, `<main>`, and `<aside>` show up in the rotor, and a `div` with a class name does not. A `<div onclick>` is worse than unlabelled, because it cannot be reached from the keyboard at all.
+
 ### Link vs Button
 
 `<a>` navigates to a URL. `<button>` performs an action. AI reverses these constantly. `<a href="#" onclick="doThing()">` is wrong; use `<button type="button" onclick="doThing()">`.
 
 ### Heading Hierarchy
 
-AI skips levels (h1 to h3), uses multiple h1s, or picks heading level by font size rather than document structure. Each page needs one h1. Headings must not skip levels. Use CSS for sizing; headings are for structure.
+AI skips levels (h1 to h3), uses multiple h1s, or picks heading level by font size rather than document structure. Each page needs one h1. Headings must not skip levels. Use CSS for sizing; headings are for structure. Headings are the other navigation map: screen readers list them, so a skipped level reads as a missing section and a heading chosen for its size lands the reader in the wrong place.
 
 ### Tables
 
@@ -320,9 +340,31 @@ AI fires API calls on every keystroke. Add 300ms debounce, AbortController for r
 
 AI forms lose data on browser back/forward, page refresh, and login redirects. Persist form state to sessionStorage for multi-step flows. Preserve user input on validation failure.
 
+### Infinite Scroll Without an Exit
+
+A list that loads more on every scroll has no end, so the footer, the pagination the search engine indexes, and the position the user was at before a refresh are all unreachable. Generated lists reach for it because it removes a control from the design. Use it only for feeds where the order is recency and nobody needs to get back to item 400; give it a "load more" control after a few pages, keep the footer reachable, and preserve the scroll position and the loaded range in the URL or history state so back and refresh land where the user was. A table or a search result set gets pagination.
+
 ### Toast/Notification Failures
 
-aria-live containers must exist in the DOM at page render (not created dynamically). Use `aria-live="polite"` for routine updates, `"assertive"` for urgent alerts. Don't auto-dismiss toasts that contain interactive elements (users can't reach them in time). Position toasts to avoid covering content or overlapping with mobile keyboards.
+A toast on every action is the other failure: a confirmation for a saved preference, a "Copied!" for a copy, a "Deleted" for a delete, until the corner of the screen is a ticker nobody reads. A toast is for a result the interface does not otherwise show (a background job finished, a save that happened off-screen); an action whose result is visible where the user is looking needs none, and a destructive action needs an undo, not a notice. aria-live containers must exist in the DOM at page render (not created dynamically). Use `aria-live="polite"` for routine updates, `"assertive"` for urgent alerts. Don't auto-dismiss toasts that contain interactive elements (users can't reach them in time). Position toasts to avoid covering content or overlapping with mobile keyboards.
+
+### Hardcoded User-Visible Strings
+
+```jsx
+// BAD -- in a project with an i18n layer
+<p>{count} items in your cart</p>
+<p>{"Welcome, " + user.name + "!"}</p>
+
+// GOOD
+<p>{t("cart.count", { count })}</p>
+<p>{t("greeting", { name: user.name })}</p>
+```
+
+A string inline in a component is a string the translation layer never sees, and a sentence built by concatenation, or with the number outside the string, cannot be pluralised or reordered in a language that puts the noun first. The exemption is a project with no i18n layer, where this is a note rather than a defect; the finding is the inline string in a codebase that already has `t()` and a message catalogue.
+
+### Inputs Without a Matching Type
+
+An email field with `type="text"`, a phone field with no `type="tel"`, a quantity with no `inputmode="numeric"`: the mobile keyboard is the wrong one, autofill has nothing to match, and the browser's own validation never runs. Add the `type` that matches the data, `inputmode` where the type has to stay text but the keyboard should not, and `autocomplete` on personal-data fields (`design-patterns.md` § Forms Without Validation States). An absence claim, so agent territory: no scanner rule.
 
 ## Design System Integration
 
