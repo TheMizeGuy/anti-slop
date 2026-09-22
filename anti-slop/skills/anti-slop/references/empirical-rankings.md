@@ -51,7 +51,7 @@ Source: the `vibecoded-design-tells` project by JCarterJohnson (MIT-licensed ana
 | Bolded lead-in labels (`**Word:**` + sentence) | 0.3 | 0.8 | Real but **presence ≠ citation**; weight by clustering |
 | "In conclusion" / "In summary" closer | 0.2 | 0.2 | Real, low-frequency, easy to delete |
 
-Only leftover assistant boilerplate is **absolute** (fires on a single instance). A quoted or blockquoted example of it is not an instance: a document that quotes the phrase to discuss it is not committing it, and the scanner strips quoted spans before it matches. The legs are the assistant speaking about itself, never a person's idiom, so "I can't help but notice" and a model's cutoff stated in the third person stay clean. The em dash is the top-cited tell but is judged by density: a lone, correctly used dash is clean, and the scanner flags only sustained overuse. Everything else is judged by clustering.
+Leftover assistant boilerplate is the only tell ranked above that the scanner treats as a **hard defect**, at high severity on a single instance. Firing on one instance is not what sets it apart: `banned-words.md` § Single-hit tells and every banned phrase flag on one occurrence too. A quoted or blockquoted example of it is not an instance: a document that quotes the phrase to discuss it is not committing it, and the scanner strips quoted spans before it matches. The legs are the assistant speaking about itself, never a person's idiom, so "I can't help but notice" and a model's cutoff stated in the third person stay clean. The em dash is the top-cited tell but is judged by density: a lone, correctly used dash is clean, and the scanner flags only sustained overuse. The cluster-tier vocabulary is judged by clustering; the sentence constructs in the table fire on a single match.
 
 ### Writing: do NOT flag on a lone hit
 
@@ -65,9 +65,10 @@ These regex shares are the full-corpus keyword rate (all 7,984 posts, where over
 | utilize | 1.3 | 0.0 | Over-counts ("use" is better, not a smoking gun) |
 | navigate / navigating | 1.5 | 0.0 | Over-counts |
 | moreover / furthermore / additionally | 1.7 | 0.2 | Over-counts (one is just a connective) |
-| `robust`, `embark`, `ever-evolving` | <1 | ~0 | Over-counts |
+| `robust` | <1 | ~0 | Over-counts |
+| `embark`, `ever-evolving` | <1 | ~0 | Over-counts here, but both ship as single-hit tells (`BANNED_WORDS` and `BANNED_PHRASES`); demoting either is a rule change and goes through `npm run measure` first |
 
-The broader low-confidence set (match the lexicon but humans use them normally): `realm, navigate, elevate, seamless, leverage, robust, intricate, comprehensive, crucial, harness, unlock, showcase, facilitate, foster, vibrant, holistic, synergy, streamline, empower, profound, nuanced, cutting-edge, multifaceted, paramount, pivotal, myriad, plethora, meticulous, utilize, captivating`. These stay in `banned-words.md` as plain-word guidance, but the scanner treats them as low-confidence: one occurrence is clean.
+The broader low-confidence set (match the lexicon but humans use them normally): `utilize, leverage, harness, streamline, foster, facilitate, cultivate, empower, navigate, comprehensive, robust, nuanced, meticulous, seamless, holistic, myriad, plethora, paramount, intricate, profound, vibrant, captivating, realm`. These are `banned-words.md` § Cluster tells: the scanner flags them at low severity only when two or more appear in one document, and a lone hit is clean.
 
 ## Code: verified ranking (precision-adjusted)
 
@@ -184,7 +185,8 @@ Read the columns as: **scanner rule** = a deterministic rule exists and fires on
 |---|---|---|---|
 | Banned words and phrases | Yes | Yes | no |
 | Em dash density | Yes | Yes | no |
-| Antithesis, listicle scaffold, "in conclusion", fast-paced opener | Yes | Yes | no |
+| Antithesis, listicle scaffold, "in conclusion", fast-paced opener, "dive in", the "Honestly," opener, horizontal-rule dividers, marketing hype, "unlock the potential" | Yes | Yes | no |
+| The 2026 plain-word register ("quietly building", "decisions compound", "why this matters") | Yes (`plain-aiism-collocation`, at two or more in one document) | Yes | no |
 | Leftover assistant boilerplate, chat artifacts, model tooling tokens | Yes | Yes | no |
 | Emoji in prose, code, logs, UI | Yes (Unicode's definition: default emoji presentation, U+FE0F-forced pictographs, keycaps, flags) | Yes | no |
 | A media-control text glyph standing in for a control | Yes (`media-control-glyph`, web and native surfaces) | Yes | no |
@@ -194,6 +196,9 @@ Read the columns as: **scanner rule** = a deterministic rule exists and fires on
 | Hallucinated APIs and packages | **No** | **No** | **Yes** (build, type-check, or registry lookup) |
 | Tutorial-shaped code, over-engineering, style ignores the codebase | **No** | Yes (needs the neighbouring files) | no |
 | Swallowed errors, placeholder stubs, dead branches, `forEach(async)` | Yes | Yes | no |
+| Generic placeholder function names (`process_data`, `doStuff`) | Yes (`generic-naming`) | Yes | no |
+| Whole-library imports, interpolated Tailwind classes, deprecated APIs, blanket lint and type suppressions | Yes (`full-lodash-import`, `full-moment-import`, `tailwind-dynamic-class`, `deprecated-api`, `suppression-comment`) | Yes | no |
+| `<img>` with no width or height, `setState` inside a `useEffect`, blanket `DispatchQueue.main.async` on Apple surfaces | Yes (`img-no-dimensions`, `useeffect-setstate`, `dispatch-main-async-spam`) | Yes | no |
 | `as any` casts and `catch (e: any)` | Yes (`cast-to-any` 2.4.0, `catch-any`) | Yes | no |
 | Resource leaks, writes with no transaction, blocking calls in async code, catastrophic regex, hardcoded environment values | **No** | Yes | Sometimes |
 | Narrating, banner, apologetic, deferral comments | Yes | Yes | no |
@@ -202,10 +207,13 @@ Read the columns as: **scanner rule** = a deterministic rule exists and fires on
 | N+1 queries, missing timeouts, unbounded queries, race conditions | **No** | Partly (needs block scope the agent has and the scanner does not) | Sometimes |
 | Hardcoded secrets | Yes (Pattern smell; cannot prove liveness) | Yes | **Yes** to confirm |
 | AI purple, gradients, generic fonts, cream-serif default, frosted nav, gradient text | Yes | Yes | no |
+| Un-themed shadcn and Tailwind card defaults, the `bg-*-100` icon circle, decorative blur blobs, the tracked-out overline, the verbatim hero type run, the shadcn stats literals | Yes (`shadcn-default-card`, `shadow-border-rounded-combo`, `icon-in-colored-circle`, `blur-blob`, `uppercase-overline`, `tailwind-hero-triplet`, `shadcn-stats-magic`) | Yes | no |
+| Maximal rounding, unprompted neon glow, `transition-all`, uniform section padding | Yes (`rounded-everything`, `neon-glow`, `transition-all`, `uniform-section-padding`) | Yes | no |
+| z-index escalation, `!important` overuse, marketing hype in UI copy, stock illustration sources | Yes (`z-index-escalation`, `important-overuse`, `hype-copy`, `stock-illustration`) | Yes | no |
 | Unthemed Bootstrap palette hexes | Yes (2.2.0, narrowed 2.2.1 to require the primary blue) | Yes | no |
 | Bootstrap's default shadow and zebra-striped tables | **No** | Yes | no |
 | Generic microcopy and hero scroll-indicator literals | Yes (`generic-microcopy`, `hero-scroll-hint` 2.2.1) | Yes | no |
-| Strongest-10 entries 3, 5, 6, 8, 10 and most AI Component Fingerprints | **No** | Yes | no |
+| Strongest-10 entries 3, 5, 6, 7, 8, 10 and most AI Component Fingerprints | **No** | Yes | no |
 | Fixed page shells, fixed grid tracks, `100vh` shells, token drift, uniform radius | Yes (2.1.0) | Yes | no |
 | Missing alt, `outline: none`, dead controls | Yes (2.1.0) | Yes | no |
 | Pinch-zoom lock in the viewport meta, positive `tabindex` | Yes (2.4.0, `viewport-zoom-lock`, `positive-tabindex`) | Yes | no |

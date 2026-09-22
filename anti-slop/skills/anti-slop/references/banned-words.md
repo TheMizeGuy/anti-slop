@@ -16,11 +16,11 @@ Not every word in this file is a tell, and treating them all as one was the mist
 
 The third tier is the largest, and it exists to say what not to do as much as what to do: a sentence that uses one of those words is not a finding, and a sentence rewritten to dodge one is worse than the original.
 
-**Technical context caveat:** Many words below are standard terms in their domains. "Aggregate" in SQL and pandas, "benchmark" in testing and ML, "calibrate" in ML and instrumentation, "converge" in ML and numerical methods, "ecosystem" in npm and platform discussions, "landscape" in geography and page orientation, "ephemeral" in container storage, "synergy" in game design, "diverse" for demographic or cultural diversity. When the word is the precise term, use it. The scanner carries a context-exception table for the single-hit words most often used technically, so a `realm` in a game server or a `landscape` in a GIS tool scans clean.
+**Technical context caveat:** Many words below are standard terms in their domains. "Aggregate" in SQL and pandas, "benchmark" in testing and ML, "calibrate" in ML and instrumentation, "converge" in ML and numerical methods, "ecosystem" in npm and platform discussions, "landscape" in geography and page orientation, "ephemeral" in container storage, "synergy" in game design, "diverse" for demographic or cultural diversity. When the word is the precise term, use it. The scanner carries a context-exception table for the twenty-one words from both tell tiers most often used technically, so a `realm` in a game server or a `landscape` in a GIS tool scans clean.
 
 **Register note:** Frequency data is based primarily on American English corpora. In British English formal prose, some words on this list (renowned, featuring) may be standard. Apply judgment for non-American registers. In academic and formal writing contexts, consult the Context Exceptions in SKILL.md before applying these bans.
 
-**Concentration caveat:** A hand-audited Reddit corpus (see `empirical-rankings.md`) found several high-frequency "AI words" are almost never what readers actually flag: `however` / `thus` / `hence` match about 6% of posts but are cited as a tell 0% of the time; the same holds for `nuanced`, `when it comes to`, `utilize`, `navigate`, `comprehensive`, and `robust`. Those are the cluster tier. One `delve` is the writer's prose; six fancy verbs in one paragraph is slop. The scanner reflects this: a cluster-tier word does not lower the score on a single hit.
+**Concentration caveat:** A hand-audited Reddit corpus (see `empirical-rankings.md`) found several high-frequency "AI words" are almost never what readers actually flag: `however` / `thus` / `hence` match about 6% of posts but are cited as a tell 0% of the time; the same holds for `nuanced`, `when it comes to`, `utilize`, `navigate`, `comprehensive`, and `robust`. The single words there are the cluster tier; `when it comes to` and `however` / `thus` / `hence` are on no scanner list at all. One `delve` is the writer's prose; six fancy verbs in one paragraph is slop. The scanner reflects this: a cluster-tier word does not lower the score on a single hit.
 
 ## Single-hit tells
 
@@ -215,7 +215,7 @@ Hyphenated compounds generated prose stacks in front of nouns. `data-driven` and
 
 | Prefer plain | When the plain word says the same thing |
 |--------------|------------------------------------------|
-| `ever-evolving` / `ever-changing` | changing |
+| `ever-changing` | changing (`ever-evolving` is a banned phrase, flagged on a single occurrence, not a preference) |
 | `ever-expanding` | growing |
 | `ever-competitive` | competitive |
 | `hyper-connected` | connected |
@@ -242,7 +242,7 @@ Everything above this section describes the 2024 tell: an inflated word standing
 
 None of these words is bannable, and none of them is on any list in this file. Every one is ordinary English doing an ordinary job most of the time, and a word-level ban would fire on most correctly written prose. The tell is the **metaphorical collocation**, and only when several land in one passage. Treat it exactly as the cluster tier is treated: a single hit is the writer's prose.
 
-The scanner reflects that. `plain-aiism-collocation` matches the collocations only (`quietly building`, `why this matters`, `earn the right to`, `decisions compound`, `built different`, `hold space`, `do the work`), at low severity and only at two or more in one document. The bare words are deliberately absent from `BANNED_WORDS` and must stay absent.
+The scanner reflects that. `plain-aiism-collocation` matches the collocations only (`quietly building`, `why this matters`, `this matters because`, `earn the right to`, `decisions compound`, `built different`, `the pull of`, `hold space`, `sends a signal that`, `do the work`), at low severity and only at two or more in one document. The bare words are deliberately absent from `BANNED_WORDS` and must stay absent.
 
 The fix is the same as everywhere else in this file: say the concrete thing. "Decisions compound" means "the second decision is cheaper because of the first"; write that instead.
 

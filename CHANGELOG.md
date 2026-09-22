@@ -56,13 +56,13 @@ these in general prose") contradicted the concentration doctrine three paragraph
 `banned-words.md` now states the split the scanner and `self-check.md` already used:
 single-hit tells (the 32 stems `BANNED_WORDS` flags on sight), cluster tells (the 23 stems
 `LOW_CONFIDENCE_WORDS` flags at two or more) and plain-word preferences, which are never a
-finding and never reported. Thirty entries with no inflated sense and a meaning-changing
+finding and never reported. Thirty-one entries with no inflated sense and a meaning-changing
 replacement (`validate`, `optimize`, `mitigate`, `aggregate`, `interpret`, `differentiate`,
 `correlate`, `quantify`, `benchmark`, `align`, `reconcile`, `elaborate`, `deliberate`,
 `formulate`, `ascertain`, `tailor`, `framework` and the rest) are deleted outright; the
 scanner lists are unchanged. `banned-phrases.md` no longer opens with "never use any of
 these": it sorts its sections into single-occurrence tells, position tells (the reflexive
-first or last sentence) and plain-word preferences, and nine sections gain a "not a tell
+first or last sentence) and plain-word preferences, and eight sections gain a "not a tell
 when" line (a transition that does its job once, an attribution followed by a citation, a
 declarative followed by the specifics). SKILL.md § Vocabulary and the agent's check list
 carry the same tiers.

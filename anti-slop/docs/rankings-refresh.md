@@ -104,7 +104,7 @@ cd anti-slop/scripts
 node -e "import('./lib/scan.mjs').then(async m => {
   const fs = await import('node:fs');
   const p = process.argv[1];
-  const v = m.scanContent(fs.readFileSync(p, 'utf8'), p);
+  const v = m.scanContent(fs.readFileSync(p, 'utf8'), p, { proseScope: 'all' });
   for (const x of v) console.log(x.severity, x.type, x.word || x.phrase || x.name || '', 'line', x.line);
   console.log('TOTAL', v.length);
 })" /absolute/path/to/edited.md

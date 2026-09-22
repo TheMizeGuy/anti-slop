@@ -255,7 +255,7 @@ Common offenses:
 
 **Fix:** No emoji anywhere unless the user explicitly uses them and the context calls for matching their style. Use words for status ("PASS", "FAIL", "WARNING"), text for headings, proper icon components for UI, and conventional prefixes for commits. Emoji are decorative noise that adds zero information and marks output as AI-generated.
 
-**How the scanner grades it.** Severity escalates with the count: a handful is low, more than five is medium, because one glyph in a CLI banner is a choice and twenty across a file is the house style. An emoji is what Unicode renders as one: a character with default emoji presentation, a pictograph forced to emoji presentation by U+FE0F, a keycap sequence, or a flag, with a joined sequence (a family, a flag built from parts) counted once. Typographic arrows, the command-key symbol, heavy check marks, and geometric shapes are text and are not matched; the block list that once matched them flagged 187 plain right arrows across one fleet in two weeks. A bare play or pause sign used as a control is the `media-control-glyph` design tell instead. A file that is *about* emoji, this one included, is guarded by the word appearing in it, because a catalogue that cannot quote its own examples is not a catalogue. `console-log-emoji` covers the log-output leg separately, since a glyph in a log line survives longer than one in a comment and breaks more parsers.
+**How the scanner grades it.** Severity escalates with the count: a handful is low, more than five is medium, because one glyph in a CLI banner is a choice and twenty across a file is the house style. An emoji is what Unicode renders as one: a character with default emoji presentation, a pictograph forced to emoji presentation by U+FE0F, a keycap sequence, or a flag, with a joined sequence (a family, a flag built from parts) counted once. Typographic arrows, the command-key symbol, heavy check marks, and geometric shapes are text and are not matched; the block list that once matched them flagged 187 plain right arrows across one fleet in two weeks. A bare play or pause sign used as a control is the `media-control-glyph` tell instead, which runs on web and Apple surfaces alike. A file that is *about* emoji, this one included, is guarded by the word appearing in it, because a catalogue that cannot quote its own examples is not a catalogue. `console-log-emoji` covers the log-output leg separately, since a glyph in a log line survives longer than one in a comment and breaks more parsers.
 
 ### Markdown in Non-Markdown Contexts
 
@@ -291,7 +291,7 @@ The scanner matches these as `model-tooling-artifact` at high severity, presence
 
 ### First-Word Fingerprints
 
-The class, not the list. Individual openers ("Certainly!", "Absolutely", "Good question", "I'd be happy to") are in `banned-phrases.md` and in the scanner's phrase list, but the tell generalises past any list: **the first word of a generated response is drawn from a small pool, and the pool is model-specific.** Reflexive agreement ("You're right", "Exactly"), reflexive enthusiasm ("Perfect!", "Love this"), and reflexive framing ("Sure thing", "Happy to") all belong to it, and new members appear with every model release.
+The class, not the list. Individual openers ("Certainly!", "Absolutely!", "That's a great question!", "I'd be happy to help!") are in `banned-phrases.md` and in the scanner's phrase list, but the tell generalises past any list: **the first word of a generated response is drawn from a small pool, and the pool is model-specific.** Reflexive agreement ("You're right", "Exactly"), reflexive enthusiasm ("Perfect!", "Love this"), and reflexive framing ("Sure thing", "Happy to") all belong to it, and new members appear with every model release.
 
 The test is positional and does not need a list: **read the first three words alone. Do they carry information?** If they could be deleted without the reader losing anything, they are the fingerprint, whatever the words happen to be this month.
 
@@ -470,7 +470,7 @@ The register is `choosing-with-intent.md`'s conversational-professional: plain, 
 
 ### Code-Review Comments
 
-- **The sycophantic opener, in its native habitat.** "Great catch!", "Nice work on this!", "Love this approach!" before the actual comment. The phrases are banned by `banned-phrases.md`; the surface is worth naming because it is where they survive longest.
+- **The sycophantic opener, in its native habitat.** "Great catch!", "Nice work on this!", "Love this approach!" before the actual comment. `banned-phrases.md` § Sycophantic Openers bans the class rather than these three phrases, and the scanner matches "Good catch!" and "Great catch!" in a source file as `chat-artifact`; the surface is worth naming because it is where they survive longest.
 - **Hedging that hides the ask.** "Might be worth considering possibly extracting this?" Either it should change or it should not.
 - **Restating the code back to the author.** They wrote it.
 - **Praise with no object.** "This looks good to me" on a 900-line diff is a rubber stamp wearing a comment.

@@ -15,7 +15,12 @@ time allows, and fixes ship in the next release.
 
 ## What is in scope
 
-The scanner CLI, the skill and agent definitions, and the plugin manifests in this repo.
+The scanner CLI, the skill, agent and command definitions, and the plugin manifests in
+this repo.
+
+Out of scope: `tools/jev-audit/`, a maintainer harness that never ships with the plugin.
+It reads `TYPESAFE_API_KEY` from the environment and posts plugin file contents to the
+TypeSafe API; nothing in the installed plugin does either.
 
 The scanner runs offline: no network calls, no runtime dependencies, and no writes outside
 the files it is pointed at unless `--record` or `dashboard` is used. `--record` writes

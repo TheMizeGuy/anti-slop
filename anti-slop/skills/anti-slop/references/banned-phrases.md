@@ -2,13 +2,13 @@
 
 Phrases that generated prose reaches for by reflex. Three kinds live in this file, and they are judged differently:
 
-- **Single-occurrence tells.** The leftover assistant-voice lines ("As an AI language model," "I cannot assist with..."). One is proof of provenance.
+- **Single-occurrence tells.** The leftover assistant-voice lines ("As an AI language model," "I cannot assist with..."). One is proof of provenance. The scanner matches them as `assistant-boilerplate` at high severity, Hard defect, not through the phrase list below.
 - **Position tells.** Sycophantic openers and closers, throat-clearing, meta-commentary, and summary markers. The tell is the slot, not the words: the reflexive first or last sentence of a piece, filled by habit. The same phrase in the middle of a conversation, carrying a real shift of tone, is ordinary English.
 - **Plain-word preferences.** Filler, transitions, business jargon, significance inflation, vague declaratives, and false attribution. Judged by clustering and by what follows: a phrase that the next sentence backs with a fact is not a tell, and one occurrence in a page of plain prose is the writer's own.
 
-The scanner matches only the forty highest-signal phrases (`BANNED_PHRASES` in `scripts/lib/rules.mjs`), on presence, at low or medium severity, Pattern smell. Everything else here is guidance for the writer, not a rule for a reviewer, and a sentence rewritten to dodge one of these phrases is worse than the sentence that used it.
+The scanner matches only the forty highest-signal phrases (`BANNED_PHRASES` in `scripts/lib/rules.mjs`), on presence, at medium severity, Pattern smell. Everything else here is guidance for the writer, not a rule for a reviewer, and a sentence rewritten to dodge one of these phrases is worse than the sentence that used it.
 
-One thing reads as AI on a single occurrence: the leftover assistant-voice lines ("As an AI language model," "I cannot assist with..."). A quoted example of one, in a document discussing the tell, is not an occurrence, and the scanner strips quoted spans for that reason. The em dash is the top-cited writing tell but is judged by density, not a single instance; a lone correct dash is clean. Everything else here is judged in context and by clustering: one stray phrase in otherwise-natural prose is weaker evidence than several together (see `empirical-rankings.md`). The strongest *construction* tell is not a fixed phrase but a shape: **"It's not just X, it's Y" / "not only X, but also Y"** — the negate-then-assert antithesis. Cut it; state Y plainly. See `writing-patterns.md`.
+One thing reads as AI on a single occurrence: the leftover assistant-voice lines ("As an AI language model," "I cannot assist with..."). A quoted example of one, in a document discussing the tell, is not an occurrence, and the scanner blanks double-quoted and backticked spans in prose files for that reason (in a source file, mark the line `anti-slop-allow`). The em dash is the top-cited writing tell but is judged by density, not a single instance; a lone correct dash is clean. Everything else here is judged in context and by clustering: one stray phrase in otherwise-natural prose is weaker evidence than several together (see `empirical-rankings.md`). The strongest *construction* tell is not a fixed phrase but a shape: **"It's not just X, it's Y" / "not only X, but also Y"** — the negate-then-assert antithesis. Cut it; state Y plainly. See `writing-patterns.md`.
 
 ## Sycophantic Openers
 
@@ -26,6 +26,7 @@ The worst offenders. These open a response by praising the user instead of answe
 - "I'd love to help with that!"
 - "What a fantastic question!"
 - "You raise an excellent point!"
+- "You're absolutely right!"
 - "That's a really insightful observation!"
 - "I appreciate you asking that!"
 - "I hope this helps!"
@@ -190,6 +191,7 @@ Phrases that make ordinary things sound historically important.
 - "represents a significant shift"
 - "broader movement"
 - "evolving landscape"
+- "ever-evolving"
 - "indelible mark"
 - "deeply rooted"
 - "watershed moment"

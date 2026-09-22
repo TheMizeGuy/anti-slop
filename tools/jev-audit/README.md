@@ -15,8 +15,8 @@ release records what it found and what changed.
 | `words` | every row of `banned-words.md` | is it ordinary English; does the suggested replacement lose meaning |
 | `phrases` | every entry of `banned-phrases.md` | is it ordinary English; does deleting it change the sentence |
 | `rules` | every scanner rule in `rules.mjs` | does the description name a fix; is every match a defect; what it costs if real; would a reader understand it from the description alone |
-| `pairs` | hand-picked passages in two files that might disagree (`pairs.mjs`) | do they conflict in the named situation; does the reader need a tiebreak sentence |
-| `gaps` | a roster of failures agentic development commonly ships (`candidates.mjs`) against a summary of every section | does any section address it; is it inside the stated scope |
+| `pairs` | hand-picked passage pairs that might disagree, within one file or across two (`pairs.mjs`) | do they conflict in the named situation; does the reader need a tiebreak sentence |
+| `gaps` | a roster of failures agentic development commonly ships (`candidates.mjs`) against a catalogue of every scanner rule plus a summary of every section | does any section address it; is it inside the stated scope |
 
 The questions live in `questions.mjs` as named constants, per the Jev design notes: one
 narrow condition per question, literal wording, criteria that agree with the instruction,

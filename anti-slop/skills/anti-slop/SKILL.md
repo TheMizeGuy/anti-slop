@@ -62,13 +62,13 @@ specialisation, and those restatements defer to that file.
 
 These rules target general-purpose output. Domain-specific work overrides vocabulary, phrasing, and style rules. **When in doubt, follow the domain convention, not the banned list.**
 
-- **Academic/scientific writing**: hedging, formal transitions ("Furthermore"), cautious attribution ("research suggests"), and precise vocabulary ("elucidate," "synthesize," "correlate," "enumerate") are standard. Use them.
-- **Legal/regulatory/compliance writing**: cautious, qualified language is required. Terms like "ensure," "comprehensive," "robust," and "validate" carry specific legal weight.
+- **Academic/scientific writing**: hedging, formal transitions ("Furthermore"), cautious attribution ("research suggests"), and precise vocabulary ("elucidate," "synthesize," "enumerate") are standard. Use them.
+- **Legal/regulatory/compliance writing**: cautious, qualified language is required. Terms like "ensure," "comprehensive," and "robust" carry specific legal weight.
 - **Medical/clinical writing**: passive voice ("The patient was administered...") and clinical terminology are standard register.
 - **Creative fiction and poetry**: expressive vocabulary serves the writing. Adverb bans do not apply to dialogue. Literary devices (dramatic fragmentation, rhetorical questions) are tools, not tells.
 - **Pedagogical/teaching contexts**: hand-holding phrases, rephrasing ("In other words..."), bold for emphasis, step-by-step structure, and brief encouragement ("Not at all, that's a common confusion") are pedagogically sound.
 - **Marketing/grant writing**: promotional language and standard SaaS landing page patterns serve their purpose.
-- **ML/data science**: "optimize," "aggregate," "converge," "benchmark," "enhance," "calibrate," "differentiate," "extrapolate," "correlate" are precise technical vocabulary.
+- **ML/data science**: "converge," "enhance," "calibrate," and "extrapolate" are precise technical vocabulary. "Optimize," "aggregate," "benchmark," "differentiate," and "correlate" are not on the banned list at all and need no exception.
 - **Instruction documents** (CLAUDE.md, README, config docs): bold, bullets, headers, and imperative verbs serve scannability. Formatting rules for prose do not apply. The vocabulary and structure rules still do: a public README is user-facing prose under § Prose scope, and only the formatting exemption reaches it.
 - **Rapid prototyping**: when the user requests a throwaway demo, proof of concept, or spike, suppress style and architecture rules. Keep security rules active.
 - **Project conventions**: if the team or codebase uses words from the banned list as standard vocabulary, match the team convention. The plugin yields to project-level CLAUDE.md rules.
@@ -110,7 +110,7 @@ State facts. No softening, defensive justification, or hand-holding (except in p
 
 ### Formatting
 
-No markdown headers in short responses. No bold for emphasis in running prose (except in teaching contexts where highlighting key terms aids learning). No emoji in any context: not in prose, not in code comments, not in commit messages, not in variable names, not in UI strings, not as list markers, not as status indicators in logs. An emoji is what Unicode renders as one by default, or a pictograph forced to emoji presentation with U+FE0F; typographic arrows, the command-key symbol, plain check marks and geometric shapes are text, and a bare media-control glyph standing in for a control is the `media-control-glyph` design tell instead. Two exceptions, both narrow: the user uses emoji first and the context calls for matching their tone, or the project's own convention requires them (a gitmoji commit history, per § Context Exceptions). An exception earned in one surface does not carry to the others; a gitmoji repo still gets emoji-free code, logs, and UI strings. No bullet points where a sentence works.
+No markdown headers in short responses. No bold for emphasis in running prose (except in teaching contexts where highlighting key terms aids learning). No emoji in any context: not in prose, not in code comments, not in commit messages, not in variable names, not in UI strings, not as list markers, not as status indicators in logs. An emoji is what Unicode renders as one by default, or a pictograph forced to emoji presentation with U+FE0F; typographic arrows, the command-key symbol, plain check marks and geometric shapes are text, and a bare media-control glyph standing in for a control is the `media-control-glyph` tell instead, on web and native surfaces alike. Two exceptions, both narrow: the user uses emoji first and the context calls for matching their tone, or the project's own convention requires them (a gitmoji commit history, per § Context Exceptions). An exception earned in one surface does not carry to the others; a gitmoji repo still gets emoji-free code, logs, and UI strings. No bullet points where a sentence works.
 
 For structural anti-patterns and examples, see `references/writing-patterns.md`.
 

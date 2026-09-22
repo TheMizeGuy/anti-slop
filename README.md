@@ -22,12 +22,12 @@ Rules yield to domain context. Academic writing gets its hedging language. Legal
 |-----------|-------------|
 | **Skill** (`anti-slop`) | Core rules, activates automatically on writes/edits/builds |
 | **Agent** (`slop-detector`) | Deep semantic review, scored on five dimensions at 10 points each; a dimension the evidence cannot reach is reported NOT ASSESSED and leaves the denominator |
-| **Command** (`/slop-check`) | Manual review — point it at a file, diff, or PR |
+| **Command** (`/slop-check`) | Manual review — point it at a file, directory, diff, or PR |
 | **Scanner CLI** (`slop-scanner.mjs`) | Fast deterministic scanner — regex-based pattern matching for banned words, phrases, design tells, native UI tells, code smells, security issues. Every finding carries its rule id, the line it sits on, its confidence class, and a one-sentence fix, in both the text and the JSON output. Four subcommands: `scan`, `history`, `stats`, `dashboard`. Zero runtime dependencies, so it runs from a clone or an installed plugin with no `npm install` |
 | **Web Dashboard** | Optional, off by default. Nothing starts on its own; `slop-scanner.mjs dashboard` starts it on demand at a per-project deterministic port, prints the URL, and serves until Ctrl-C. Shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, recent findings |
-| **13 reference files** | ~225 banned words, ~220 banned phrases, plus pattern catalogs for writing, code, design, frontend, native (SwiftUI/UIKit) UI, regressions, density and economy, self-check checklists, empirical rankings, confidence and evidence rules, and choosing-with-intent guidance |
+| **13 reference files** | 55 banned-word tells in two tiers (32 flagged on a single hit, 23 only when they cluster) plus a third tier of plain-word preferences that are never flagged, ~220 banned phrases, plus pattern catalogs for writing, code, design, frontend, native (SwiftUI/UIKit) UI, regressions, density and economy, self-check checklists, empirical rankings, confidence and evidence rules, and choosing-with-intent guidance |
 
-The scanner and the agent serve different purposes. The scanner is fast — it runs regex patterns against file content and returns in milliseconds. The agent is thorough — it reads reference files, understands context, and produces a scored report with specific fixes. The `/slop-check` command runs both: scanner first for a quick pass, then the agent for semantic analysis.
+The scanner and the agent serve different purposes. The scanner is fast — it runs regex patterns against file content and returns in milliseconds. The agent is thorough — it reads reference files, understands context, and produces a scored report with specific fixes. The `/slop-check` command runs both whenever the target resolves to files on disk: scanner first for a quick pass, then the agent for semantic analysis. Pointed at the last response, which is not a file, it runs the agent alone and reports one score.
 
 The two also report different scales, on purpose. **Scan score** (`Scan score: N/50`) is the scanner's deterministic deduction count. **Review score** (`Review score: N/M`, where M shrinks when a dimension is NOT ASSESSED) is the `slop-detector` agent's five-dimension judgment call, and neither implies the other.
 
@@ -58,7 +58,7 @@ For development, point Claude Code at the plugin directory, which sits one level
 claude --plugin-dir /path/to/anti-slop/anti-slop
 ```
 
-Point it at the repo root instead and it loads successfully with nothing in it: the root carries a `plugin.json` of its own for version parity, but no skill, agent, or command sits beside it, and a plugin that registers nothing raises no error.
+Point it at the repo root instead and it loads successfully with nothing in it: the root carries a `.claude-plugin/plugin.json` of its own for version parity, but no skill, agent, or command sits beside it, and a plugin that registers nothing raises no error.
 
 ### Without Claude Code
 
@@ -78,11 +78,12 @@ The skill activates whenever you write, build, or edit code. For manual review:
 ```
 /slop-check                              # review last output
 /slop-check src/components/Header.tsx    # review specific file
+/slop-check src/components/              # review a directory (expanded, capped at 50 files)
 /slop-check diff                         # review uncommitted changes
 /slop-check pr                           # review current PR
 ```
 
-The dashboard is optional and never starts on its own. Run `node scripts/slop-scanner.mjs dashboard` to start it on demand; it opens at a per-project deterministic port, prints the URL, and serves in the foreground until Ctrl-C. It is the only command that opens a port. It shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, and recent findings. Scan and finding data persist in `.anti-slop/` in your project directory (`scan-log.json` for findings, `scores.json` for per-scan records), and scans leave no trace there unless you opt in with `--record`. If you're working across multiple projects, the dashboard shows tabs for all active projects; that index lives in a single `~/.anti-slop/registry.json` outside any project, written only when a dashboard starts, and `ANTI_SLOP_REGISTRY_DIR` points it somewhere else.
+The dashboard is optional and never starts on its own. Run `node scripts/slop-scanner.mjs dashboard` to start it on demand; it opens at a per-project deterministic port, prints the URL, and serves in the foreground until Ctrl-C. It is the only command that opens a port. It shows stats about findings the scanner has caught: scan counts, severity breakdown, findings by rule, findings per scan, and recent findings. Scan and finding data persist in `.anti-slop/` in your project directory (`scan-log.json` for findings, `scores.json` for per-scan records), and scans leave no trace there unless you opt in with `--record`. If you're working across multiple projects, the dashboard shows tabs for all active projects; that index lives in a single `~/.anti-slop/registry.json` outside any project, written only by the `dashboard` command (it registers the project on start, prunes dead entries while it serves, and unregisters on exit) and never by a scan, and `ANTI_SLOP_REGISTRY_DIR` points it somewhere else.
 
 ### CI usage
 
@@ -101,13 +102,13 @@ Options:
 - `--format text|json`: output format (default `text`)
 - `--fail-on any|high|medium|low|none`: minimum severity that triggers a nonzero exit (default `any`)
 - `--record`: write findings to `.anti-slop/scan-log.json` and `scores.json`, which is what `history` and `stats` read back. Default is off; a CI scan leaves no trace in your project directory unless you opt in
-- `--quiet`: suppress all output, exit code only
+- `--quiet`: suppress stdout, exit code only. The one exception is a run that scanned nothing because prose scope skipped every file given: the skip hint still goes to stderr, so a run that read no files cannot pass silently
 - `--prose-scope user-facing|all`: whether prose files (`.md`, `.mdx`, `.txt`, `.rst`) are scanned. The default, `user-facing`, scans only the files listed under `userFacingProse` in `.anti-slop/config.json` and reports the rest as `skipped`; `all` scans every prose file. A skipped file is never reported as clean, is never recorded, and never affects the exit code. `ANTI_SLOP_PROSE_SCOPE` and the config key `proseScope` set the same thing; the flag outranks both
 - `-h`, `--help`: print the usage block, including this option list and the exit codes
 
 Exit codes: `0` clean or below the `--fail-on` threshold, `1` findings at or above the threshold, `2` usage error or unreadable file. The CLI takes files only, with no glob or directory recursion, so compose it with your own file list as in the `git diff` example above.
 
-What a green scan does and does not mean: the scanner runs the part of the catalog a regex can decide, and that is a strict subset. Reachable SQL injection, N+1 queries, missing timeouts, sentence rhythm, and over-engineering are all in the reference catalogs and none of them are scanner rules, so a passing `scan` is a floor rather than a security review. A skipped prose file is not a scanned one: under the default prose scope, markdown and text files outside `userFacingProse` are reported as skipped and contribute nothing. The skill and the `slop-detector` agent read the full catalogs; the coverage matrix in `references/empirical-rankings.md` records which rules sit in which layer.
+What a green scan does and does not mean: the scanner runs the part of the catalog a regex can decide, and that is a strict subset. Reachable SQL injection, N+1 queries, missing timeouts, sentence rhythm, and over-engineering are all in the reference catalogs and none of them are scanner rules, so a passing `scan` is a floor rather than a security review. A skipped prose file is not a scanned one: under the default prose scope, markdown and text files outside `userFacingProse` are reported as skipped and contribute nothing. The skill and the `slop-detector` agent read the full catalogs; the coverage matrix in `anti-slop/skills/anti-slop/references/empirical-rankings.md` records which rules sit in which layer.
 
 #### Deliberate exceptions
 
@@ -178,7 +179,7 @@ A worked example, start to finish:
 
 ## Scope
 
-Tuned for web-centric code (Python, TypeScript, JavaScript, CSS) and English prose, plus a layout and adaptation rule set for Apple platforms (`references/native-ui-patterns.md`) that runs on `.swift`, `.m`, and `.mm` files. Design tells run on web extensions only and native tells on Apple extensions only, so neither vocabulary is matched against the other's files. Limited coverage for systems languages (Rust, Go, C/C++), Jetpack Compose, ML pipelines, and non-English text: there, apply the underlying principles (specificity, economy, correctness) rather than the word lists.
+Tuned for web-centric code (Python, TypeScript, JavaScript, CSS) and English prose, plus a layout and adaptation rule set for Apple platforms (`anti-slop/skills/anti-slop/references/native-ui-patterns.md`) that runs on `.swift`, `.m`, and `.mm` files. Design tells run on web extensions only and native tells on Apple extensions only, so neither vocabulary is matched against the other's files. Limited coverage for systems languages (Rust, Go, C/C++), Jetpack Compose, ML pipelines, and non-English text: there, apply the underlying principles (specificity, economy, correctness) rather than the word lists.
 
 ## License
 

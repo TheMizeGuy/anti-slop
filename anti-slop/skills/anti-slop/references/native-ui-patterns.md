@@ -62,8 +62,9 @@ added to prevent. The last candidate must be the one that always fits.
 
 ## The scanner's native tells
 
-Each is presence-flaggable, and each remediation keeps the behaviour and changes its
-expression. None of them is "pick a different fixed number".
+All but one are presence-flaggable: `dispatch-main-async-spam` is a concentration
+rule at three. Each remediation keeps the behaviour and changes its expression, and none
+of them is "pick a different fixed number".
 
 | Rule | Matches | Remediation |
 |---|---|---|
@@ -74,6 +75,7 @@ expression. None of them is "pick a different fixed number".
 | `repeating-symbol-effect` | `.symbolEffect(..., options: .repeating)` | Gate on `@Environment(\.accessibilityReduceMotion)`, or drop the loop. Looping symbol effects are never auto-gated |
 | `fixed-font-size` | `.font(.system(size: 17))` and friends | `.font(.body)` / `.font(.headline)`, or `.font(.system(size: 17, relativeTo: .body))` where a specific size genuinely matters. Cleared on the same line by `relativeTo:` or `@ScaledMetric` |
 | `dispatch-main-async-spam` | Three or more `DispatchQueue.main.async` in one file | `@MainActor` on the type or the method, and `await MainActor.run { }` for the one-off hop. One bridge from a legacy delegate callback is fine and does not reach the threshold |
+| `media-control-glyph` | A bare media-control glyph (U+23CF, U+23ED-U+23EF, U+23F8-U+23FA, U+25B6, U+25C0) used as a control, with no U+FE0F presentation selector | An icon from the project's set with an accessible name, or a word; a labelled status reads better than a bare glyph. The same rule object runs on the web surfaces too (`design-patterns.md` § Emoji as Interface), the only rule in either table that does |
 
 The threshold on `fixed-content-frame` is the same discipline as the web tells' floor rule:
 `.frame(width: 44)` on an icon is a correct fixed size, and a rule that cannot tell it from

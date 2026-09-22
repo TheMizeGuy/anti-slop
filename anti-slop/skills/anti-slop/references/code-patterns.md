@@ -94,7 +94,7 @@ def process_order(order):
     # TODO: implement the rest
 ```
 
-A comment standing in for code the model never wrote: `// rest of your code`, `// your logic here`, `// implementation goes here`, `# existing code unchanged`, `// ... (keep the rest)`, `// TODO: implement`. This is **class: bug** — the file is unfinished, not merely untidy, and it ships a function that does not do its job. Verified at ~100% precision in the corpus: when one of these survives into committed code, it is unmistakable. Write the actual code the comment stands in for.
+A comment standing in for code the model never wrote: `// rest of your code`, `// your logic here`, `// implementation goes here`, `# existing code unchanged`, `// ... rest of the file`, `// TODO: implement`. The scanner matches this family as `placeholder-comment`, high severity, **Hard defect**; the ellipsis leg needs `rest`, `your`, `remaining`, `existing`, `previous` or `other` immediately after the dots, so `// ... (keep the rest)` stays the reviewer's to catch. This is **class: bug** — the file is unfinished, not merely untidy, and it ships a function that does not do its job. Verified at ~100% precision in the corpus: when one of these survives into committed code, it is unmistakable. Write the actual code the comment stands in for.
 
 ### Leftover Chat Artifacts
 
@@ -106,7 +106,7 @@ function calculateTotal(items) { /* ... */ }
 // Good catch! Let me know if you'd like me to add tax handling.
 ```
 
-The model's chat voice leaking into source: a stray ` ``` ` fence, "Here's the updated/complete/fixed code," "As an AI language model," "Good catch!", "You're absolutely right," a comment-leading "Note:" / "Remember:" / "Important:", "I hope this helps," "Let me know if you'd like me to...", and comments addressed to the user rather than to the next reader of the file ("as requested," "per your instructions," "as discussed"). Delete every line that is the assistant talking — both the preamble and the closing offer. High precision, cosmetic class; harmless to execution but an immediate giveaway. Rules: `chat-artifact` for the voice, `assistant-boilerplate` for the as-an-AI and refusal forms.
+The model's chat voice leaking into source: a stray ` ``` ` fence, "Here's the updated/complete/fixed code," "As an AI language model," "Good catch!", "You're absolutely right," a comment-leading "Note:" / "Remember:" / "Important:", "I hope this helps," "Let me know if you'd like me to...", and comments addressed to the user rather than to the next reader of the file ("as requested," "per your instructions," "as discussed"). Delete every line that is the assistant talking — both the preamble and the closing offer. High precision, cosmetic class; harmless to execution but an immediate giveaway. Rules: `chat-artifact` for the voice in source, including its own as-an-AI leg; `assistant-boilerplate` for the as-an-AI and refusal forms in prose, since the text constructs run on `.md`, `.mdx`, `.txt` and `.rst` only. The stray fence, the comment-leading "Note:" / "Remember:" / "Important:", "Let me know if you'd like me to...", and comments addressed to the user match no rule and stay the reviewer's to catch.
 
 **Model tooling tokens are the same leak, one layer lower.** `oaicite`, `contentReference`, `attributableIndex`, `turn0search0`, `grok_card`, `ppl-ai-file-upload`, `[cite: 1]`: vendor-internal citation markup that arrives when the model pastes a snippet it was reading. The scanner matches them as `model-tooling-artifact` at **high** severity and **Hard defect** confidence, in code and prose alike, because unlike the chat voice these are not a style question. A person could not have typed them, and one of them in a source file is proof the file was pasted rather than written. **Remediation:** delete the token; where it stood in for a real citation, write the citation. Ordinary markup that looks similar (a `[1]` footnote, a `:::note` admonition, a variable named `attributedString`) does not match. `writing-patterns.md` § Leaked Model Tooling Tokens carries the prose side.
 
@@ -212,7 +212,7 @@ try { await sync(); } catch (e: unknown) {
 }
 ```
 
-The scanner matches the `any` form as `catch-any`. `swallowed-error` covers the empty-catch case above; between them they cover the two ends of the same failure, which is a catch block that does not engage with what it caught.
+The scanner matches the `any` form as `catch-any`. `swallowed-error` covers the empty-catch forms one line can show: a bare `except:`, `except Exception: pass` written on a single line, a `catch (e) { }` or `catch { }` whose body is empty or only a comment, and the same empty Go `if err != nil { }`. The indented Python pair above spans two lines, which no rule reaches, so it stays the reviewer's to catch. Between them the two rules cover the two ends of the same failure, which is a catch block that does not engage with what it caught.
 
 ### Null Checks for Non-Nullable Values
 
@@ -706,6 +706,8 @@ result = ast.literal_eval(user_expression)
 # It only parses literals: strings, numbers, tuples, lists, dicts, booleans, None.
 ```
 
+`eval-usage` matches an `eval(` call, high severity, **Hard defect**. A `$` or a word character before the name is refused, so Playwright's `page.$eval(` stays clean, and a line that is entirely a comment is skipped, so the noun in a doc comment ("once per body eval (#787)") is not a finding. Known gap, recorded rather than hidden: a line that closes a block comment and then executes (`*/ eval(x)`) stays suppressed, because the scanner carries no comment state across lines. **Remediation:** parse instead of executing, with a purpose-built expression parser for arithmetic or `ast.literal_eval` for Python literals only.
+
 ### Over-Broad File Permissions
 
 ```bash
@@ -1041,7 +1043,7 @@ if (!isUser(body)) throw new ApiError("unexpected user payload");
 render(body.profile.displayName);
 ```
 
-`as any` is `catch (e: any)` (§ Swallowing Errors) applied to any expression: every property access after it is unchecked, and the failure surfaces at runtime in a place the cast never mentions. The scanner matches it as `cast-to-any`, **Quality defect**, medium severity, skipped in test files, where a mock is often cast on purpose. **Remediation:** narrow with a type guard, or give the value a type at the boundary it crosses. A genuine reinterpretation carries a comment beside the cast saying why the two types disagree; `as unknown as T` is not matched, and gets the same comment.
+`as any` is `catch (e: any)` (§ Swallowing Errors) applied to any expression: every property access after it is unchecked, and the failure surfaces at runtime in a place the cast never mentions. The scanner matches it as `cast-to-any`, **Quality defect**, medium severity, case-sensitive so Swift's and Kotlin's `as Any` never match, and skipped in test files, where a mock is often cast on purpose. **Remediation:** narrow with a type guard, or give the value a type at the boundary it crosses. A genuine reinterpretation carries a comment beside the cast saying why the two types disagree; `as unknown as T` is not matched, and gets the same comment.
 
 ## Comment Anti-Patterns (Additional)
 
@@ -1080,7 +1082,7 @@ Each one records a decision to stop, in a place nothing tracks. "For now" has no
 # ============================================
 ```
 
-Visual noise from 1990s-era training data. Modern code does not need ASCII-art section dividers. The scanner matches bare rules of ten or more `=`, `-`, `*`, `_`, or `#` characters as `banner-comment`, a Taste note, at two or more per file. **Remediation:** delete them. If a file genuinely needs section boundaries to be navigable, that is the file asking to be split. A divider carrying real content (`// ---- see RFC 9110 for the status ladder ----`) is a comment, not a banner, and does not match.
+Visual noise from 1990s-era training data. Modern code does not need ASCII-art section dividers. The scanner matches bare rules of ten or more `=`, `-`, `*`, `_`, `~`, or `#` characters on a `//`, `#`, `*`, or `--` comment line as `banner-comment`, a Taste note, at two or more per file. **Remediation:** delete them. If a file genuinely needs section boundaries to be navigable, that is the file asking to be split. A divider carrying real content (`// ---- see RFC 9110 for the status ladder ----`) is a comment, not a banner, and does not match.
 
 ### Language Feature Explanations
 

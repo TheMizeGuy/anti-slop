@@ -10,9 +10,9 @@ Two framing rules. Judge most word and phrase tells by **concentration** — a l
 
 The banned-words list splits in three, and a self-check checks the first two. The first group is flagged on a single hit. The second is the high-frequency set that people use normally, flagged only at two or more and at low severity. The split is `BANNED_WORDS` minus `LOW_CONFIDENCE_WORDS` in `scripts/lib/rules.mjs`; `empirical-rankings.md` § Writing: do NOT flag on a lone hit carries the corpus numbers behind it. The third group, the plain-word preferences in `banned-words.md` (`ensure`, `crucial`, `enhance` and the rest), is on neither list and is not a check: those words carry legal and technical weight, and treating them as tells produces exactly the over-correction this file warns about.
 
-- [ ] No single-hit words? (`delve`, `elevate`, `embark`, `unveil`, `showcase`, `spearhead`, `orchestrate`, `galvanize`, `transcend`, `pivotal`, `cutting-edge`, `groundbreaking`, `transformative`, `unprecedented`, `unparalleled`, `multifaceted`, `landscape`, `tapestry`, `synergy`, `testament`, `interplay`, `paradigm`)
+- [ ] No single-hit words? (`delve`, `elevate`, `embark`, `unveil`, `showcase`, `spearhead`, `orchestrate`, `synergize`, `galvanize`, `transcend`, `pivotal`, `cutting-edge`, `groundbreaking`, `transformative`, `unprecedented`, `unparalleled`, `multifaceted`, `bustling`, `enchanting`, `landscape`, `tapestry`, `synergy`, `testament`, `interplay`, `paradigm`, `intersection`, `gossamer`, `iridescent`, `luminous`, `ephemeral`, `ethereal`, `enigmatic`)
 - [ ] Fewer than two from the low-confidence set? (`utilize`, `leverage`, `harness`, `seamless`, `foster`, `facilitate`, `streamline`, `comprehensive`, `robust`, `navigate`, `nuanced`, `meticulous`, `realm`, `holistic`, `myriad`, `plethora`, `paramount`, `intricate`, `vibrant`, `captivating`, `profound`, `empower`, `cultivate`)
-- [ ] No promotional adjectives? (`vibrant`, `groundbreaking`, `cutting-edge`, `transformative`, `unprecedented`)
+- [ ] No promotional adjectives? (`groundbreaking`, `cutting-edge`, `transformative`, `unprecedented`; `vibrant` is a cluster tell, checked one line above)
 - [ ] No unnecessary adverbs? (`really`, `just`, `literally`, `fundamentally`, `inherently`, `crucially`)
 - [ ] No fancy verb substitutes for "is" or "has"? (`serves as`, `stands as`, `features`, `boasts`)
 - [ ] Fewer than two 2026 plain-word collocations? (`quietly building`, `why this matters`, `earn the right to`, `decisions compound`, `built different`)
@@ -39,8 +39,8 @@ The banned-words list splits in three, and a self-check checks the first two. Th
 - [ ] No dramatic fragmentation in expository prose? (One. Word. Sentences. For. Drama. Fragments are native to a casual register.)
 - [ ] No rhetorical questions answered immediately?
 - [ ] No topic-explanation-example-transition template in every paragraph?
-- [ ] No summary/recap at the end that restates what was just said?
-- [ ] No recapping the user's question before answering?
+- [ ] No summary/recap at the end that restates what was just said? (The closing message of an agentic session is the exception: the reader may have seen none of the tool output, so what was found, what changed and what failed is the deliverable, `writing-patterns.md` § Summary at the End.)
+- [ ] No recapping the user's question before answering? (Naming the reading an ambiguous question took, in one clause, is information the reader needs.)
 - [ ] No over-corrected "anti-AI" register? (staccato fragments everywhere, forced lowercase, em-dash-dodging contortions, fake typos)
 
 ### Rhythm
@@ -55,7 +55,7 @@ Every item here is countable on purpose. Rhythm is the second most-cited tell an
 ### Punctuation
 
 - [ ] Em dashes below the scanner's threshold? (It fires at five or more in the document AND four per 1,000 words, both conditions, counted after code and quotes are stripped. Correct at lower counts; do not contort the prose to go lower still.)
-- [ ] Exclamation marks rare? (Max one per 1000 words)
+- [ ] Exclamation marks rare? (Max one per 1000 words in expository prose; dialogue and casual chat keep their own)
 - [ ] No ellipsis abuse?
 - [ ] No colon standing in for an em dash? (Swapping every dash for a colon is the documented over-correction, and readers now name it as its own tell.)
 
@@ -73,7 +73,7 @@ Every item here is countable on purpose. Rhythm is the second most-cited tell an
 
 - [ ] No unnecessary markdown headers? (Short responses don't need them)
 - [ ] No bold used for emphasis in running prose? (A key term bolded on first use in a tutorial is teaching, not this)
-- [ ] No emoji anywhere (prose, code, commits, logs, UI strings, headings)?
+- [ ] No emoji anywhere (prose, code, commits, logs, UI strings, headings)? (Two narrow exceptions: the user used emoji first and the tone calls for matching it, or the project's own convention requires them. An exception earned in one surface does not carry to the others.)
 - [ ] Bullet points only for list-like content (no "5 ways to..." listicle scaffolding)?
 - [ ] No horizontal-rule dividers (---) between every section?
 - [ ] Formatting is minimal and functional?
@@ -242,7 +242,7 @@ Every item here is countable on purpose. Rhythm is the second most-cited tell an
 - [ ] Semantic HTML used? (`<button>`, `<nav>`, `<main>`, not div-for-everything)
 - [ ] Heading hierarchy correct? (h1 > h2 > h3, no skipped levels)
 - [ ] Touch targets at least 24x24px with spacing (WCAG 2.5.8 AA)?
-- [ ] Pinch zoom not blocked? (No `user-scalable=no` or `maximum-scale=1` in the viewport meta, WCAG 1.4.4)
+- [ ] Pinch zoom not blocked? (No `user-scalable=no`, `user-scalable=0` or `maximum-scale=1` in the viewport meta, WCAG 1.4.4)
 - [ ] No positive `tabindex`? (Focus order follows the DOM; `0` and `-1` are the only values)
 - [ ] No hover-only interactions without touch alternatives?
 - [ ] Skip navigation link present?

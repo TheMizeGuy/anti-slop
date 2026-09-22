@@ -161,10 +161,12 @@ or a context claim rather than a shape. That is the honest boundary of a single-
 not an oversight to be closed by widening a rule until it fires on safe code.
 
 **Consequence for any report built on a scan.** `slop-scanner.mjs scan` on a Python file
-containing `query = f"SELECT * FROM users WHERE id = '{user_id}'"` prints `Scan score:
-50/50 | CLEAN`. A verdict that presents that as the deterministic half of a security review
-is a false negative on the highest-cost class in the catalogue. Name the boundary in the
-report. The coverage matrix in `empirical-rankings.md` states it per family.
+containing `query = f"SELECT * FROM users WHERE id = '{user_id}'"` prints `<path>: clean`,
+which is the whole of the text report for a file with no findings (`"score": 50,
+"verdict": "CLEAN"` under `--format json`). A verdict that presents that as the
+deterministic half of a security review is a false negative on the highest-cost class in
+the catalogue. Name the boundary in the report. The coverage matrix in
+`empirical-rankings.md` states it per family.
 
 A clean scan means "no rule matched in this file", which is a smaller claim than
 "this file is good". Say the smaller thing.

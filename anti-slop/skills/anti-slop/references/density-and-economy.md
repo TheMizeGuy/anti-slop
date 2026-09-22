@@ -256,4 +256,4 @@ inverses, recorded rather than left implicit:
 | Viewport under-use at the widest width | Overflow at 320-390px | Now in the same table |
 | Page more than 2x viewport height with nothing collapsed | A page that hides the primary task behind a disclosure | Covered by "a collapse must never hide an alert", generalised: never fold what the operator came for |
 | Paragraph over 30 words in a control surface | A control surface with no explanation where one is genuinely needed | **Deliberately not a threshold.** A missing explanation is a content finding, not a density one, and counting absent words produces noise |
-| Row action more than 800px from its row identity | Controls packed too tightly to hit | Covered by the tap-target minimum in `design-patterns.md` § Accessibility Failures (24x24 CSS px, WCAG 2.5.8) |
+| Row action more than 800px from its row identity | Controls packed too tightly to hit | Covered by the tap-target minimum in `design-patterns.md` § Mobile-Unfriendly Designs (24x24 CSS px, WCAG 2.5.8) |

@@ -243,7 +243,7 @@ For **prose/text** (lead with the data-backed top tells -- see `empirical-rankin
 1. Em dash density (the #1 tell) and the "It's not just X, it's Y" / "not only X but also Y" antithesis (the #1 sentence tell)
 2. Uniform sentence rhythm, fluent-but-empty paragraphs, sycophancy (regex-blind -- this is where your semantic read matters most; the scanner cannot see these)
 3. Sycophantic openers and reflexive agreement
-4. Banned words, judged by concentration (a lone "delve" / "however" / "comprehensive" is clean; several together is the tell)
+4. Banned words, applied by tier (`banned-words.md`): single-hit tells (`delve`, `embark`, `showcase`, `pivotal`, `tapestry`) are a finding on one occurrence; cluster tells (`utilize`, `leverage`, `robust`, `comprehensive`, `nuanced`) pass once and are the tell when two or more gather in a document; the plain-word preferences are never a finding
 5. Banned phrases, listicle scaffolding ("5 ways to..."), "in today's fast-paced world", "in conclusion" closers, leftover "as an AI" boilerplate
 6. Structural cliches (binary contrasts, negative listings, hedging seesaw, rule-of-three defaults)
 7. The over-corrected "anti-AI" register (staccato fragments, forced lowercase, em-dash-dodging) -- banning the old tells produces this one

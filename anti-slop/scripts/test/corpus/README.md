@@ -41,9 +41,11 @@ audit these against current doctrine rather than trusting them.
 
 Clean controls and coverage boundaries carry `maxIncidentalFindings`, and it is `0` on every
 fixture. It used to be `1`, described as a tolerance rather than a hard zero -- but that slack
-was unreachable: any finding on a negative fixture is a false positive by construction, so the
-precision gate in `corpus.test.mjs` fails on the first one long before a per-fixture tolerance
-of 1 would. A dominated gate is a dead test, so the field now states the policy the suite
+was unreachable: any finding on a negative fixture is a false positive by construction, and the
+zero-tolerance per-rule gate in `corpus.test.mjs` fails the moment a baselined rule gains one.
+The aggregate precision gates would not: one false positive against design's 54 true positives
+is 0.982, inside the 0.02 tolerance.
+A dominated gate is a dead test, so the field now states the policy the suite
 actually enforces. `corpus-contract.test.mjs` enforces it, along with label/scanner grading
 drift and the scorer's own arithmetic.
 - `baseline.json` -- a committed snapshot of `node measure.mjs --format json`'s `rules`,
@@ -60,9 +62,10 @@ npm run measure -- --format json   # machine-readable, same shape as baseline.js
 ```
 
 `measure.mjs` always exits 0 -- it is a measurement tool, not a CI gate. The gate lives in
-`corpus.test.mjs` (run by `npm test` like every other suite; bare `node --test` breaks because Node's recursive discovery executes the corpus code samples as bogus suites): it re-measures and
-asserts precision and recall have not dropped by more than 0.02 below the committed baseline,
-overall and per modality.
+`corpus.test.mjs` (run by `npm test` like every other suite; bare `node --test` breaks because Node's recursive discovery executes the corpus code samples as bogus suites): it re-measures, asserts precision and
+recall have not dropped by more than 0.02 below the committed baseline overall and per
+modality, and asserts with no tolerance at all that no rule row in `baseline.json` lost a true
+positive or gained a false positive.
 
 ## Adding a sample
 
@@ -81,13 +84,16 @@ overall and per modality.
      surfacing rule-tuning candidates, not hiding them. Do not tune scanner rules from this
      package (they belong to `lib/rules.mjs`/`lib/scan.mjs`) -- write the finding down for
      whoever owns that follow-up work instead.
-4. Run the full suite (`npm test`). `corpus.test.mjs` will only fail if your change moved
-   overall or per-modality precision/recall down by more than the 0.02 tolerance -- a single
-   added clean negative or a new true positive should not trip it.
+4. Run the full suite (`npm test`). The aggregate gates in `corpus.test.mjs` tolerate 0.02 of
+   drift overall and per modality, so a single added clean negative or a new true positive will
+   not trip them. The per-rule gate in the same file has no tolerance: it fails the moment a
+   rule row in `baseline.json` loses a true positive or gains a false positive, with
+   `useeffect-setstate`, the known false negative, as the one exemption.
 
 Two path traps worth knowing:
 - Code samples are scanned under the exact path you put in `labels.json`. Positives that rely
-  on `skipInTests`-gated rules (`innerHTML`, hardcoded secrets, boilerplate markers) need a
+  on `skipInTests`-gated rules (`innerhtml-usage`, `hardcoded-secret`, `boilerplate-marker`,
+  `dead-branch`, `cast-to-any`) need a
   **non**-test-looking path (e.g. `code/auth-handler.js`) to actually fire; a deliberately
   test-shaped path (e.g. `code/auth.test.js`) is how you build a *tricky-clean negative* that
   proves the skip works.
