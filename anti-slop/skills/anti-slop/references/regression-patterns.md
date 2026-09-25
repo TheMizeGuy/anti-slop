@@ -14,7 +14,7 @@ These rules apply when modifying existing code, fixing bugs, or refactoring. The
 
 4. **Use targeted edits.** When modifying existing files, apply targeted changes (diffs) rather than rewriting entire files. Full-file rewrites risk omitting code outside the AI's immediate focus. In Claude Code, prefer the Edit tool over the Write tool.
 
-5. **Run tests after every change.** Do not claim a fix is complete without running the test suite. If tests fail, investigate whether the code or the test is wrong. The default assumption is that the code is wrong. But if the test asserts on a spec that changed, has a bug in its setup, or is over-specified on implementation details, fix the test and document why.
+5. **Run the tests that cover the change.** A fix is complete when those tests have run and pass. If tests fail, investigate whether the code or the test is wrong. The default assumption is that the code is wrong. But if the test asserts on a spec that changed, has a bug in its setup, or is over-specified on implementation details, fix the test and document why.
 
 ## Fix-One-Break-Another
 

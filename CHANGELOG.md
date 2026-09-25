@@ -2,6 +2,16 @@
 
 All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `anti-slop/.claude-plugin/plugin.json`, the SKILL.md frontmatter, and `anti-slop/scripts/package.json` — all five are bumped together. (It was five, then four when 2.0.0 removed the MCP Server constructor, then five again when 2.2.1 brought the scanner's package.json under the same gate.)
 
+## Unreleased
+
+- SKILL.md § Regression Prevention points at `regression-patterns.md` § The Cardinal Rules
+  and keeps both exceptions inline, without the instruction to reload the file on every
+  code change.
+- `regression-patterns.md` Cardinal Rule 5 asks for the tests that cover the change before a
+  fix counts as complete, not a full-suite run after every edit.
+- `slop-detector` drops `model: inherit` from its frontmatter (the dispatching session picks
+  the model) and one restated "none of them is optional" mandate.
+
 ## 2.4.0 - 2026-09-22
 
 A calibrated-judgment audit of every surface the plugin puts in front of a model, and the

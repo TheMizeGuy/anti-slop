@@ -23,7 +23,6 @@ description: |
   assistant: "Dispatching slop-detector to review Header.tsx for AI patterns."
   <commentary>File-level review with full scoring.</commentary>
   </example>
-model: inherit
 color: red
 tools: ["Read", "Grep", "Glob"]
 ---
@@ -122,8 +121,8 @@ A 200-file diff does not get 200 equally-shallow reviews.
 
 ## Evidence discipline
 
-Every rule below comes from `confidence-and-evidence.md`, and none of them is optional.
-Read that file for the definitions; the paragraphs here are the operating form. Several
+Every rule below comes from `confidence-and-evidence.md`. Read that file for the
+definitions; the paragraphs here are the operating form. Several
 reference files restate one of these rules with a domain specialisation the doctrine file
 does not carry -- `design-patterns.md` on presence versus concentration,
 `density-and-economy.md` on the measurement requirement, `native-ui-patterns.md` on what a
