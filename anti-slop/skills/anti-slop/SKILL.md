@@ -1,7 +1,7 @@
 ---
 name: anti-slop
 version: 2.4.0
-description: Catches agentic development shortcomings in prose, code, and UI output: security holes, accessibility failures, regressions, banned vocabulary, structural cliches, and AI-default design tells. Applies whenever output is produced or revised. Activates on "write", "create", "build", "implement", "fix", "generate", "review", "refactor", "design", "edit". Context-aware: yields to domain conventions and project requirements.
+description: Catches AI-default tells and agentic shortcomings in user-facing output: banned vocabulary and structural cliches in prose, AI-default design and UI code, accessibility failures, and security holes or regressions in the code under review. Use when writing or revising user-facing prose (UI copy and microcopy, notifications, marketing and store listings, release notes, public docs), when designing or building UI, and when asked to review output, a file, a diff, or a PR for AI patterns ("/slop-check", "check this for AI patterns", "does this read as AI-written?"). Context-aware: yields to domain conventions and project requirements.
 ---
 
 ## Core Principle: Do No Harm
@@ -23,7 +23,7 @@ The plugin ships three layers. Route by what the target is and what evidence is 
 
 | Layer | Trigger | How to run it |
 |---|---|---|
-| Inline self-check | Output you wrote or edited in this turn, before you hand it back | § Quick Self-Check below; `references/self-check.md` for the full checklist by output type |
+| Inline self-check | In-scope output (user-facing prose, UI work, a review target) you wrote or edited in this turn, before you hand it back | § Quick Self-Check below; `references/self-check.md` for the full checklist by output type |
 | Deterministic scan | The target is one or more files on disk | `node "${CLAUDE_PLUGIN_ROOT}/scripts/slop-scanner.mjs" scan <file...>`; a prose file the project has not listed under `userFacingProse` prints as skipped (§ Prose scope) |
 | `slop-detector` agent | The target is a diff, a PR, a long response, or the structural tells above | Dispatch the `slop-detector` agent, or run `/slop-check <target>`, which runs both layers and reports both scores. Name the reference library in the dispatch prompt: `${CLAUDE_PLUGIN_ROOT}/skills/anti-slop/references` |
 
@@ -176,7 +176,7 @@ or the native tells to web files.
 
 This is the canonical minimum check. `references/self-check.md` carries the full checklists by output type and points back here rather than keeping a second copy, because two lists claiming to be the same minimum drift apart.
 
-Before finalizing any output, run through:
+Before handing back in-scope output (user-facing prose, UI work, or a review target), run through:
 
 - First word of the response: sycophantic or throat-clearing?
 - No single-hit words from `references/banned-words.md` in user-facing prose, and cluster words at most once? (the plain-word preferences in that file are not a check)

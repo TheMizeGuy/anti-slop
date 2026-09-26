@@ -20,7 +20,7 @@ Rules yield to domain context. Academic writing gets its hedging language. Legal
 
 | Component | Description |
 |-----------|-------------|
-| **Skill** (`anti-slop`) | Core rules, activates automatically on writes/edits/builds |
+| **Skill** (`anti-slop`) | Core rules; activates on user-facing prose, UI work, and AI-pattern reviews |
 | **Agent** (`slop-detector`) | Deep semantic review, scored on five dimensions at 10 points each; a dimension the evidence cannot reach is reported NOT ASSESSED and leaves the denominator |
 | **Command** (`/slop-check`) | Manual review — point it at a file, directory, diff, or PR |
 | **Scanner CLI** (`slop-scanner.mjs`) | Fast deterministic scanner — regex-based pattern matching for banned words, phrases, design tells, native UI tells, code smells, security issues. Every finding carries its rule id, the line it sits on, its confidence class, and a one-sentence fix, in both the text and the JSON output. Four subcommands: `scan`, `history`, `stats`, `dashboard`. Zero runtime dependencies, so it runs from a clone or an installed plugin with no `npm install` |
@@ -73,7 +73,7 @@ Node 22 or newer, nothing to install, nothing to build.
 
 ## Usage
 
-The skill activates whenever you write, build, or edit code. For manual review:
+The skill activates when you write or revise user-facing prose (UI copy, release notes, public docs), design or build UI, or ask for an AI-pattern review. For manual review:
 
 ```
 /slop-check                              # review last output
@@ -142,7 +142,7 @@ Drop a `.anti-slop/config.json` in your project to adjust scanner and dashboard 
 A worked example, start to finish:
 
 1. Install the plugin (see Installation above) and open Claude Code in a project.
-2. Ask Claude to write or edit a file. The `anti-slop` skill activates automatically during the write; no command is needed for this pass.
+2. Ask Claude to write UI copy, a README, or a UI component. The `anti-slop` skill activates for that user-facing work; no command is needed for this pass.
 3. Run a manual review on a specific file: `/slop-check src/components/Header.tsx`.
 4. Claude Code first runs the deterministic scanner (`slop-scanner.mjs scan`). A finding-bearing file returns output shaped like:
 
