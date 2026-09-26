@@ -144,7 +144,7 @@ No SQL string concatenation; use parameterized queries. No eval() or exec() with
 
 ### Regression Prevention
 
-When modifying existing code, fixing bugs, or refactoring, `references/regression-patterns.md` § The Cardinal Rules applies, and its two exceptions carry as much weight as the rules. Behaviour is preserved exactly *unless* the change is a security fix, where the old behaviour is the defect. Tests are never edited to make them pass *unless* the test itself encodes the wrong contract, in which case the fix is the test and the reason belongs in the commit message. The reference file states the conditions that qualify each.
+When modifying existing code, fixing bugs, or refactoring, load and follow `references/regression-patterns.md` § The Cardinal Rules. Behaviour is preserved exactly *unless* the change is a security fix, where the old behaviour is the defect. Tests are never edited to make them pass *unless* the test itself encodes the wrong contract, in which case the fix is the test and the reason belongs in the commit message. The reference file states the conditions that qualify each.
 
 For code anti-patterns with examples, see `references/code-patterns.md`. For React, CSS, performance, HTML semantics, and UX patterns, see `references/frontend-patterns.md`.
 

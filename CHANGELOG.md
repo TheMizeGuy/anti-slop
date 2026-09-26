@@ -7,9 +7,9 @@ All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plug
 - The skill no longer fires on every write. Its description scopes it to user-facing prose,
   UI design and code, and explicit AI-pattern reviews, and the Quick Self-Check applies to
   that in-scope output instead of "any output". The catalogue and fixes are unchanged.
-- SKILL.md § Regression Prevention points at `regression-patterns.md` § The Cardinal Rules
-  and keeps both exceptions inline, without the instruction to reload the file on every
-  code change.
+- SKILL.md § Regression Prevention still loads `regression-patterns.md` § The Cardinal Rules
+  when existing code changes and keeps both exceptions inline, without the added "read it
+  rather than working from a summary" emphasis.
 - `regression-patterns.md` Cardinal Rule 5 asks for the tests that cover the change before a
   fix counts as complete, not a full-suite run after every edit.
 - `slop-detector` drops `model: inherit` from its frontmatter (the dispatching session picks
