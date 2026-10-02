@@ -1,6 +1,6 @@
 # anti-slop
 
-Claude Code plugin that catches agentic-dev shortcomings (security, accessibility, AI-default design, banned vocabulary, regressions). Public repo TheMizeGuy/anti-slop, MIT; the shipped version is whatever the five parity spots say (see Rules below). This clone is the source of truth for development; the LIVE plugin runs from the Claude Code plugin cache — changes here do nothing to the running session until the plugin is updated/reinstalled from the marketplace repo.
+Claude Code plugin that catches agentic-dev shortcomings (security, accessibility, AI-default design, banned vocabulary, regressions). Public repo TheMizeGuy/anti-slop, MIT; the shipped version is whatever the five parity spots say (see Rules below). The dev clone `~/Dev/anti-slop` is the source of truth for development. On this machine the plugin comes from the `mize-plugins` directory marketplace, which loads it straight from `~/Claude/plugins/anti-slop/anti-slop` in every new session (a running session after `/reload-plugins`), not from the versioned plugin cache (verified 2026-10-02 in a debug log). A change is therefore live as soon as that clone pulls it, so pull there only when a change is ready and try work in progress with `claude --plugin-dir ./anti-slop`; no cache sync is needed. Installs from the public marketplace repo are cached by version and change only after `claude plugin update`.
 
 ## Layout
 
