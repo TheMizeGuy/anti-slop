@@ -4,6 +4,10 @@ All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plug
 
 ## Unreleased
 
+- `slop-detector`'s description states its contract (read-only tools, a labeled Review score,
+  and location, rule, severity, confidence class and fix for each finding) in place of three
+  example dialogues. On large inputs it caps reading at about 25 files and reports a repeated
+  class of finding once with its count and locations, instead of stopping at 40 findings.
 - SKILL.md's instruction-documents exception no longer reads as putting CLAUDE.md under the
   vocabulary and structure rules: § Prose scope decides, and a public README stays under them.
   `banned-words.md` states the plain-word non-tells (`validate`, `optimize` and the rest) as

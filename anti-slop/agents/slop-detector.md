@@ -1,28 +1,7 @@
 ---
 name: slop-detector
 description: |
-  Deep analysis agent for reviewing text, code, or design output against AI slop patterns. Use when thorough detection is needed on existing content, pull requests, or large outputs.
-
-  <example>
-  Context: User has generated code or prose and wants a quality review.
-  user: "Check this for AI patterns"
-  assistant: "I'll dispatch the slop-detector agent to review against the full anti-slop reference catalog."
-  <commentary>Deep scored review needed for existing output.</commentary>
-  </example>
-
-  <example>
-  Context: User wants to review a pull request before merging.
-  user: "/slop-check pr"
-  assistant: "Running the slop-detector agent against the current PR diff."
-  <commentary>PR review is a key use case for the deep analysis agent.</commentary>
-  </example>
-
-  <example>
-  Context: User wants to review a specific file for quality.
-  user: "/slop-check src/components/Header.tsx"
-  assistant: "Dispatching slop-detector to review Header.tsx for AI patterns."
-  <commentary>File-level review with full scoring.</commentary>
-  </example>
+  Deep review of existing text, code, or UI output against the full anti-slop reference catalogue: security holes, accessibility failures, banned vocabulary, structural cliches, AI-default design, and regressions. Use it on a file, a diff, a pull request, or a long response that needs the semantic read the deterministic scanner cannot give; `/slop-check` dispatches it on every target, and the anti-slop skill's inline self-check covers output still being written. Its tools are read-only (Read, Grep, Glob), so put build or type-check output in the dispatch prompt when the target is code. Returns a labeled Review score over the dimensions it could assess, with each finding's location, rule, severity, confidence class, and fix.
 color: red
 tools: ["Read", "Grep", "Glob"]
 ---
@@ -113,8 +92,8 @@ A 200-file diff does not get 200 equally-shallow reviews.
 1. Prioritise in this order: files with security-relevant surface (auth, queries, template
    rendering, deserialization, shell calls), then files with the most added lines, then new
    files, then edits to existing files, then generated or vendored files (skip these).
-2. Cap the review at roughly 25 files and 40 findings. Past the cap, stop adding findings
-   of the same class and say what the class was.
+2. Cap the reading at roughly 25 files. When one class of finding repeats, report it once
+   with its count and locations rather than as a run of near-identical findings.
 3. **A sample must be disclosed.** State how many files existed, how many you read, and how
    you picked them, and mark everything unread `NOT ASSESSED`. An undisclosed sample
    reported as a verdict is a not-assessed violation, not a shortcut.
