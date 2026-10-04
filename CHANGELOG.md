@@ -4,6 +4,9 @@ All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plug
 
 ## Unreleased
 
+- `/slop-check` applies fixes only when asked and does not close its report with an offer to
+  fix, which `writing-patterns.md` § Agent Closing Messages names a closing-message tell. The
+  README walkthrough says the same.
 - `slop-detector`'s description states its contract (read-only tools, a labeled Review score,
   and location, rule, severity, confidence class and fix for each finding) in place of three
   example dialogues. On large inputs it caps reading at about 25 files and reports a repeated

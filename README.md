@@ -162,7 +162,7 @@ A worked example, start to finish:
 
    Each finding takes two lines: the offence, then the rule id, the line, the confidence class, and the remediation. A clean file reports `src/components/Header.tsx: clean` and exits 0.
 5. Claude then dispatches the `slop-detector` agent for the semantic pass the scanner cannot do (sentence rhythm, sycophancy, tutorial-shaped code, hallucinated APIs). The agent replies with its own `Review score: N/M` on the five judgment dimensions (directness, specificity, authenticity, economy, soundness) plus concrete fixes per finding.
-6. Claude presents both scores together, labeled (`Scan score` and `Review score` measure different things and are not comparable), and offers to apply the fixes.
+6. Claude presents both scores together, labeled (`Scan score` and `Review score` measure different things and are not comparable), and applies fixes only when you ask for them.
 7. Optional: run `slop-scanner.mjs stats` for per-rule active vs suppressed counts, `history` for recent scores, or `dashboard` for the same over time in a browser.
 
 ## Troubleshooting
