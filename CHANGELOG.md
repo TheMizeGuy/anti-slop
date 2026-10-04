@@ -4,6 +4,10 @@ All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plug
 
 ## Unreleased
 
+- SKILL.md's instruction-documents exception no longer reads as putting CLAUDE.md under the
+  vocabulary and structure rules: § Prose scope decides, and a public README stays under them.
+  `banned-words.md` states the plain-word non-tells (`validate`, `optimize` and the rest) as
+  the current rule instead of as a note on what earlier versions listed.
 - A single `delve` is a finding, as the scanner scores it. SKILL.md, `banned-words.md`,
   `writing-patterns.md` and `empirical-rankings.md` used a lone `delve` as their example of a
   word that is not a tell; the example is `utilize`, a cluster-tier word. `empirical-rankings.md`

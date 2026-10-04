@@ -97,7 +97,7 @@ Ordinary words with an inflated sense. The scanner flags them at low severity, P
 
 Everything below is ordinary English. Each word also has an inflated or reflexive use that generated prose reaches for, which is the only reason it is listed. **None of these is a finding.** The scanner does not match them, the self-check does not ask about them, and a reviewer does not report them. The guidance is one-directional: when you are choosing a word, prefer the plain one if it says the same thing; when the listed word is the precise one, or the plain word would change the meaning, keep it.
 
-A note on what was removed. Earlier versions of this file listed `validate`, `optimize`, `mitigate`, `aggregate`, `interpret`, `differentiate`, `correlate`, `quantify`, `benchmark`, `align`, `reconcile`, `elaborate`, `deliberate`, `formulate`, `ascertain`, `tailor`, `framework` and a dozen more as words to avoid. They are the precise term in software, statistics, law, or plain business English, their suggested replacements changed the meaning, and no corpus has ever ranked them as a tell. They are gone, and a reviewer who flags one is applying a rule this plugin no longer has.
+`validate`, `optimize`, `mitigate`, `aggregate`, `interpret`, `differentiate`, `correlate`, `quantify`, `benchmark`, `align`, `reconcile`, `elaborate`, `deliberate`, `formulate`, `ascertain`, `tailor`, `framework` and words like them are deliberately absent from every tier. They are the precise term in software, statistics, law, or plain business English, their usual replacements change the meaning, and no corpus ranks them as a tell, so a reviewer does not flag them.
 
 ### Verbs with an inflated use
 
