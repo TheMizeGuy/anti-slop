@@ -20,7 +20,7 @@ The third tier is the largest, and it exists to say what not to do as much as wh
 
 **Register note:** Frequency data is based primarily on American English corpora. In British English formal prose, some words on this list (renowned, featuring) may be standard. Apply judgment for non-American registers. In academic and formal writing contexts, consult the Context Exceptions in SKILL.md before applying these bans.
 
-**Concentration caveat:** A hand-audited Reddit corpus (see `empirical-rankings.md`) found several high-frequency "AI words" are almost never what readers actually flag: `however` / `thus` / `hence` match about 6% of posts but are cited as a tell 0% of the time; the same holds for `nuanced`, `when it comes to`, `utilize`, `navigate`, `comprehensive`, and `robust`. The single words there are the cluster tier; `when it comes to` and `however` / `thus` / `hence` are on no scanner list at all. One `delve` is the writer's prose; six fancy verbs in one paragraph is slop. The scanner reflects this: a cluster-tier word does not lower the score on a single hit.
+**Concentration caveat:** A hand-audited Reddit corpus (see `empirical-rankings.md`) found several high-frequency "AI words" are almost never what readers actually flag: `however` / `thus` / `hence` match about 6% of posts but are cited as a tell 0% of the time; the same holds for `nuanced`, `when it comes to`, `utilize`, `navigate`, `comprehensive`, and `robust`. The single words there are the cluster tier; `when it comes to` and `however` / `thus` / `hence` are on no scanner list at all. One `utilize` is the writer's prose; six fancy verbs in one paragraph is slop. The scanner reflects this: a cluster-tier word does not lower the score on a single hit.
 
 ## Single-hit tells
 

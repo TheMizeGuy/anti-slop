@@ -8,7 +8,7 @@ A study that hand-audited 604 high-engagement Reddit posts (see `empirical-ranki
 
 Two principles govern how hard to push any of this:
 
-- **Concentration, not lone hits.** One "delve," one "however," one em dash is not a tell. The data shows `however/thus/hence` matches 6.3% of posts but is cited as a tell by 0%. Weight by density. The one tell that fires on a single instance is leftover assistant boilerplate ("as an AI language model"); the em dash, though the top-cited tell, is judged by density too, so a lone correct dash is clean.
+- **Concentration, not lone hits.** One "utilize," one "however," one em dash is not a tell. The data shows `however/thus/hence` matches 6.3% of posts but is cited as a tell by 0%. Weight by density. Leftover assistant boilerplate ("as an AI language model") and the single-hit words in `banned-words.md` count on a single instance; the em dash, though the top-cited tell, is judged by density too, so a lone correct dash is clean.
 - **Banning the old tells creates a new one.** As writers learned the 2024 markers, an over-corrected register appeared and reads as AI just as fast. It has its own section below. Apply these rules with judgment; mechanical avoidance is itself a pattern.
 
 ### The Em Dash

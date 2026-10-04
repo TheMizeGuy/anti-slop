@@ -24,7 +24,7 @@ Source: the `vibecoded-design-tells` project by JCarterJohnson (MIT-licensed ana
 
 1. **Flag the unspecified default, not the value.** A tell is an unchosen default, not a banned token. Purple is a tell when the model reached for it because nothing else was specified; it is fine as a stated brand decision. The same logic covers serif fonts, em dashes, the word "comprehensive," and a broad `try/except`. The escape hatch (`anti-slop-allow` / `unslop-ignore` on the line) exists so a deliberate choice never gets nagged. Swapping one default for another ("delve" to "dive," purple to cream-and-serif) is not a fix; it resets the clock.
 
-2. **Concentration is the signal, not lone hits.** One "delve," one "however," one em dash, one `rounded-lg` card is almost never a tell. Across the full corpus, `however/thus/hence` is the single highest-frequency keyword (6.3% of all 7,984 on-topic posts), yet the 604-post hand-audit cited it 0% of the time. Weight by density (hits per 1,000 words, or repeated identical treatment), and let a single low-confidence hit read as clean.
+2. **Concentration is the signal, not lone hits.** One "utilize," one "however," one em dash, one `rounded-lg` card is almost never a tell. Across the full corpus, `however/thus/hence` is the single highest-frequency keyword (6.3% of all 7,984 on-topic posts), yet the 604-post hand-audit cited it 0% of the time. Weight by density (hits per 1,000 words, or repeated identical treatment), and let a single low-confidence hit read as clean.
 
 3. **The loudest tells are structural and a regex cannot see them.** In every domain the top-cited tells are invisible to keyword matching. Writing: uniform sentence rhythm, sycophancy, fluent-but-empty paragraphs, hallucinated citations. Code: tutorial-shaped boilerplate, hallucinated APIs, over-engineering, ignoring the surrounding codebase. A clean scanner pass means the lexical layer is clean, not that the output reads human. The scanner is the cheap second pass; the semantic read (the `slop-detector` agent, or a careful human) is the first.
 
@@ -43,8 +43,8 @@ Source: the `vibecoded-design-tells` project by JCarterJohnson (MIT-licensed ana
 | Perfectly-structured / formulaic essay shape | 2.5 | 0.5 | High, mostly regex-blind |
 | "Dive in" / "deep dive" | 2.0 | 2.3 | Medium |
 | Everything as bullet lists / "5 ways to…" listicles | 1.7 | 1.7 | Medium |
-| Diction cluster (`delve`, `tapestry`, `unleash`, `game-changer`…) | 1.3 | 1.3 | **Inflated**: counts come from listicle/word-list copying, not independent observation |
-| "As an AI language model" / leftover boilerplate | 1.2 | 0.3 | High when present; the sole single-instance tell; aging out |
+| Diction cluster (`delve`, `tapestry`, `unleash`, `game-changer`…) | 1.3 | 1.3 | **Inflated**: counts come from listicle/word-list copying, not independent observation. The scanner tier is separate: `delve` and `tapestry` are single-hit words and `game-changer` a banned phrase, each a finding on one occurrence |
+| "As an AI language model" / leftover boilerplate | 1.2 | 0.3 | High when present; a hard defect on a single instance; aging out |
 | Rule of three / triads | 1.2 | n/a | Medium, regex-blind |
 | Empty, fluent, hollow paragraph | 0.7 | n/a | High, regex-blind |
 | Emoji as bullets / headers | 0.8 | 0.0 | Real; regex under-counts the wording |
@@ -129,7 +129,7 @@ Trust comment share over post share when they diverge (comments are 100% on-topi
 
 ## How to use this file
 
-- **Severity follows the data.** Top-ranked, low-FP tells (em dash, "not just X," AI purple, shadcn defaults, swallowed errors, hallucinated APIs, chat artifacts) carry weight. Inflated/low-confidence tells (the diction cluster, lone connectives, glassmorphism) only count when they cluster.
+- **Severity follows the data.** Top-ranked, low-FP tells (em dash, "not just X," AI purple, shadcn defaults, swallowed errors, hallucinated APIs, chat artifacts) carry weight. Inflated/low-confidence tells (the cluster-tier words, lone connectives, glassmorphism) only count when they cluster; the single-hit words (`delve`, `tapestry`) count on one occurrence.
 - **Route regex-blind tells to a semantic read.** Rhythm, sycophancy, emptiness, formulaic shape, hallucinated APIs/citations, over-engineering, and codebase-fit need the `slop-detector` agent or a human, not the scanner.
 - **Honor the escape hatch.** A flagged construct on a line marked `anti-slop-allow:` / `unslop-ignore` is a deliberate choice. Skip it.
 - **A clean scan is not the finish line.** It clears the cheap layer. The structural read is where the real signal lives.
@@ -146,7 +146,7 @@ Bounded drift check of this file's top claims against public discussion from mid
 | AI purple / un-themed shadcn as the #1 concrete cause | Confirmed; NOT superseded by cream/serif | Still the leading concrete complaint for vibe-coded app UI; Adam Wathan's 2025-08 apology for `bg-indigo-500` drew 1M+ views (via prg.sh). Cream/serif is a second parallel default rather than a replacement. |
 | Sycophancy / yes-man tone (regex-blind) | Confirmed; worse | Claude Code's "You're absolutely right!" became a reported product complaint (The Register 2025-08-13; claude-code issue #3382); GPT-5.1 reviewers report increased glazing and automatic "Good question" openers (Mowshowitz). The catchphrases themselves are already in the scanner's banned-phrase list; the tone in flowing prose stays agent territory. |
 | Chat-artifact and cosmetic code tells (fences, emoji, placeholder comments) | Confirmed | Emoji-dense output is used operationally as a detection signal (Netcraft 2025); complaints about cleaning emoji-riddled AI comments persist on HN into 2026; 2026 AI-code-review checklists still lead with leftover artifacts. |
-| Diction cluster (`delve` etc.) as low-confidence only | Confirmed direction; aging out faster | Wikipedia notes `delve` dropped sharply in 2025 as models updated; PubMed-corpus work tracks the vocabulary receding in medical writing. Low-confidence treatment stays right; these are demotion candidates, never promotion. |
+| Diction cluster (`delve` etc.) as an inflated tell | Confirmed direction; aging out faster | Wikipedia notes `delve` dropped sharply in 2025 as models updated; PubMed-corpus work tracks the vocabulary receding in medical writing. These are demotion candidates, never promotion: `delve` and `tapestry` are single-hit tells (`banned-words.md`), and moving one to the cluster tier is a rule change, measured first like any other. |
 | Loudest tells are structural and regex-blind | Confirmed with new evidence | arXiv 2601.21276 (2026-01) measures AI pull requests ignoring reuse opportunities while reviewers rate them positively: surface plausibility masks exactly the defects a regex cannot see. |
 
 Tells named in current sources that this file flagged as uncovered. All six were written up in `writing-patterns.md` for 2.1.0; the status column records where each landed and why.

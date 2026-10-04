@@ -4,6 +4,11 @@ All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plug
 
 ## Unreleased
 
+- A single `delve` is a finding, as the scanner scores it. SKILL.md, `banned-words.md`,
+  `writing-patterns.md` and `empirical-rankings.md` used a lone `delve` as their example of a
+  word that is not a tell; the example is `utilize`, a cluster-tier word. `empirical-rankings.md`
+  stops calling the diction cluster low-confidence only and assistant boilerplate the sole
+  single-instance tell, and `writing-patterns.md` names the single-hit words beside it.
 - The skill no longer fires on every write. Its description scopes it to user-facing prose,
   UI design and code, and explicit AI-pattern reviews, and the Quick Self-Check applies to
   that in-scope output instead of "any output". The catalogue and fixes are unchanged.
