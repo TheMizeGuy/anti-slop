@@ -425,6 +425,8 @@ Text that fails WCAG 1.4.3 on the surface its stylesheet gives it: `#8a8a8a` cap
 
 The scanner rules are `low-contrast` (high severity, Quality defect) and `low-contrast-near-bar` (low severity, for a ratio within 0.3 of its bar, so a hairline miss never reads like a 2:1 one). A pair is measured only when both colours are known: the block's own background, the background of the exact block its plain descendant chain names, or the page ground when nothing else in the file paints a surface. A `:hover` block borrows its missing half from the rule it repaints, and placeholder text is measured too, at near-bar when the file labels its fields. Not measured: gradient and image surfaces, values left behind an unresolved `var()`, Tailwind colour utilities, dark-mode overrides, and any surface set in another file. A pair that cannot be measured reports nothing, and a failing ratio never prints as its bar (4.4983 reads as 4.49, not 4.5). The tiers re-express impeccable's `low-contrast` rule.
 
+A pair can pass the ratio and still read badly: neutral mid-grey text on a saturated surface (`text-gray-300` on `bg-blue-800`, `#d1d5db` on `#1e40af`) has no hue of its own to sit on the colour with, and reads muddy. Tint the secondary text from the surface hue at lower chroma, or use the surface's own ink. The scanner rule is `gray-on-color`, low severity, Pattern smell: a resting `text-gray`/`slate`/`zinc`/`neutral`/`stone` 300 to 600 beside a resting chromatic `bg-*` above 100 in one class set, or a CSS pair on its own block or its ancestor whose ink is grey (HSL saturation under 0.2, lightness 0.3 to 0.85) on a surface that reads as colour. Pale tints, hover surfaces, near-white and near-black ink stay clean. It re-expresses impeccable's `gray-on-color` rule.
+
 ### Mobile-Unfriendly Designs
 
 Designs that look good at desktop width but break on mobile:
@@ -671,6 +673,7 @@ across every family.
 | Bounce easing, the pulsing live dot, the marquee | Yes (`bounce-easing`, `pulsing-dot`, `marquee`) |
 | Dot, grid and stripe background patterns, the radial halo on a dark page | Yes (`background-pattern`, `radial-halo`) |
 | Text contrast on its surface | Partly (`low-contrast`, `low-contrast-near-bar`: declared surfaces only, no Tailwind colour utilities) |
+| Grey text on a coloured surface | Yes (`gray-on-color`) |
 | Type below the legibility floor, the reading-mechanics settings | Partly (`text-size-floor`, `tight-leading`, `wide-tracking`, `justified-narrow-column`, `crushed-tracking`: one block at a time) |
 | Icon in a colored circle | Yes (`icon-in-colored-circle`) |
 | Decorative blur blobs | Yes (`blur-blob`) |

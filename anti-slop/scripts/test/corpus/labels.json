@@ -1431,6 +1431,27 @@
       "note": "Clean partner of radial-halo.html, on the same dark page: a translucent wash (first stop at 0.3 alpha) and a single untiled radial gradient with a 1px stop (a spot, not a halo, and not a tiled dot field). The same halo on a light page is the should-pass twin in rule-additions.test.mjs."
     },
     {
+      "file": "design/gray-on-color.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "gray-on-color",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        }
+      ],
+      "note": "Positive for gray-on-color (anti-slop 2.5.0): text-gray-300 on bg-blue-800 in one class set, and .promo #d1d5db on #1e40af, which passes contrast at 5.92:1 so the fixture plants only this tell."
+    },
+    {
+      "file": "design/gray-on-color-clean.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Clean partner of gray-on-color.html: near-black text-gray-700 on a pale bg-amber-100, a slate link whose red is a hover tint, a grey span beside a blue sibling, a ternary with the grey in one arm and the colour in the other, and off-white #e5e7eb on navy."
+    },
+    {
       "file": "code/cast-to-any.ts",
       "modality": "code",
       "role": "positive",

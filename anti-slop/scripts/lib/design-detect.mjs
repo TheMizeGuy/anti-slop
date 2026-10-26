@@ -1473,8 +1473,11 @@ function surfaceFrom(bg, ground) {
   return ground ? composite(bg.colour, ground) : null;
 }
 
-export function lowContrastHits(ctx) {
-  return memo(ctx, "lowContrast", () => {
+// colourPairs(ctx) -> every text colour paired with the surface the file declares for it:
+// { block, sel, fg, surface, source ("block" | "ancestor" | "page ground"), state, placeholder,
+// size, weight, colorEntry, ownBg }. Unknown surfaces and unparseable colours are left out.
+export function colourPairs(ctx) {
+  return memo(ctx, "colourPairs", () => {
     const props = ctx.props;
     const ground = ctx.pageGround;
     const blocks = ctx.css.blocks.filter((b) => !b.selector.startsWith("@") && !inAtRule(b, DARK_SCOPE) && !DARK_SELECTOR.test(b.selector));
@@ -1486,9 +1489,7 @@ export function lowContrastHits(ctx) {
       if (bg.kind !== "colour") return true;
       return bg.colour.a >= 0.99 && toHex(bg.colour) !== toHex(ground);
     });
-    const hasLabel = /<label\b/i.test(ctx.text);
-    const hits = [];
-    const seen = new Set();
+    const pairs = [];
     for (const b of blocks) {
       const sel = normSelector(b.selector);
       if (CONTRAST_SKIP.test(sel)) continue;
@@ -1514,9 +1515,9 @@ export function lowContrastHits(ctx) {
         for (const anc of descendantAncestors(baseSel || sel)) {
           const a = bySelector.get(anc);
           if (!a) continue;
-          const s = surfaceFrom(backgroundOf(a, props), ground);
-          if (s === undefined) continue;
-          surface = s;
+          const sfc = surfaceFrom(backgroundOf(a, props), ground);
+          if (sfc === undefined) continue;
+          surface = sfc;
           source = "ancestor";
           break;
         }
@@ -1526,22 +1527,34 @@ export function lowContrastHits(ctx) {
       if (fg.a < 1) fg = composite(fg, surface);
       const size = fontSizePx(b, props) ?? (base ? fontSizePx(base, props) : undefined) ?? 16;
       const weight = Math.max(fontWeight(b, props), base ? fontWeight(base, props) : 0);
-      const large = size >= 24 || (size >= 18.66 && weight >= 700);
+      pairs.push({ block: b, sel, fg, surface, source, state, placeholder, size, weight, colorEntry, ownBg });
+    }
+    return pairs;
+  });
+}
+
+export function lowContrastHits(ctx) {
+  return memo(ctx, "lowContrast", () => {
+    const hasLabel = /<label\b/i.test(ctx.text);
+    const hits = [];
+    const seen = new Set();
+    for (const p of colourPairs(ctx)) {
+      const large = p.size >= 24 || (p.size >= 18.66 && p.weight >= 700);
       const bar = large ? 3 : 4.5;
-      const ratio = contrastRatio(fg, surface);
+      const ratio = contrastRatio(p.fg, p.surface);
       if (ratio >= bar) continue;
-      const key = `${state ? "s" : "r"}${toHex(fg)}${toHex(surface)}`;
+      const key = `${p.state ? "s" : "r"}${toHex(p.fg)}${toHex(p.surface)}`;
       if (seen.has(key)) continue;
       seen.add(key);
       const label = ratioLabel(ratio, bar);
-      const nearBar = (placeholder && hasLabel) || Number(label) >= (large ? 2.8 : 4.2);
-      const at = declEntry(b, "color") || (ownBg && ownBg.entry) || colorEntry;
-      const prefix = state ? `${state} state: ` : placeholder ? "placeholder: " : "";
+      const nearBar = (p.placeholder && hasLabel) || Number(label) >= (large ? 2.8 : 4.2);
+      const at = declEntry(p.block, "color") || (p.ownBg && p.ownBg.entry) || p.colorEntry;
+      const prefix = p.state ? `${p.state} state: ` : p.placeholder ? "placeholder: " : "";
       hits.push({
-        line: at.line || b.line,
+        line: at.line || p.block.line,
         near: nearBar,
         ratio,
-        evidence: `${prefix}${sel} ${label}:1 (need ${bar}:1), text ${toHex(fg)} on ${toHex(surface)} (${source})`,
+        evidence: `${prefix}${p.sel} ${label}:1 (need ${bar}:1), text ${toHex(p.fg)} on ${toHex(p.surface)} (${p.source})`,
       });
     }
     return hits;
@@ -2429,6 +2442,57 @@ export function radialHaloHits(ctx) {
         hits.push({ line: entries[entries.length - 1].line, evidence: `${normSelector(b.selector)}: radial halo ${toHex(first)} fading to transparent on a dark page` });
         break;
       }
+    }
+    return hits;
+  });
+}
+
+// ── gray-on-color ──
+// Neutral mid-grey text on a chromatic surface reads muddy: the grey has no hue of its own
+// to sit on the colour with. Class form: one class set (one element, one ternary arm) with a
+// resting text-gray/slate/zinc/neutral/stone 300 to 600 and a resting chromatic bg-* above
+// 100. CSS form: a pair resolved on its own block or its ancestor (never the page ground)
+// whose ink is grey (HSL saturation under 0.2, lightness 0.3 to 0.85) and whose surface reads
+// as colour.
+const GREY_TEXT = /^text-(?:gray|slate|zinc|neutral|stone)-(\d{3})$/;
+const COLOUR_BG = /^bg-(?:red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(\d{2,3})$/;
+
+function hsl({ r, g, b }) {
+  const R = r / 255;
+  const G = g / 255;
+  const B = b / 255;
+  const max = Math.max(R, G, B);
+  const min = Math.min(R, G, B);
+  const L = (max + min) / 2;
+  const d = max - min;
+  const S = d === 0 ? 0 : d / (1 - Math.abs(2 * L - 1));
+  return { s: S, l: L };
+}
+
+function readsAsColour(c) {
+  const lum = relativeLuminance(c);
+  const need = lum < 0.01 ? 40 * Math.sqrt(0.01 / Math.max(lum, 1e-4)) : 40;
+  if (rgbSpread(c) < need) return false;
+  const o = toOklch(c);
+  return !(o.L >= 0.9 && o.C < 0.09);
+}
+
+export function grayOnColorHits(ctx) {
+  return memo(ctx, "grayOnColor", () => {
+    const hits = [];
+    const seen = new Set();
+    for (const p of colourPairs(ctx)) {
+      if (p.source === "page ground" || seen.has(p.block)) continue;
+      const { s: sat, l } = hsl(p.fg);
+      if (!(sat < 0.2 && l > 0.3 && l < 0.85) || !readsAsColour(p.surface)) continue;
+      seen.add(p.block);
+      hits.push({ line: (declEntry(p.block, "color") || p.colorEntry).line, evidence: `${p.sel}: grey ${toHex(p.fg)} on ${toHex(p.surface)}` });
+    }
+    for (const set of ctx.effectiveSets) {
+      const toks = set.tokens.map(tailwindToken).filter(isResting);
+      const grey = toks.find((t) => { const m = GREY_TEXT.exec(t.base); return m && Number(m[1]) >= 300 && Number(m[1]) <= 600; });
+      const bg = toks.find((t) => { const m = COLOUR_BG.exec(t.base); return m && Number(m[1]) > 100; });
+      if (grey && bg) hits.push({ line: set.line, evidence: `${grey.base} on ${bg.base}` });
     }
     return hits;
   });

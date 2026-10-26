@@ -1128,3 +1128,18 @@ test("radial-halo: a saturated halo on a dark page fires; a light page, a wash a
   assert.deepEqual(fired("radial-halo", "body { background: #0b0b10 } .h { background: radial-gradient(circle, rgba(148, 148, 148, 0.9), transparent 70%) }"), [], "a neutral glow");
   assert.deepEqual(fired("radial-halo", "body { background: #0b0b10 } .h { background: repeating-radial-gradient(circle, rgba(34, 211, 238, 0.8), transparent 70%) }"), [], "a repeating gradient is a pattern");
 });
+
+// ── gray-on-color (2.5.0, P2) ────────────────────────────────────────────────
+
+test("gray-on-color: grey ink on a colour fires in both forms; tints, states, siblings and arms do not", () => {
+  const [v] = fired("gray-on-color", corpus("design/gray-on-color.html"), "design/gray-on-color.html");
+  assert.equal(v.count, 2);
+  assert.deepEqual(fired("gray-on-color", corpus("design/gray-on-color-clean.html"), "design/gray-on-color-clean.html"), []);
+  assert.equal(fired("gray-on-color", '<p class="bg-blue-800 text-slate-500">x</p>', "a.html").length, 1);
+  assert.deepEqual(fired("gray-on-color", '<p class="bg-blue-800 text-gray-200">x</p>', "a.html"), [], "near-white ink is not mid-grey");
+  assert.deepEqual(fired("gray-on-color", '<p class="bg-blue-100 text-gray-500">x</p>', "a.html"), [], "a pale tint is not a colour surface");
+  assert.deepEqual(fired("gray-on-color", '<p class="hover:bg-blue-800 text-gray-500">x</p>', "a.html"), [], "a hover surface is a state");
+  assert.equal(fired("gray-on-color", ".p { background: #1e40af; color: #9ca3af }").length, 1);
+  assert.deepEqual(fired("gray-on-color", ".p { background: #1e40af; color: #e5e7eb }"), [], "off-white ink");
+  assert.deepEqual(fired("gray-on-color", ".p { background: #f3f4f6; color: #6b7280 }"), [], "grey on grey");
+});

@@ -377,6 +377,14 @@
       "recall": 1
     },
     {
+      "rule": "gray-on-color",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "great question",
       "tp": 1,
       "fp": 0,
@@ -884,7 +892,7 @@
     },
     {
       "modality": "design",
-      "tp": 69,
+      "tp": 70,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -908,10 +916,10 @@
     }
   ],
   "overall": {
-    "tp": 135,
+    "tp": 136,
     "fp": 0,
     "fn": 1,
     "precision": 1,
-    "recall": 0.9926470588235294
+    "recall": 0.9927007299270073
   }
 }
