@@ -2,6 +2,11 @@
 
 All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `anti-slop/.claude-plugin/plugin.json`, the SKILL.md frontmatter, and `anti-slop/scripts/package.json` — all five are bumped together. (It was five, then four when 2.0.0 removed the MCP Server constructor, then five again when 2.2.1 brought the scanner's package.json under the same gate.)
 
+## 2.5.1 - 2026-10-26
+
+- `viewport-zoom-lock` matches inside the viewport `<meta>` tag, in either attribute order. The 2.4.0 pattern ran from the word viewport anywhere on a line to a later `user-scalable=no` or `maximum-scale=1`, so a documentation line about grepping for those tokens fired it, and a tag with `content` before `name` did not. A test pins both.
+- `gray-on-color-clean.html`, the clean partner of `gray-on-color.html`, set `text-slate-400` and `text-gray-400` on the white page (2.56:1 and 2.54:1), a real contrast failure no rule here resolves because both are Tailwind utilities. They are now `-600` (7.58:1 and 7.56:1); the hover-tint, sibling and ternary shapes the control exists for are unchanged. ui-craft re-copies the file.
+
 ## 2.5.0 - 2026-10-26
 
 Detection rules re-expressed from [impeccable](https://github.com/pbakaus/impeccable)
