@@ -82,7 +82,7 @@ The banned-words list marks domain-specific terms inline. See the caveat at the 
 
 ### Vocabulary
 
-`references/banned-words.md` splits its list in three, and the split is the rule. Single-hit tells (`delve`, `embark`, `showcase`, `pivotal`, `tapestry`) are avoided in user-facing prose (§ Prose scope) on one occurrence. Cluster tells (`utilize`, `leverage`, `robust`, `comprehensive`, `nuanced`) pass once and are thinned when two or more gather in a document. The rest of the file is a plain-word preference and never a finding, so a sentence is not rewritten to dodge `validate` or `optimize`. Replace with plain, specific language: "use" not "utilize," "start" not "embark." Do not always pick the first alternative listed; vary replacements across outputs. When tempted by a fancy-sounding word, pick the one a person would say out loud, and keep the fancy word when it is the precise term.
+`references/banned-words.md` splits its list in three, and the split is the rule. Single-hit tells (`delve`, `embark`, `showcase`, `pivotal`, `tapestry`) are avoided in user-facing prose (§ Prose scope) on one occurrence. Cluster tells (`utilize`, `leverage`, `robust`, `comprehensive`, `nuanced`) pass once, and the same cluster-tier word twice in one document is the finding. The rest of the file is a plain-word preference and never a finding, so a sentence is not rewritten to dodge `validate` or `optimize`. Replace with plain, specific language: "use" not "utilize," "start" not "embark." Do not always pick the first alternative listed; vary replacements across outputs. When tempted by a fancy-sounding word, pick the one a person would say out loud, and keep the fancy word when it is the precise term.
 
 ### Phrases
 
@@ -179,7 +179,7 @@ This is the canonical minimum check. `references/self-check.md` carries the full
 Before handing back in-scope output (user-facing prose, UI work, or a review target), run through:
 
 - First word of the response: sycophantic or throat-clearing?
-- No single-hit words from `references/banned-words.md` in user-facing prose, and cluster words at most once? (the plain-word preferences in that file are not a check)
+- No single-hit words from `references/banned-words.md` in user-facing prose, and no cluster word used twice? (the same cluster-tier word twice in one document is the finding; the plain-word preferences in that file are not a check)
 - Sentence lengths vary?
 - Not forcing lists to exactly three items?
 - Em dashes counted in user-facing prose? (the scanner fires at five or more AND four per 1,000 words; a lone correct dash is clean; an internal document is out of scope)
