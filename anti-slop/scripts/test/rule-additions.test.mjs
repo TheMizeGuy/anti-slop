@@ -815,3 +815,55 @@ test("side-stripe-accent: pseudo bars, inset shadows, style objects and border-l
   assert.deepEqual(stripe('<div class="border-l-4 border-slate-300">x</div>'), [], "a neutral Tailwind border");
   assert.deepEqual(stripe('<div class="hover:border-l-4 border-teal-600">x</div>'), [], "a hover-only stripe is state");
 });
+
+// ── text-size-floor (2.5.0) ──────────────────────────────────────────────────
+
+const floor = (content, path = "page.css") => scanContent(content, path).filter((v) => v.name === "text-size-floor");
+
+test("text-size-floor: the corpus positive fires on all three floors' cases, the partner is silent", () => {
+  const [v] = floor(corpus("design/type-floors.html"), "design/type-floors.html");
+  assert.equal(v.count, 3);
+  assert.match(v.evidence, /^\.article p: font-size 11px \(running text, floor 12px\)$/);
+  assert.deepEqual(floor(corpus("design/type-floors-clean.html"), "design/type-floors-clean.html"), []);
+});
+
+test("text-size-floor: running text has a 12px floor, functional text 11px", () => {
+  assert.equal(floor(".article p { font-size: 11px }").length, 1);
+  assert.deepEqual(floor(".price { font-size: 11px }"), [], "11px functional text is at its floor");
+  assert.equal(floor(".price { font-size: 10.9px }").length, 1, "the 0.1px tolerance, not a rounding");
+  assert.deepEqual(floor(".price { font-size: 10.95px }"), []);
+});
+
+test("text-size-floor: a label-like word makes a reading selector functional, and its twin still reads", () => {
+  assert.deepEqual(floor(".post-meta { font-size: 11px }"), []);
+  assert.equal(floor(".post-body { font-size: 11px }").length, 1);
+});
+
+test("text-size-floor: caps take the functional floor, mixed case the reading one", () => {
+  assert.deepEqual(floor(".lede { font-size: 11px; text-transform: uppercase }"), []);
+  assert.equal(floor(".lede { font-size: 11px }").length, 1);
+});
+
+test("text-size-floor: small print has a 10px floor, and footnote is a whole class word", () => {
+  assert.deepEqual(floor(".legal small { font-size: 10px }"), []);
+  assert.equal(floor(".legal small { font-size: 9.5px }").length, 1);
+  assert.deepEqual(floor(".footnote { font-size: 10px }"), []);
+  assert.equal(floor(".text-footnote { font-size: 10px }").length, 1, "Apple's text-footnote style is not small print");
+  assert.equal(floor(".terms p { font-size: 11px }").length, 1, "terms is not a small-print word");
+});
+
+test("text-size-floor: footnote markers, code and hidden text are exempt; svg labels are not", () => {
+  assert.deepEqual(floor("sup.fn { font-size: 9px }"), []);
+  assert.equal(floor("span.fn { font-size: 9px }").length, 1);
+  assert.deepEqual(floor("code { font-size: 10px }"), []);
+  assert.deepEqual(floor('[aria-hidden="true"] { font-size: 9px }'), []);
+  assert.equal(floor("svg text { font-size: 9px }").length, 1, "diagram labels are read, and the exemption was measured and rejected");
+});
+
+test("text-size-floor: only px, rem and the font shorthand are judged", () => {
+  assert.deepEqual(floor(".a p { font-size: 0.6em }"), []);
+  assert.deepEqual(floor(".a p { font-size: 60% }"), []);
+  assert.deepEqual(floor(".a p { font-size: clamp(9px, 1vw, 12px) }"), []);
+  assert.equal(floor(".a p { font: 11px/1.5 system-ui, sans-serif }").length, 1);
+  assert.equal(floor(".a p { font-size: 0.6875rem }").length, 1);
+});

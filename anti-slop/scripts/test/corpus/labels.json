@@ -786,7 +786,8 @@
       "modality": "design",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 0
+      "maxIncidentalFindings": 0,
+      "note": "Type floor corrected 2026-10 (anti-slop 2.5.0): table.invoices thead th font-size 10.5px -> 11px, the functional-text floor; the planted construct is unchanged."
     },
     {
       "file": "../fixtures/technical-mono.html",
@@ -1265,6 +1266,27 @@
       "expected": [],
       "maxIncidentalFindings": 0,
       "note": "Clean partner of side-stripe-cards.html, one step from each producer: a neutral 2px rule on timeline list items, a selected tab's edge, a live region's severity edge, a uniform 1px card border, a 1px divider, a bottom-border spinner (role=status with a hidden label), and border-l-4 on a button and on a table cell."
+    },
+    {
+      "file": "design/type-floors.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "text-size-floor",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "Positive for text-size-floor (anti-slop 2.5.0): an 11px paragraph of running text under .article p (reading floor 12px), a 0.625rem price note and 10px footer links (functional floor 11px)."
+    },
+    {
+      "file": "design/type-floors-clean.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Clean partner of type-floors.html: an 11px uppercase eyebrow and an 11px .post-meta row (functional, at the floor), a 10px footnote marker (sup is exempt), 10px small print inside .legal (small-print floor 10px), 12px code and an em-sized caption (not judged)."
     },
     {
       "file": "code/cast-to-any.ts",

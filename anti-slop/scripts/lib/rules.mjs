@@ -1,4 +1,4 @@
-import { lowContrastHits, sideStripeHits } from "./design-detect.mjs";
+import { lowContrastHits, sideStripeHits, textSizeFloorHits } from "./design-detect.mjs";
 
 // ── Confidence classes ──
 // How sure the scanner is that a match is WRONG HERE, which is a different axis from
@@ -321,6 +321,9 @@ export const DESIGN_PATTERNS = [
   // when the file labels its fields. Tailwind colour utilities are not resolved.
   { name: "low-contrast", severity: "high", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, hits: (ctx) => lowContrastHits(ctx).filter((h) => !h.near), fix: "Darken the text or the surface until the pair clears 4.5:1 (3:1 at 24px or 18.66px bold); keep the hue and move only the lightness.", desc: "Text below WCAG AA contrast on its declared surface (WCAG 1.4.3)" },
   { name: "low-contrast-near-bar", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, hits: (ctx) => lowContrastHits(ctx).filter((h) => h.near), fix: "Move the lightness one more step so the pair clears its bar with margin; keep the hue and the surface.", desc: "Text within 0.3 of the WCAG AA contrast bar" },
+  // Block-local: a size inherited from a parent rule is not resolved, so recall on
+  // component trees is a floor. Footnote markers, code and hidden text are exempt.
+  { name: "text-size-floor", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, hits: textSizeFloorHits, fix: "Set running text at 12px or more (16px for body) and functional text at 11px or more; subordinate it with weight, colour or caps tracking instead.", desc: "Text set below the legibility floor (12px running, 11px functional)" },
   // A Hard defect because it is one: WCAG 1.4.4 requires text to scale to 200%, and a
   // viewport that blocks pinch zoom removes the only control a low-vision user has on a
   // phone. The remediation only ever DELETES the two attributes -- the viewport meta a

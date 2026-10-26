@@ -1727,3 +1727,62 @@ export function sideStripeHits(ctx) {
     return hits;
   });
 }
+
+// ── text-size-floor ──
+// Running text below 12px, functional text at or below 10.9px (an 11px floor with a 0.1px
+// tolerance), small print at or below 9.9px. Precedence: small print, then reading, then
+// functional. A selector that names a label-like word is functional even when it also names a
+// reading word (`.post-meta`). Only px, rem and the font shorthand's size are judged.
+const READING_TAGS = new Set(["p", "li", "dd", "blockquote", "article"]);
+const READING_WORDS = new Set(["body", "copy", "prose", "description", "desc", "lede", "lead", "summary", "excerpt", "paragraph", "text", "content", "entry", "post"]);
+const FUNCTIONAL_WORDS = new Set(["badge", "caption", "chip", "label", "meta", "pill", "tag", "preview", "code", "stamp"]);
+const SIZE_EXEMPT_TAGS = new Set(["sub", "sup", "option", "code", "kbd", "samp", "var", "pre", "html"]);
+const SMALL_PRINT = /(?:^|[^a-z])(?:legal|copyright|fine-?print|disclaimer|disclosures?|small-print)(?![a-z])|(?<![\w-])footnote(?![\w-])/i;
+const NOT_SMALL_PRINT_TAGS = new Set(["a", "button", "input", "label"]);
+
+function isCaps(block, props) {
+  const tt = resolveVars(String(decl(block, "text-transform") || ""), props);
+  const fv = resolveVars(`${decl(block, "font-variant-caps") || ""} ${decl(block, "font-variant") || ""}`, props);
+  return /uppercase/i.test(tt) || /small-caps/i.test(fv);
+}
+
+function fmtPx(n) {
+  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+export function textSizeFloorHits(ctx) {
+  return memo(ctx, "textSizeFloor", () => {
+    const props = ctx.props;
+    const hits = [];
+    for (const b of ctx.css.blocks) {
+      if (b.selector.startsWith("@") || /^:root$/i.test(b.selector.trim())) continue;
+      const size = fontSizePx(b, props);
+      if (size === undefined || size >= 12) continue;
+      const caps = isCaps(b, props);
+      for (const sel of splitSelectorList(b.selector)) {
+        if (/\[aria-hidden/i.test(sel)) continue;
+        const subject = subjectOf(sel);
+        const tag = tagOfCompound(subject);
+        if (tag && SIZE_EXEMPT_TAGS.has(tag)) continue;
+        const words = classWordsOf(subject);
+        let kind = "functional text";
+        let floor = 11;
+        let fires = size <= 10.9;
+        if ((SMALL_PRINT.test(sel) || tag === "small") && !NOT_SMALL_PRINT_TAGS.has(tag || "")) {
+          kind = "small print";
+          floor = 10;
+          fires = size <= 9.9;
+        } else if (!words.some((w) => FUNCTIONAL_WORDS.has(w)) && !caps && ((tag && READING_TAGS.has(tag)) || words.some((w) => READING_WORDS.has(w)))) {
+          kind = "running text";
+          floor = 12;
+          fires = size < 12;
+        }
+        if (!fires) continue;
+        const at = declEntry(b, "font-size") || declEntry(b, "font");
+        hits.push({ line: at ? at.line : b.line, evidence: `${normSelector(sel)}: font-size ${fmtPx(size)}px (${kind}, floor ${floor}px)` });
+        break;
+      }
+    }
+    return hits;
+  });
+}
