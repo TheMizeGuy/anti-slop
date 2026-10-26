@@ -388,3 +388,20 @@ test("the escape hatch inside a comment still reaches the tell on its line", () 
   const suppressed = scanContent(html, "a.html", { collectSuppressed: true }).filter((v) => v.suppressed);
   assert.deepEqual(suppressed.map((v) => v.name), ["gradient-text"]);
 });
+
+// ── Banned phrases match whole words (2.5.0) ─────────────────────────────────
+
+test("banned phrases: a phrase inside a longer word is not the phrase", () => {
+  const phrases = (text) => scanContent(text, "post.md").filter((v) => v.type === "banned-phrase").map((v) => v.phrase);
+  assert.deepEqual(phrases("Results come back within today's window."), []);
+  assert.deepEqual(phrases("In today's market, prices move."), ["in today's"]);
+  assert.deepEqual(phrases("The rule is a beacon of nothing."), ["a beacon of"]);
+  assert.deepEqual(phrases("Absolutely! It works."), ["absolutely!"], "a phrase ending in punctuation keeps its leading boundary only");
+});
+
+test("banned phrases: plurals still match, as the substring search did", () => {
+  const phrases = (text) => scanContent(text, "post.md").filter((v) => v.type === "banned-phrase").map((v) => v.phrase);
+  assert.deepEqual(phrases("These game-changers matter."), ["game-changer"]);
+  assert.deepEqual(phrases("Two deep dives later."), ["deep dive"]);
+  assert.deepEqual(phrases("A deep diver surfaced."), [], "a longer word is still not the phrase");
+});

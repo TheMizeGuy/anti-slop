@@ -6,6 +6,7 @@ import {
   BANNED_WORD_REGEXES,
   LOW_CONFIDENCE_WORDS,
   BANNED_PHRASES,
+  BANNED_PHRASE_REGEXES,
   DESIGN_PATTERNS,
   CODE_PATTERNS,
   TEXT_CONSTRUCTS,
@@ -154,6 +155,23 @@ function lineAtIndex(text, index) {
 function firstMatchLine(text, re) {
   const m = freshGlobal(re).exec(text);
   return m ? lineAtIndex(text, m.index) : null;
+}
+
+// Whole-word phrase matches (rules.mjs BANNED_PHRASE_REGEXES): the count and the line of
+// the first one, or null.
+function phraseMatches(hay, phrase) {
+  const re = BANNED_PHRASE_REGEXES.get(phrase);
+  if (!phrase || !re) return null;
+  const g = freshGlobal(re);
+  let count = 0;
+  let first = -1;
+  let m;
+  while ((m = g.exec(hay)) !== null) {
+    if (first === -1) first = m.index;
+    count++;
+    if (m[0].length === 0) g.lastIndex++;
+  }
+  return count ? { count, line: lineAtIndex(hay, first) } : null;
 }
 
 function resolveSeverity(sev, count) {
@@ -306,19 +324,11 @@ function collectSuppressedViolations({ content, sources, isProse, isCode, isStyl
   // Phrases mirror the active path on BOTH surfaces. Guarding this branch on isProse alone
   // meant an escape-hatched phrase in a code file could not even be reported as suppressed.
   if (isProse || isCode) {
-    const hatchedHay = (isProse ? extractEscapeHatchedProse(content) : extractEscapeHatchedLines(content)).toLowerCase();
+    const hatchedHay = isProse ? extractEscapeHatchedProse(content) : extractEscapeHatchedLines(content);
     for (const phrase of BANNED_PHRASES) {
-      if (!phrase) continue;
-      const firstIdx = hatchedHay.indexOf(phrase);
-      if (firstIdx === -1) continue;
-      let count = 0;
-      let searchFrom = 0;
-      let idx;
-      while ((idx = hatchedHay.indexOf(phrase, searchFrom)) !== -1) {
-        count++;
-        searchFrom = idx + phrase.length;
-      }
-      const lineNum = hatchedHay.substring(0, firstIdx).split("\n").length;
+      const found = phraseMatches(hatchedHay, phrase);
+      if (!found) continue;
+      const { count, line: lineNum } = found;
       suppressed.push({
         type: "banned-phrase", phrase, line: lineNum, count,
         severity: "medium",
@@ -551,19 +561,11 @@ export function scanContent(content, filePath, opts = {}) {
   // in a copy constant ships to a user. Escape-hatched lines are removed on both surfaces --
   // routing code through the raw content was the one rule family the hatch did not reach.
   if (isProse || isCode) {
-    const hay = (isProse ? proseScan : stripEscapeHatchLines(content)).toLowerCase();
+    const hay = isProse ? proseScan : stripEscapeHatchLines(content);
     for (const phrase of BANNED_PHRASES) {
-      if (!phrase) continue; // indexOf("") returns 0, which would loop forever below
-      const firstIdx = hay.indexOf(phrase);
-      if (firstIdx === -1) continue;
-      let count = 0;
-      let searchFrom = 0;
-      let idx;
-      while ((idx = hay.indexOf(phrase, searchFrom)) !== -1) {
-        count++;
-        searchFrom = idx + phrase.length;
-      }
-      const lineNum = hay.substring(0, firstIdx).split("\n").length;
+      const found = phraseMatches(hay, phrase);
+      if (!found) continue;
+      const { count, line: lineNum } = found;
       violations.push({
         type: "banned-phrase",
         phrase,

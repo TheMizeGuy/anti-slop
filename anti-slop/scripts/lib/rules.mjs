@@ -182,6 +182,18 @@ export const BANNED_PHRASES = [
   "key takeaways", "without further ado",
 ];
 
+// ── Precompiled banned-phrase regexes ──
+// Whole words: "in today's" must not match inside "within today's". A phrase that ends in a
+// letter also takes its plural ("game-changers", "deep dives"), which a substring search
+// caught and a bare trailing boundary would lose; a phrase that ends in punctuation
+// ("absolutely!") keeps only the leading boundary.
+export const BANNED_PHRASE_REGEXES = new Map(
+  BANNED_PHRASES.map((phrase) => [
+    phrase,
+    new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(phrase)}${/[\p{L}\p{N}]$/u.test(phrase) ? "(?:s|es)?(?![\\p{L}\\p{N}_])" : ""}`, "giu"),
+  ]),
+);
+
 // ── A text glyph standing in for a control (design + native) ──
 // The 2.1.0 incident: a pause/play toggle shipped as the bare text glyph. The emoji rule
 // follows Unicode (2.3.1), so a bare play or pause sign is typography to it, and the
