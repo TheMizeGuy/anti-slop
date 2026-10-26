@@ -1180,6 +1180,27 @@
       "note": "Near-miss control for the prose rules added or widened in 2.1.0: 'Interest compounds annually' (subject outside the collocation list), 'held the space open' (not the bare metaphor), 'The signal that the sensor emits' (not 'sends a signal that'), a single collocation (below minCount), 'It's not about money.' as one clause with no second clause to complete the antithesis, and a [1] footnote, a :::note admonition and an attributedString identifier, none of which is a model tooling token."
     },
     {
+      "file": "prose/theater-framing.md",
+      "modality": "prose",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "theater-slop-phrase",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        }
+      ],
+      "note": "Positive for theater-slop-phrase (anti-slop 2.5.0): security theater and growth theatre, each dismissing a practice without saying what it fails to do; both spellings."
+    },
+    {
+      "file": "prose/theater-literal.md",
+      "modality": "prose",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Clean partner of theater-framing.md: two Title Case venue and company names built on a head word, the Southern Theater Command, an opera house called the official theater of the city, and a theater of operations."
+    },
+    {
       "file": "design/zoom-lock-tabindex.html",
       "modality": "design",
       "role": "positive",

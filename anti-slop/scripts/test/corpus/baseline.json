@@ -777,6 +777,14 @@
       "recall": 1
     },
     {
+      "rule": "theater-slop-phrase",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "tight-leading",
       "tp": 1,
       "fp": 0,
@@ -916,7 +924,7 @@
     },
     {
       "modality": "prose",
-      "tp": 26,
+      "tp": 27,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -924,10 +932,10 @@
     }
   ],
   "overall": {
-    "tp": 138,
+    "tp": 139,
     "fp": 0,
     "fn": 1,
     "precision": 1,
-    "recall": 0.9928057553956835
+    "recall": 0.9928571428571429
   }
 }

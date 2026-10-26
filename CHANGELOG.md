@@ -54,6 +54,8 @@ that decides a combination or a repetition after the escape hatch has dropped it
   class set or as a CSS pair on its own block or its ancestor.
 - `skipped-heading` (medium, Quality defect): in a full HTML document, a heading more than one
   level below the one before it; a footer's first heading may start lower.
+- `theater-slop-phrase` (low, Pattern smell, prose): dismissing a practice as theater
+  (`security theater`, `growth theatre`), both spellings; a Title Case name is not the framing.
 
 **Rules that fired where they should not, narrowed:**
 
@@ -130,8 +132,9 @@ document is the finding. `choosing-with-intent.md` documents the scoped waiver.
 
 | | Before (2.4.0) | After (2.5.0) |
 |---|--:|--:|
-| True positives / false positives / false negatives | 120 / 0 / 1 | 138 / 0 / 1 |
+| True positives / false positives / false negatives | 120 / 0 / 1 | 139 / 0 / 1 |
 | Design modality true positives | 54 | 72 |
+| Prose modality true positives | 26 | 27 |
 | Precision / recall | 100.0% / 99.2% | 100.0% / 99.2% |
 
 `baseline.json` was regenerated with a row for each new rule; no existing row moved. Over

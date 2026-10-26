@@ -688,6 +688,17 @@ export const CODE_PATTERNS = [
   { name: "banner-comment", severity: "low", confidence: CONFIDENCE.TASTE, mode: CONCENTRATION, minCount: 2, pattern: /^\s*(?:\/\/|#|\*|--)\s*[=\-*_~#]{10,}\s*$/gm, fix: "Delete the dividers; a file that needs them to stay navigable is a file asking to be split.", desc: "ASCII banner/divider comment" },
 ];
 
+// ── "X theater" ──
+// Dismissing a practice as theater without saying what it fails to do. The head words are
+// the practices the framing is aimed at; both spellings count. A Title Case pair is a name
+// (a venue, a company), so the pattern reads case itself instead of using the `i` flag: the
+// head word may be capitalised at a sentence start, or "Theater" may be, but not both.
+const THEATER_HEADS = ["accessibility", "accountability", "agile", "alignment", "compliance", "diversity", "engagement", "governance", "growth", "hiring", "hygiene", "innovation", "inclusion", "kindness", "leadership", "metrics", "privacy", "process", "productivity", "quality", "safety", "security", "strategy", "sustainability", "transparency", "trust", "wellness"];
+const THEATER_PATTERN = new RegExp(
+  `\\b(?:(?:${THEATER_HEADS.map((w) => `[${w[0]}${w[0].toUpperCase()}]${w.slice(1)}`).join("|")})\\s+theat(?:er|re)|(?:${THEATER_HEADS.join("|")})\\s+Theat(?:er|re))\\b`,
+  "g",
+);
+
 // ── Text constructs (prose only): regex-detectable sentence/format tells ──
 // Severity follows the corpus ranking. Emitted only after prose noise-stripping
 // (code fences, quotes, blockquotes, frontmatter, and escape-hatch lines blanked).
@@ -726,6 +737,7 @@ export const TEXT_CONSTRUCTS = [
   // The prose half of the code table's entry of the same name: same rule, same severity,
   // reached on .md the way chat-artifact is reached on .js.
   { name: "model-tooling-artifact", severity: "high", confidence: CONFIDENCE.HARD, mode: PRESENCE, pattern: MODEL_TOOLING_ARTIFACT, fix: "Delete the token; where it stood in for a real citation, write the citation.", desc: "Model tooling/citation artifact leaked into the output" },
+  { name: "theater-slop-phrase", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: THEATER_PATTERN, fix: "Say what the practice fails to do and what that costs; calling it theater dismisses it without showing why.", desc: "Dismissive 'X theater' framing (security theater, growth theatre)" },
   // The 2026 register is the mirror image of the 2024 one: short plain Anglo-Saxon words
   // used metaphorically to manufacture weight, rather than inflated words standing in for
   // plain ones. NONE of the bare words belongs in BANNED_WORDS -- `real`, `shape`, `signal`,

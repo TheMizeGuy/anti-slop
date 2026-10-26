@@ -1158,3 +1158,14 @@ test("skipped-heading: a jump of more than one level fires; going up, the first 
   assert.deepEqual(fired("skipped-heading", "<h1>a</h1><h3>b</h3>", "fragment.html"), [], "a fragment is not a full document");
   assert.deepEqual(fired("skipped-heading", doc("<h1>a</h1><pre>&lt;h3&gt;</pre><code><h3>x</h3></code>"), "a.html"), [], "markup quoted in code is not the outline");
 });
+
+// ── theater-slop-phrase (2.5.0, P2) ──────────────────────────────────────────
+
+test("theater-slop-phrase: the dismissive framing fires in both spellings; names and literal theaters do not", () => {
+  const theater = (text) => scanContent(text, "post.md").filter((v) => v.name === "theater-slop-phrase");
+  assert.equal(theater(corpus("prose/theater-framing.md"))[0].count, 2);
+  assert.deepEqual(theater(corpus("prose/theater-literal.md")), []);
+  assert.equal(theater("Security theater again.").length, 1, "a capitalised head word at a sentence start");
+  assert.deepEqual(theater("Seattle Kindness Theater presents a show."), [], "a Title Case name");
+  assert.deepEqual(theater("Security theaters across the region."), [], "the plural is a different noun");
+});
