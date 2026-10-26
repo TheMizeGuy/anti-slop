@@ -714,7 +714,7 @@ test("coverage: one line per distinct note with its file count, and --quiet drop
   }
 });
 
-test("coverage: a declared purple brand in DESIGN.md is named when the purple rules stand down", () => {
+test("coverage: a declared purple in DESIGN.md is named with the hue window it exempts", () => {
   const dir = scratchDir();
   try {
     writeFileSync(join(dir, "package.json"), "{}");
@@ -722,7 +722,7 @@ test("coverage: a declared purple brand in DESIGN.md is named when the purple ru
     writeFileSync(join(dir, "page.html"), '<a class="bg-violet-600 text-violet-700">Go</a>\n');
     const result = runCli(["page.html"], dir);
     assert.equal(result.stdout, "page.html: clean\n");
-    assert.match(result.stderr, /coverage: purple rules off: DESIGN\.md declares violet \(#7e4ed7\) \(1 file\)/);
+    assert.match(result.stderr, /coverage: purple palette: DESIGN\.md declares violet \(#7e4ed7\); purple within 15 degrees of its hue is the palette \(1 file\)/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

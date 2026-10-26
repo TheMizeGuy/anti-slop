@@ -2745,8 +2745,9 @@ export function parseFrontmatter(text) {
 }
 
 // readDesignSystem(path) -> { path, colors: [{ name, value, rgb }], fonts: Set of familyKey,
-// purpleBrand: { name, hex } | null } or null when the file cannot be read. A declared colour
-// on the purple arc (OKLCH hue 250 to 320, chroma 0.12 or more) is a purple brand.
+// purpleArc: [{ name, hex, H, C }] } or null when the file cannot be read. purpleArc holds the
+// declared colours inside the window where the palette check runs at all (OKLCH hue 250 to
+// 320, chroma 0.08 or more).
 export function readDesignSystem(path) {
   if (!path) return null;
   if (designFileCache.has(path)) return designFileCache.get(path);
@@ -2767,8 +2768,10 @@ export function readDesignSystem(path) {
         if (!GENERIC_FAMILIES.has(f.toLowerCase())) fonts.add(familyKey(f));
       }
     }
-    const purple = colors.find((c) => { const o = toOklch(c.rgb); return o.H >= 250 && o.H <= 320 && o.C >= 0.12; });
-    result = { path, colors, fonts, purpleBrand: purple ? { name: purple.name, hex: toHex(purple.rgb) } : null };
+    const purpleArc = colors.map((c) => ({ c, o: toOklch(c.rgb) }))
+      .filter(({ o }) => o.H >= 250 && o.H <= 320 && o.C >= 0.08)
+      .map(({ c, o }) => ({ name: c.name, hex: toHex(c.rgb), H: o.H, C: o.C }));
+    result = { path, colors, fonts, purpleArc };
   } catch {
     result = null;
   }
@@ -2779,6 +2782,37 @@ export function readDesignSystem(path) {
 // True when a colour literal sits within 6 per channel of a colour DESIGN.md declares.
 export function declaredColour(ds, rgb) {
   return Boolean(ds && rgb && ds.colors.some((c) => Math.abs(c.rgb.r - rgb.r) <= 6 && Math.abs(c.rgb.g - rgb.g) <= 6 && Math.abs(c.rgb.b - rgb.b) <= 6));
+}
+
+// declaredPurple(ds, rgb): a purple match is the palette when its OKLCH hue lies within 15
+// degrees of a declared colour on the purple arc, both at chroma 0.08 or more. A declared
+// blue-600 (hue about 263) covers its own hue and leaves a violet (about 293) a tell.
+export function declaredPurple(ds, rgb) {
+  if (!ds || !rgb || !ds.purpleArc || ds.purpleArc.length === 0) return false;
+  const o = toOklch(rgb);
+  if (o.C < 0.08) return false;
+  return ds.purpleArc.some((p) => { const d = Math.abs(p.H - o.H) % 360; return Math.min(d, 360 - d) <= 15; });
+}
+
+// purpleMatchExempt(ds, rgb): the documented palette, by literal or by hue.
+export function purpleMatchExempt(ds, rgb) {
+  return declaredColour(ds, rgb) || declaredPurple(ds, rgb);
+}
+
+// The Tailwind ramps the purple utilities name, 400 to 800, so a class token has a colour to
+// compare with the declared palette.
+const TAILWIND_PURPLE_SOURCE = {
+  indigo: ["818cf8", "6366f1", "4f46e5", "4338ca", "3730a3"],
+  violet: ["a78bfa", "8b5cf6", "7c3aed", "6d28d9", "5b21b6"],
+  purple: ["c084fc", "a855f7", "9333ea", "7e22ce", "6b21a8"],
+  fuchsia: ["e879f9", "d946ef", "c026d3", "a21caf", "86198f"],
+};
+
+// tailwindPurpleColour(base) -> rgb for bg|text|from|via|to|border|ring|fill|stroke|
+// decoration|outline-(indigo|violet|purple|fuchsia)-(400..800), else null.
+export function tailwindPurpleColour(base) {
+  const m = /^(?:bg|text|from|via|to|border|ring|fill|stroke|decoration|outline)-(indigo|violet|purple|fuchsia)-([4-8])00$/.exec(String(base));
+  return m ? parseColor(`#${TAILWIND_PURPLE_SOURCE[m[1]][Number(m[2]) - 4]}`) : null;
 }
 
 // designSystemFontHits(ctx): a block whose primary face is not among the faces DESIGN.md

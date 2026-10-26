@@ -1197,39 +1197,52 @@ test("DESIGN.md: the reader finds the nearest file, stops at the project root, a
   assert.equal(fm.typography.body.fontFamily, "Söhne, system-ui, sans-serif");
   withDesignSystem((root, ds) => {
     assert.equal(ds.path, join(root, "DESIGN.md"));
-    assert.deepEqual(ds.purpleBrand, { name: "violet", hex: "#7e4ed7" });
+    assert.deepEqual(ds.purpleArc.map((c) => [c.name, c.hex, Math.round(c.H)]), [["violet", "#7e4ed7", 295]], "ink is off the arc");
     assert.ok(ds.fonts.has("söhne") && !ds.fonts.has("system-ui"));
   });
   withDesignSystem((root, ds) => assert.equal(ds, null, "no DESIGN.md inside the project"), null);
 });
 
-test("DESIGN.md: a declared purple brand turns the purple rules off, and its twin without one fires", () => {
-  const page = '<a class="bg-violet-600 text-white">Go</a><div class="bg-gradient-to-r from-violet-500 to-violet-600"></div><p class="text-violet-700">x</p>';
+// The purple exemption is per match: a match is the palette only near a declared hue.
+const designMd = (hex) => `---\ncolors:\n  brand: "${hex}"\n---\n`;
+const hexPage = (hex) => `.a { color: ${hex} } .b { border-color: ${hex} }`;
+const purpleHex = (css, ds) => scanContent(css, "a.css", { designSystem: ds }).filter((v) => v.name === "ai-purple-hex");
+
+test("DESIGN.md: a declared colour exempts purple only within 15 degrees of its own hue", () => {
   withDesignSystem((root, ds) => {
-    const on = names(page, "page.html");
-    assert.ok(on.includes("ai-purple-class") && on.includes("purple-gradient-default"), JSON.stringify(on));
-    const off = scanContent(page, "page.html", { designSystem: ds }).map((v) => v.name);
-    assert.ok(!off.includes("ai-purple-class") && !off.includes("purple-gradient-default"), JSON.stringify(off));
-  });
-  const teal = '---\ncolors:\n  brand: "#0f766e"\n---\n';
+    assert.deepEqual(purpleHex(hexPage("#2563eb"), ds), [], "declared blue-600, page using blue-600");
+    assert.equal(purpleHex(hexPage("#7c3aed"), ds).length, 1, "declared blue-600 (hue about 263) leaves #7c3aed (about 293) a tell");
+  }, designMd("#2563eb"));
   withDesignSystem((root, ds) => {
-    assert.equal(ds.purpleBrand, null);
-    assert.ok(scanContent(page, "page.html", { designSystem: ds }).some((v) => v.name === "ai-purple-class"), "a brand off the purple arc leaves the purple rules running");
-  }, teal);
+    assert.deepEqual(purpleHex(hexPage("#7c3aed"), ds), [], "declared #7c3aed, page using #7c3aed");
+    assert.deepEqual(purpleHex(hexPage("#6d28d9"), ds), [], "violet-700 sits at the declared hue");
+    assert.equal(purpleHex(hexPage("#6366f1"), ds).length, 1, "indigo (about 277) is 16 degrees from the declared violet");
+  }, designMd("#7c3aed"));
+  assert.equal(purpleHex(hexPage("#7c3aed"), null).length, 1, "no DESIGN.md");
 });
 
-test("DESIGN.md: a literal within 6 per channel of a declared colour is the palette", () => {
-  const near = '---\ncolors:\n  accent: "#7d3bec"\n  plain: "#808080"\n---\n';
+test("DESIGN.md: class matches and gradients are judged by their own colours, and a mixed match still fires", () => {
+  const page = '<a class="bg-violet-600 text-white">Go</a><div class="bg-gradient-to-r from-violet-500 to-violet-600"></div><p class="text-violet-700">x</p>';
+  const on = names(page, "page.html");
+  assert.ok(on.includes("ai-purple-class") && on.includes("purple-gradient-default"), JSON.stringify(on));
   withDesignSystem((root, ds) => {
-    assert.equal(ds.purpleBrand !== null, true);
-  }, near);
-  const neutral = '---\ncolors:\n  mark: "#7c3aed"\n---\n';
-  const css = ".a { color: #7c3aed } .b { border-color: #7c3aed }";
+    const off = scanContent(page, "page.html", { designSystem: ds }).map((v) => v.name);
+    assert.ok(!off.includes("ai-purple-class") && !off.includes("purple-gradient-default"), JSON.stringify(off));
+    const indigo = '<a class="bg-indigo-600">Go</a><p class="text-indigo-500">x</p>';
+    assert.ok(scanContent(indigo, "page.html", { designSystem: ds }).some((v) => v.name === "ai-purple-class"), "indigo beside a declared violet still fires");
+    const mixed = '<div class="bg-gradient-to-r from-violet-500 to-indigo-600"></div>';
+    assert.ok(scanContent(mixed, "page.html", { designSystem: ds }).some((v) => v.name === "purple-gradient-default"), "one undeclared stop keeps the gradient a tell");
+  });
   withDesignSystem((root, ds) => {
-    const fakeNonPurple = { ...ds, purpleBrand: null };
-    assert.ok(!scanContent(css, "a.css", { designSystem: fakeNonPurple }).some((v) => v.name === "ai-purple-hex"));
-    assert.ok(scanContent(css, "a.css").some((v) => v.name === "ai-purple-hex"), "the same literals with no DESIGN.md");
-  }, neutral);
+    assert.deepEqual(ds.purpleArc, []);
+    assert.ok(scanContent(page, "page.html", { designSystem: ds }).some((v) => v.name === "ai-purple-class"), "a brand off the purple arc exempts nothing");
+  }, designMd("#0f766e"));
+});
+
+test("DESIGN.md: a literal within 6 per channel of any declared colour is the palette", () => {
+  withDesignSystem((root, ds) => {
+    assert.deepEqual(purpleHex(hexPage("#7c3aed"), ds), [], "#7d3bec declared, #7c3aed used");
+  }, '---\ncolors:\n  accent: "#7d3bec"\n---\n');
 });
 
 test("design-system-font: a face outside the declared typography fires; the declared face and system stacks do not", () => {

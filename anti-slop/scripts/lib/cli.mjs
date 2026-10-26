@@ -162,8 +162,9 @@ function coverageOf(files, designSystems) {
     const note = coverageNote(file);
     if (note) add(note, file);
     const ds = designSystems.get(file);
-    if (ds && ds.purpleBrand && WEB_SURFACE_EXTENSIONS.has(extname(file).toLowerCase())) {
-      add(`purple rules off: ${relative(process.cwd(), ds.path) || ds.path} declares ${ds.purpleBrand.name} (${ds.purpleBrand.hex})`, file);
+    if (ds && ds.purpleArc && ds.purpleArc.length && WEB_SURFACE_EXTENSIONS.has(extname(file).toLowerCase())) {
+      const names = ds.purpleArc.map((p) => `${p.name} (${p.hex})`).join(", ");
+      add(`purple palette: ${relative(process.cwd(), ds.path) || ds.path} declares ${names}; purple within 15 degrees of its hue is the palette`, file);
     }
   }
   return [...byNote].map(([note, list]) => ({ note, files: list }));

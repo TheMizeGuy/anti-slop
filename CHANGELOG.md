@@ -59,9 +59,11 @@ that decides a combination or a repetition after the escape hatch has dropped it
   (`security theater`, `growth theatre`), both spellings; a Title Case name is not the framing.
 - `design-system-font` (medium, Quality defect): where a `DESIGN.md` is found (the nearest one
   walking up from the file, inside the project), a block whose primary face is not one its
-  frontmatter declares; test, fixture and story files are skipped. A declared colour on the purple arc turns the four purple rules off
-  for files under it, and the coverage notes name it. Colour, radius and type-size drift
-  against the file are not ported.
+  frontmatter declares; test, fixture and story files are skipped. The same file exempts purple
+  per match: a purple hex or utility within 15 degrees of hue of a declared colour on the purple
+  arc (OKLCH 250 to 320) is the palette, and every other match still fires, so a declared
+  blue-600 leaves `#7c3aed` a tell. Colour, radius and type-size drift against the file are not
+  ported.
 
 **Rules that fired where they should not, narrowed:**
 

@@ -1517,7 +1517,7 @@
       "role": "clean-control",
       "expected": [],
       "maxIncidentalFindings": 0,
-      "note": "Clean control for the DESIGN.md palette exemption (anti-slop 2.5.0): the directory's DESIGN.md declares violet oklch(0.55 0.2 295) as the brand, so the bg-violet-600 button, the violet gradient and the violet text are the documented palette rather than the framework default. The same file outside that directory fires ai-purple-class and purple-gradient-default, the exemption's twin in rule-additions.test.mjs."
+      "note": "Clean control for the DESIGN.md palette exemption (anti-slop 2.5.0): the directory's DESIGN.md declares violet oklch(0.55 0.2 295) as the brand. The exemption is per match: the bg-violet-600 button, the violet-500 to violet-600 gradient and the violet-700 text all sit within 15 degrees of that hue (about 293), so each is the documented palette rather than the framework default, while an indigo or fuchsia match would still fire. The same file outside that directory fires ai-purple-class and purple-gradient-default, the exemption's twin in rule-additions.test.mjs."
     },
     {
       "file": "code/cast-to-any.ts",
