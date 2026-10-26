@@ -193,6 +193,10 @@ A worked example, start to finish:
 
 Tuned for web-centric code (Python, TypeScript, JavaScript, CSS) and English prose, plus a layout and adaptation rule set for Apple platforms (`anti-slop/skills/anti-slop/references/native-ui-patterns.md`) that runs on `.swift`, `.m`, and `.mm` files. Design tells run on web extensions only and native tells on Apple extensions only, so neither vocabulary is matched against the other's files. Limited coverage for systems languages (Rust, Go, C/C++), Jetpack Compose, ML pipelines, and non-English text: there, apply the underlying principles (specificity, economy, correctness) rather than the word lists.
 
+## Third-party notices
+
+Impeccable (https://github.com/pbakaus/impeccable), Copyright 2025 Paul Bakaus, Apache-2.0; detection thresholds and exemptions re-expressed, no code copied. Several scanner rules restate impeccable's detection rules as of commit 3671d50f0 in this repository's own code: the contrast, side-stripe, type-floor, reading-mechanics, bounce-easing, pulsing-dot, glow and card-trio detectors, with its lessons on comment blanking, class-set scope, unknown values and rule-scoped waivers. The header of `anti-slop/scripts/lib/design-detect.mjs` names the rules re-expressed. The Apache License, Version 2.0 is at http://www.apache.org/licenses/LICENSE-2.0.
+
 ## License
 
 MIT
