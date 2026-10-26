@@ -2302,3 +2302,43 @@ export function creamCombination(hits) {
   const named = [...legs].map((leg) => hits.find((h) => h.leg === leg).evidence).join(" + ");
   return hits.map((h, i) => (i === 0 ? { ...h, evidence: named } : h));
 }
+
+// ── The framed card treatment ──
+// framedCardSets(ctx) -> one entry per class source that is a card (a padding token plus a
+// radius, a border leg or a shadow), with `trio` set when it carries the library default
+// trio: shadow-sm (or shadow), a real border leg, and rounded-lg or larger. A colour-only
+// border-gray-200 draws nothing in Tailwind and is not a border leg.
+const PADDING_TOKEN = /^p[xy]?-(?:\d|\[)/;
+const RADIUS_TOKEN = /^rounded(?:-(?:sm|md|lg|xl|2xl|3xl))?$/;
+const TRIO_RADIUS = /^rounded-(?:lg|xl|2xl|3xl)$/;
+const BORDER_LEG = /^border(?:-\d+|-\[\d+(?:\.\d+)?px\])?$/;
+const SHADOW_TOKEN = /^shadow(?:-(?:sm|md|lg|xl|2xl))?$/;
+const TRIO_SHADOW = /^shadow(?:-sm)?$/;
+
+export function framedCardSets(ctx) {
+  return memo(ctx, "framedCards", () => {
+    const byGroup = new Map();
+    for (const set of ctx.effectiveSets) {
+      const bases = restingTokenBases(set.tokens);
+      if (!bases.some((b) => PADDING_TOKEN.test(b))) continue;
+      const devices = { rounded: bases.some((b) => RADIUS_TOKEN.test(b)), border: bases.some((b) => BORDER_LEG.test(b)), shadow: bases.some((b) => SHADOW_TOKEN.test(b)) };
+      if (!devices.rounded && !devices.border && !devices.shadow) continue;
+      const trio = bases.some((b) => TRIO_SHADOW.test(b)) && devices.border && bases.some((b) => TRIO_RADIUS.test(b));
+      const prev = byGroup.get(set.group);
+      if (!prev || (trio && !prev.trio)) byGroup.set(set.group, { line: set.line, tokens: set.tokens, trio, devices, evidence: set.tokens.join(" ") });
+    }
+    return [...byGroup.values()].sort((a, b) => a.line - b.line);
+  });
+}
+
+function restingTokenBases(tokens) {
+  return tokens.map(tailwindToken).filter(isResting).map((t) => t.base);
+}
+
+// framedCardTrio(cards) -> the trio cards when the treatment repeats: three or more, or two
+// or more when every card on the surface carries it. Apply it after waivers.
+export function framedCardTrio(cards) {
+  const trio = cards.filter((c) => c.trio);
+  if (trio.length >= 3 || (trio.length >= 2 && trio.length === cards.length)) return trio;
+  return [];
+}

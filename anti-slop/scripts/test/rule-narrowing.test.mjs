@@ -286,3 +286,27 @@ test("cream-serif-default: a hatched leg no longer completes the pair", () => {
   const css = 'body { background: #faf8f5 }\n.b { background: #f5f1e8 }\nh1 { font-family: "Instrument Serif" } /* anti-slop-allow: the brand face */';
   assert.ok(!fires("cream-serif-default", css, "a.css"), "two cream hexes are still one leg once the serif line is waived");
 });
+
+// ── shadow-border-rounded-combo fires on the repeated treatment (2.5.0) ──────
+
+test("shadow-border-rounded-combo: one framed card among unframed sections is a choice", () => {
+  const one = '<section class="py-12">a</section>\n<div class="shadow-sm border rounded-xl p-6">b</div>\n<section class="py-12">c</section>';
+  assert.ok(!fires("shadow-border-rounded-combo", one, "a.html"));
+});
+
+test("shadow-border-rounded-combo: three trio cards fire; a colour-only border is not a leg", () => {
+  const card = (cls) => `<div class="${cls}">x</div>`;
+  assert.ok(fires("shadow-border-rounded-combo", [1, 2, 3].map(() => card("rounded-xl border shadow-sm p-6")).join("\n"), "a.html"));
+  assert.ok(!fires("shadow-border-rounded-combo", [1, 2, 3].map(() => card("shadow-sm border-gray-200 rounded-xl p-6")).join("\n"), "a.html"));
+});
+
+test("shadow-border-rounded-combo: two trio cards fire only when they are every card on the surface", () => {
+  const trio = '<div class="rounded-xl border shadow-sm p-6">a</div>\n<div class="rounded-lg border shadow p-4">b</div>';
+  assert.ok(fires("shadow-border-rounded-combo", trio, "a.html"));
+  assert.ok(!fires("shadow-border-rounded-combo", `${trio}\n<div class="rounded-2xl bg-stone-50 p-8">c</div>`, "a.html"), "a third, differently framed card");
+});
+
+test("shadow-border-rounded-combo: the arms of one element are one card", () => {
+  const tsx = 'export const C = ({ on }) => <div className={cn("rounded-xl border shadow-sm p-6", on ? "bg-white" : "bg-stone-50")} />;';
+  assert.ok(!fires("shadow-border-rounded-combo", tsx, "C.tsx"));
+});

@@ -2,7 +2,7 @@ import {
   lowContrastHits, sideStripeHits, textSizeFloorHits, tightLeadingHits, wideTrackingHits,
   justifiedNarrowHits, crushedTrackingHits, bounceEasingHits, pulsingDotHits,
   classFreeLines, lineRegexHits, matchingClassSets, tailwindToken, isResting, glowHits,
-  creamLegHits, creamCombination,
+  creamLegHits, creamCombination, framedCardSets, framedCardTrio,
 } from "./design-detect.mjs";
 
 // ── Confidence classes ──
@@ -313,7 +313,10 @@ export const DESIGN_PATTERNS = [
   // attribute-scoped, so it can never span two sibling elements.
   { name: "icon-in-colored-circle", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, classAll: ["rounded-full", /^bg-[a-z]+-100$/, "p-3"], fix: "Drop the decorative circle where the icon reads on its own, or vary the treatment per card; the icon should explain the feature, not decorate it.", desc: "Icon in colored circle background" },
   { name: "frosted-glass-nav", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, classAll: [/^backdrop-blur(-[a-z0-9]+)?$/, /^bg-white\/\d+$/, "border-b"], fix: "Vary the nav height and keep the blur only where the layered transparency serves the hierarchy; a solid bar or a sidebar is often the better nav.", desc: "Frosted glass navigation bar" },
-  { name: "shadow-border-rounded-combo", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, classAll: ["shadow-sm", /^border(-[a-z]+-\d+)?$/, "rounded-xl"], fix: "Theme the card: set the border colour, radius and shadow to project tokens instead of shipping the library's default trio on every surface.", desc: "shadow-sm + border + rounded-xl AI card combo" },
+  // The trio is the tell when it is the surface's card treatment: on three cards, or on
+  // every card of a surface that has two. One framed card among unframed sections is a
+  // choice. A colour-only border-gray-200 draws no border and is not a leg of the trio.
+  { name: "shadow-border-rounded-combo", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: framedCardSets, gate: framedCardTrio, fix: "Theme the card: set the border colour, radius and shadow to project tokens instead of shipping the library's default trio on every surface.", desc: "shadow-sm + border + rounded-lg/xl AI card combo (repeated across the cards of the surface)" },
   // The rule enforces its own title: a coloured glow a viewer can see. A soft neutral
   // shadow, a --card-box-shadow token definition, a 1px hairline ring and a focus halo are
   // not one; neither is a diffuse wash that lights more than twice the element's area.

@@ -203,9 +203,10 @@ test("frosted-glass-nav: an opaque nav and a split-across-elements near-miss sta
   assert.ok(!fires("frosted-glass-nav", '<div class="backdrop-blur-md"></div><nav class="bg-white/80 border-b"></nav>', "nav.html"));
 });
 
+// Since 2.5.0 the trio fires as the surface's card treatment (three cards, or every card of
+// a two-card surface), so the order-free match is asserted across two cards.
 test("shadow-border-rounded-combo: Strongest-10 entry 1 fires in either order", () => {
-  assert.ok(fires("shadow-border-rounded-combo", '<div class="rounded-xl shadow-sm border p-6">', "card.html"));
-  assert.ok(fires("shadow-border-rounded-combo", '<div class="shadow-sm border rounded-xl p-6">', "card.html"));
+  assert.ok(fires("shadow-border-rounded-combo", '<div class="rounded-xl shadow-sm border p-6">a</div>\n<div class="shadow-sm border rounded-xl p-6">b</div>', "card.html"));
 });
 
 test("shadow-border-rounded-combo: two of the three tokens, or a cross-element split, stay silent", () => {
