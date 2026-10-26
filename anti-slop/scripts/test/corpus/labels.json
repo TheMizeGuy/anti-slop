@@ -614,7 +614,7 @@
       "role": "clean-control",
       "expected": [],
       "maxIncidentalFindings": 0,
-      "note": "Clean control for the responsive doctrine. Uses every construct the catalogue prescribes -- clamp() ramps, width: min(), auto-fit minmax, container queries, 100dvh, safe-area insets, a visible focus ring -- and must produce ZERO findings."
+      "note": "Clean control for the responsive doctrine. Uses every construct the catalogue prescribes -- clamp() ramps, width: min(), auto-fit minmax, container queries, 100dvh, safe-area insets, a visible focus ring -- and must produce ZERO findings. Contrast corrected 2026-10 (anti-slop 2.5.0): --ochre oklch(0.68 0.14 75) -> oklch(0.558 0.14 75), 2.81:1 -> 4.56:1 on --paper; the planted construct is unchanged."
     },
     {
       "file": "design/uncommitted-radius.html",
@@ -627,7 +627,7 @@
           "confidence": "Quality defect"
         }
       ],
-      "note": "Plants D1, an uncommitted 8px radius on every control, as three LITERAL border-radius declarations with no --radius token anywhere in the file. Promoted from coverage-boundary in 2.1.0: uniform-literal-radius reads exactly that shape, and is silenced on any file that states a radius identity. rounded-everything still does not see it -- that rule keys on rounded-2xl/3xl/full and 999px pills."
+      "note": "Plants D1, an uncommitted 8px radius on every control, as three LITERAL border-radius declarations with no --radius token anywhere in the file. Promoted from coverage-boundary in 2.1.0: uniform-literal-radius reads exactly that shape, and is silenced on any file that states a radius identity. rounded-everything still does not see it -- that rule keys on rounded-2xl/3xl/full and 999px pills. Contrast corrected 2026-10 (anti-slop 2.5.0): --moss oklch(0.55 0.13 145) -> oklch(0.541 0.13 145), 4.46:1 -> 4.63:1 against its button text; the planted construct is unchanged."
     },
     {
       "file": "design/token-drift.html",
@@ -640,7 +640,7 @@
           "confidence": "Quality defect"
         }
       ],
-      "note": "Plants hardcoded off-token colours and off-scale spacing that bypass the file's own token system. Promoted from coverage-boundary in 2.1.0 for the spacing half: three --space tokens declared and three off-4px-grid raw values (11px, 17px, 9px). The off-token COLOURS remain unruled and this fixture must not be cited as evidence that they are clean."
+      "note": "Plants hardcoded off-token colours and off-scale spacing that bypass the file's own token system. Promoted from coverage-boundary in 2.1.0 for the spacing half: three --space tokens declared and three off-4px-grid raw values (11px, 17px, 9px). The off-token COLOURS remain unruled and this fixture must not be cited as evidence that they are clean. Contrast corrected 2026-10 (anti-slop 2.5.0): .save background oklch(0.587 0.104 159) -> oklch(0.543 0.104 159), 3.79:1 -> 4.55:1; .save:hover background oklch(0.639 0.11 160) -> oklch(0.5 0.11 160), 3.07:1 -> 5.43:1; .hint oklch(0.578 0.006 107) -> oklch(0.554 0.006 107), 4.31:1 -> 4.77:1 on white (the literals stay literals, so the off-token tell is intact); the planted construct is unchanged."
     },
     {
       "file": "design/missing-states.html",
@@ -671,7 +671,7 @@
           "confidence": "Quality defect"
         }
       ],
-      "note": "Plants a fixed-pixel page shell that cannot resize: width: 1200px on the shell, width: 640px on the lede, grid-template-columns: repeat(3, 360px). Promoted from coverage-boundary in 2.1.0 -- the web analogue of the shipped native fixed-content-frame and fixed-grid-columns rules."
+      "note": "Plants a fixed-pixel page shell that cannot resize: width: 1200px on the shell, width: 640px on the lede, grid-template-columns: repeat(3, 360px). Promoted from coverage-boundary in 2.1.0 -- the web analogue of the shipped native fixed-content-frame and fixed-grid-columns rules. Contrast corrected 2026-10 (anti-slop 2.5.0): --signal oklch(0.58 0.16 40) -> oklch(0.571 0.16 40), 4.40:1 -> 4.57:1 on --paper; the planted construct is unchanged."
     },
     {
       "file": "design/viewport-query-card.html",
@@ -679,7 +679,7 @@
       "role": "coverage-boundary",
       "expected": [],
       "maxIncidentalFindings": 0,
-      "note": "Plants a component laid out by a viewport media query where a container query belongs."
+      "note": "Plants a component laid out by a viewport media query where a container query belongs. Contrast corrected 2026-10 (anti-slop 2.5.0): --ember oklch(0.6 0.16 30) -> oklch(0.571 0.16 30), 4.04:1 -> 4.56:1 on --paper; the planted construct is unchanged."
     },
     {
       "file": "design/vh-bottom-bar.html",
@@ -692,7 +692,7 @@
           "confidence": "Quality defect"
         }
       ],
-      "note": "Plants a 100vh surface whose fixed bottom bar ignores dvh and the safe-area inset. Promoted from coverage-boundary in 2.1.0. The rule is file-scoped rather than line-scoped because the progressive-enhancement idiom writes its fallback on the next line; the missing env(safe-area-inset-bottom) on the bar itself stays unruled."
+      "note": "Plants a 100vh surface whose fixed bottom bar ignores dvh and the safe-area inset. Promoted from coverage-boundary in 2.1.0. The rule is file-scoped rather than line-scoped because the progressive-enhancement idiom writes its fallback on the next line; the missing env(safe-area-inset-bottom) on the bar itself stays unruled. Contrast corrected 2026-10 (anti-slop 2.5.0): --harbor oklch(0.55 0.11 215) -> oklch(0.536 0.11 215), 4.45:1 -> 4.70:1 against its button text; the planted construct is unchanged."
     },
     {
       "file": "design/bootstrap-unthemed.css",
@@ -788,21 +788,24 @@
       "modality": "design",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 0
+      "maxIncidentalFindings": 0,
+      "note": "Contrast corrected 2026-10 (anti-slop 2.5.0): --ink-faint #6b727f -> #858d9a, 3.17:1 -> 4.59:1 on --surface-2; the planted construct is unchanged."
     },
     {
       "file": "../fixtures/warm-consumer.html",
       "modality": "design",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 0
+      "maxIncidentalFindings": 0,
+      "note": "Contrast corrected 2026-10 (anti-slop 2.5.0): --brand #c8553d -> #c45139, white text 4.35:1 -> 4.58:1; --overdue #c8553d -> #a8412e (its own --brand-deep), 3.37:1 -> 4.70:1 on --overdue-bg; --sent #b9791a -> #995b00, 3.02:1 -> 4.56:1 on --sent-bg; --ink-faint #9a8377 -> #7e685c, 3.12:1 -> 4.56:1 on --surface-warm and 3.35:1 -> 4.90:1 on --bg; the planted construct is unchanged."
     },
     {
       "file": "../fixtures/utilitarian-fintech.html",
       "modality": "design",
       "role": "clean-control",
       "expected": [],
-      "maxIncidentalFindings": 0
+      "maxIncidentalFindings": 0,
+      "note": "Contrast corrected 2026-10 (anti-slop 2.5.0): --signal #e8590c -> #d34500, white text 3.58:1 -> 4.54:1; --ink-400 #828995 -> #6c727e, 3.52:1 -> 4.83:1 on white and 3.34:1 -> 4.59:1 on --surface-100; the planted construct is unchanged."
     },
     {
       "file": "native/FixedGeometryShell.swift",
