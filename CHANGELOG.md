@@ -35,7 +35,8 @@ that decides a combination or a repetition after the escape hatch has dropped it
   Quality defect): body leading under 1.3, mixed-case running text tracked wider than 0.05em,
   justify on a measure of about 45 characters with no hyphens, and tracking tighter than
   -0.07em (-0.09em at 40px and up). Headings, lead text, caps labels, code, controls, CJK
-  text and wordmarks keep their settings. Where the file carries its own markup, a class, id or
+  text, wordmarks and readouts (tabular figures, select-all text) keep their settings, and a
+  furniture word in the selector marks a label. Where the file carries its own markup, a class, id or
   attribute selector is read as the element it styles, and a block whose every element holds a
   short label is read as a label.
 - `bounce-easing` (low, Pattern smell): bounce and elastic keyword animations (not SpinKit's

@@ -447,3 +447,17 @@ test("text-size-floor: a utility class name is a style, not running text", () =>
   assert.deepEqual(ruleHits("text-size-floor", ".text-xs { font-size: 11px }", "a.css"), []);
   assert.equal(ruleHits("text-size-floor", ".body-text { font-size: 11px }", "a.css").length, 1);
 });
+
+// A device-code readout from a real page: a furniture word in the selector outranks the
+// element the markup names, and a tabular or select-all block is a readout, not running text.
+test("wide-tracking: a code readout is a label, and running text tracked the same still fires", () => {
+  const readout = ".code { font-family: var(--display); font-size: var(--t-code); font-weight: 600; letter-spacing: 0.22em; padding-inline-end: 0.22em; font-variant-numeric: tabular-nums lining-nums; line-height: 1.2; color: var(--ink); -webkit-user-select: all; user-select: all; word-break: break-word; }";
+  assert.deepEqual(ruleHits("wide-tracking", readout, "login.css"), []);
+  assert.deepEqual(ruleHits("wide-tracking", `<style>${readout}</style><p class="code">The code below signs this device in for the next hour of use.</p>`, "login.html"), [],
+    "the class word wins over the markup-derived subject");
+  assert.equal(ruleHits("wide-tracking", ".intro p { letter-spacing: 0.2em }", "a.css").length, 1, "the twin");
+  assert.deepEqual(ruleHits("wide-tracking", ".digits { letter-spacing: 0.2em; font-variant-numeric: tabular-nums }", "a.css"), [], "a tabular readout");
+  assert.deepEqual(ruleHits("wide-tracking", ".token { letter-spacing: 0.2em; user-select: all }", "a.css"), [], "text set to copy whole");
+  assert.equal(ruleHits("wide-tracking", ".digits { letter-spacing: 0.2em }", "a.css").length, 1, "the same selector with no readout declaration");
+  assert.deepEqual(ruleHits("tight-leading", ".total { font-size: 16px; line-height: 1.1; font-variant-numeric: tabular-nums }", "a.css"), [], "a readout keeps its leading too");
+});

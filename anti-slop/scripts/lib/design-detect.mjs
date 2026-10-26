@@ -1884,6 +1884,18 @@ const CJK_LANG = /:lang\(\s*["']?(?:ja|zh|ko)\b/i;
 const JUSTIFY_EXEMPT_LANG = /:lang\(\s*["']?(?:ar|fa|he|th|ja|zh|ko)\b/i;
 const WORDMARK_WORDS = /logo|brand|wordmark|monogram/i;
 
+// A readout (a device code, a tabular figure, text set to copy whole) is never running text.
+function isReadout(block, props) {
+  return /tabular-nums/i.test(resolveVars(String(decl(block, "font-variant-numeric") || ""), props))
+    || /^\s*all\s*$/i.test(String(decl(block, "user-select") ?? decl(block, "-webkit-user-select") ?? ""));
+}
+
+// A furniture or label word among the subject's class words always marks a label, whatever
+// element the file's markup says the selector styles.
+function namesFurniture(subject, extra) {
+  return classWordsOf(subject).some((w) => FURNITURE_WORDS.has(w) || (extra && extra.has(w)));
+}
+
 function isMonospace(block, props) {
   return fontStack(block, props).some((f) => /mono|courier|consolas|menlo|monaco/i.test(f));
 }
@@ -1988,14 +2000,13 @@ export function tightLeadingHits(ctx) {
       if (isCaps(b, props) && r >= 1.0) continue;
       if (/nowrap|pre/i.test(String(decl(b, "white-space") || ""))) continue;
       if (declEntry(b, "-webkit-line-clamp") || declEntry(b, "line-clamp")) continue;
-      if (isMonospace(b, props)) continue;
+      if (isMonospace(b, props) || isReadout(b, props)) continue;
       if (size >= 20 && r >= 1.15) continue;
       const sel = splitSelectorList(b.selector).find((s) => {
-        const subject = subjectOf(s);
+        if (namesFurniture(subjectOf(s))) return false;
         const tags = subjectTags(ctx, s);
         if (tags.length && tags.every((tag) => /^h[1-6]$/.test(tag) || LEADING_EXEMPT_TAGS.has(tag))) return false;
-        if (HEADING_WORDS.test(s) || shortTextOnly(ctx, s, 50)) return false;
-        return !classWordsOf(subject).some((w) => FURNITURE_WORDS.has(w));
+        return !(HEADING_WORDS.test(s) || shortTextOnly(ctx, s, 50));
       });
       if (!sel) continue;
       const at = declEntry(b, "line-height") || declEntry(b, "font");
@@ -2013,13 +2024,11 @@ export function wideTrackingHits(ctx) {
       if (b.selector.startsWith("@")) continue;
       const ls = letterSpacingEm(b, props, fontSizePx(b, props));
       if (!ls || ls.em <= 0.05) continue;
-      if (isCaps(b, props) || /smcp|c2sc/i.test(String(decl(b, "font-feature-settings") || ""))) continue;
+      if (isCaps(b, props) || isReadout(b, props) || /smcp|c2sc/i.test(String(decl(b, "font-feature-settings") || ""))) continue;
       const sel = splitSelectorList(b.selector).find((s) => {
-        if (CJK_LANG.test(s)) return false;
-        const subject = subjectOf(s);
+        if (CJK_LANG.test(s) || namesFurniture(subjectOf(s), TRACKING_LABEL_WORDS)) return false;
         const tags = subjectTags(ctx, s);
-        if ((tags.length && tags.every((tag) => TRACKING_EXEMPT_TAGS.has(tag))) || shortTextOnly(ctx, s, 20)) return false;
-        return !classWordsOf(subject).some((w) => TRACKING_LABEL_WORDS.has(w));
+        return !((tags.length && tags.every((tag) => TRACKING_EXEMPT_TAGS.has(tag))) || shortTextOnly(ctx, s, 20));
       });
       if (!sel) continue;
       hits.push({ line: ls.entry.line, evidence: `${normSelector(sel)}: letter-spacing ${ls.em.toFixed(2)}em on running text` });
@@ -2038,7 +2047,7 @@ export function justifiedNarrowHits(ctx) {
       if (b.selector.startsWith("@")) continue;
       const align = declEntry(b, "text-align");
       if (!align || !/^justify$/i.test(resolveVars(align.value, props).trim())) continue;
-      if (JUSTIFY_EXEMPT_LANG.test(b.selector) || hyphenated(b)) continue;
+      if (JUSTIFY_EXEMPT_LANG.test(b.selector) || hyphenated(b) || isReadout(b, props)) continue;
       if (descendantAncestors(b.selector).some((a) => bySelector.has(a) && hyphenated(bySelector.get(a)))) continue;
       const size = fontSizePx(b, props);
       const measures = ["width", "max-width"].map((p) => decl(b, p)).filter((v) => v !== undefined).map((v) => {
