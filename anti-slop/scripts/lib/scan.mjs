@@ -504,7 +504,7 @@ export function scanContent(content, filePath, opts = {}) {
   // Binary read as UTF-8 (a PNG, a font, an archive) decodes to replacement characters and
   // stray code points that satisfy Unicode property escapes; text never carries a NUL byte
   // and binary carries one within its first few bytes. No rule applies to it.
-  if (content.includes(" ")) return violations;
+  if (content.includes("\u0000")) return violations;
   const ext = extname(filePath).toLowerCase();
   const isProse = PROSE_EXTENSIONS.has(ext);
   if (isProse && !proseScopeFor(filePath, opts).inScope) return violations;
