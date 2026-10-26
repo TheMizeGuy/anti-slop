@@ -1003,3 +1003,23 @@ test("pulsing-dot: an approved live badge is one marker away", () => {
   const badge = '<span class="h-2 w-2 rounded-full animate-ping"></span> <!-- anti-slop-allow: the brief asks for a live badge -->';
   assert.deepEqual(fired("pulsing-dot", badge, "a.html"), []);
 });
+
+// ── classAll reads every class source (2.5.0) ────────────────────────────────
+
+test("classAll: cn(), multi-line class attributes and ternary arms", () => {
+  const count = (content, path) => (scanContent(content, path).find((v) => v.name === "icon-in-colored-circle") || { count: 0 }).count;
+  assert.equal(count('<div className={cn("rounded-full bg-blue-100 p-3", active && "ring-2")} />', "A.tsx"), 1);
+  assert.equal(count('<div\n  class="rounded-full\n   bg-blue-100 p-3">x</div>', "a.html"), 1);
+  assert.equal(count('<div className={on ? "rounded-full bg-blue-100" : "p-3"} />', "A.tsx"), 0, "exclusive arms never pair");
+  assert.equal(count('<div className={cn("rounded-full p-3", on ? "bg-blue-100" : "bg-white")} />', "A.tsx"), 1, "the arm that completes the set");
+  assert.equal(count('<div className={cn("rounded-full bg-blue-100 p-3", on ? "a" : "b")} />', "A.tsx"), 1, "a complete base counts once, not once per arm");
+  assert.equal(count('<span class="rounded-full">a</span><span class="bg-blue-100 p-3">b</span>', "a.html"), 0, "sibling elements never pair");
+});
+
+test("classAll: a multi-line set is reported, and waived, on the line where it starts", () => {
+  const circles = (html) => scanContent(html, "a.html").filter((v) => v.name === "icon-in-colored-circle");
+  assert.equal(circles('<div class="rounded-full\n bg-blue-100 p-3">x</div>')[0].line, 1);
+  assert.deepEqual(circles('<div data-note="anti-slop-allow: brand circle" class="rounded-full\n bg-blue-100 p-3">x</div>'), []);
+  assert.equal(circles('<div class="rounded-full\n bg-blue-100 p-3" data-note="anti-slop-allow: brand circle">x</div>').length, 1,
+    "a marker on a later line of the attribute is not on the set's line");
+});

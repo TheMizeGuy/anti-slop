@@ -589,6 +589,28 @@ export function effectiveClassSets(sets) {
   return out;
 }
 
+// matchingClassSets(sets, test) -> the sets whose tokens pass `test`, one per element an
+// element can be: a source whose unconditional tokens pass counts once, otherwise each arm
+// is tested with the unconditional tokens added. Feed it classTokenSets() output.
+export function matchingClassSets(sets, test) {
+  const byGroup = new Map();
+  for (const s of sets) {
+    if (!byGroup.has(s.group)) byGroup.set(s.group, { base: null, arms: [] });
+    const g = byGroup.get(s.group);
+    if (s.arm === null) g.base = s;
+    else g.arms.push(s);
+  }
+  const out = [];
+  for (const g of byGroup.values()) {
+    if (g.base && test(g.base.tokens)) { out.push(g.base); continue; }
+    for (const a of g.arms) {
+      const tokens = uniq([...(g.base ? g.base.tokens : []), ...a.tokens]);
+      if (test(tokens)) out.push({ ...a, tokens });
+    }
+  }
+  return out.sort((x, y) => x.start - y.start);
+}
+
 // tailwindToken("md:hover:bg-indigo-500/10") -> { variants: ["md","hover"],
 // base: "bg-indigo-500", opacity: "10", important: false }. A `/` suffix is reported as
 // opacity on every token; only colour utilities should read it as one (`w-1/2`).

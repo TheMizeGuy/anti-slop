@@ -33,7 +33,7 @@ import {
   EMDASH_FIX,
   EMOJI_FIX,
 } from "./rules.mjs";
-import { makeContext } from "./design-detect.mjs";
+import { makeContext, matchingClassSets } from "./design-detect.mjs";
 
 // ── Concentration gate ──
 // A rule declaring mode CONCENTRATION reports nothing until its match count reaches
@@ -121,33 +121,14 @@ export function fileGuardOk(pat, content) {
 }
 
 // ── Class-attribute token sets ──
-// Utility-class order inside a `class=` attribute is arbitrary, so a fingerprint rule has
-// to match the token SET, not a sequence. Scoped to one attribute value: a whole-line AND
-// would match `class="rounded-xl"` on one element and `class="shadow-sm border"` on the
-// next, which is two elements rather than one fingerprint.
-const CLASS_ATTR = /\b(?:class|className)\s*=\s*(?:"([^"]*)"|'([^']*)'|\{\s*`([^`]*)`\s*\}|\{\s*"([^"]*)"\s*\}|\{\s*'([^']*)'\s*\})/g;
-
-function classTokenSets(line) {
-  const sets = [];
-  const re = globalize(CLASS_ATTR);
-  re.lastIndex = 0;
-  let m;
-  while ((m = re.exec(line)) !== null) {
-    const value = m[1] ?? m[2] ?? m[3] ?? m[4] ?? m[5] ?? "";
-    sets.push(value.split(/\s+/).filter(Boolean));
-  }
-  return sets;
-}
-
-// One hit per class attribute whose token set contains every required token.
-function countClassAll(line, required) {
-  let hits = 0;
-  for (const tokens of classTokenSets(line)) {
-    const complete = required.every((req) =>
-      typeof req === "string" ? tokens.includes(req) : tokens.some((t) => req.test(t)));
-    if (complete) hits += 1;
-  }
-  return hits;
+// Utility-class order inside a class source is arbitrary, so a fingerprint rule matches the
+// token SET, not a sequence, and one source at a time: a whole-line AND would match
+// `class="rounded-xl"` on one element and `class="shadow-sm border"` on the next. Sources
+// come from design-detect's classTokenSets (class=, className=, cn/clsx/twMerge, multi-line
+// attributes), and the two arms of a ternary never pair.
+function classAllMatches(ctx, required) {
+  return matchingClassSets(ctx.classSets, (tokens) => required.every((req) =>
+    typeof req === "string" ? tokens.includes(req) : tokens.some((t) => req.test(t))));
 }
 
 function globalize(re) {
@@ -214,16 +195,18 @@ function countLinePattern(src, pat, escapedOnly = false) {
   if (pat.hits) {
     return summariseHits((pat.hits(src.ctx) || []).filter((h) => Number.isInteger(h.line) && lineOk(h.line)));
   }
-  const g = pat.classAll || pat.count ? null : globalize(pat.pattern);
+  if (pat.classAll) {
+    return summariseHits(classAllMatches(src.ctx, pat.classAll)
+      .filter((set) => lineOk(set.line) && !(pat.suppress && pat.suppress.test(src.lines[set.line - 1] || "")))
+      .map((set) => ({ line: set.line, evidence: set.tokens.join(" ") })));
+  }
+  const g = pat.count ? null : globalize(pat.pattern);
   const hits = [];
   for (let i = 0; i < src.lines.length; i++) {
     if (!lineOk(i + 1)) continue;
     const text = src.lines[i];
     if (pat.suppress && pat.suppress.test(text)) continue;
-    if (pat.classAll) {
-      const n = countClassAll(text, pat.classAll);
-      for (let k = 0; k < n; k++) hits.push({ line: i + 1, evidence: text });
-    } else if (pat.count) {
+    if (pat.count) {
       const n = pat.count(text);
       for (let k = 0; k < n; k++) hits.push({ line: i + 1, evidence: text });
     } else {
