@@ -2298,6 +2298,44 @@ export function glowHits(ctx, opts = {}) {
   return hits;
 }
 
+// ── marquee ──
+// An auto-scrolling horizontal loop: a <marquee>, or keyframes that carry a row sideways by a
+// fifth of its width or more, run forever. A one-step keyframes body that also scales or
+// fades is an entrance, not a loop; reduced-motion blocks are skipped.
+function horizontalTravel(kf) {
+  const values = [];
+  let fades = false;
+  for (const step of kf.steps) {
+    for (const d of step.decls) {
+      if (d.prop === "opacity" || (d.prop === "transform" && /scale/i.test(d.value))) fades = true;
+      if (d.prop !== "transform") continue;
+      const m = /translate(?:X|3d)?\(\s*([-+]?(?:\d+\.?\d*|\.\d+))%/i.exec(d.value);
+      if (m) values.push(Number(m[1]));
+    }
+  }
+  if (values.length === 0) return 0;
+  if (values.length === 1) return kf.steps.length === 1 && fades ? 0 : Math.abs(values[0]);
+  return Math.max(...values) - Math.min(...values);
+}
+
+export function marqueeHits(ctx) {
+  return memo(ctx, "marquee", () => {
+    const props = ctx.props;
+    const hits = [];
+    const tag = /<marquee\b/i.exec(ctx.text);
+    if (tag) hits.push({ line: ctx.lineOf(tag.index), evidence: "<marquee>" });
+    for (const b of ctx.css.blocks) {
+      if (inAtRule(b, REDUCED_MOTION) || !runsInfinitely(b, props)) continue;
+      for (const { name, entry } of animationNames(b, props)) {
+        const kf = ctx.css.keyframes.get(name);
+        const travel = kf ? horizontalTravel(kf) : 0;
+        if (travel >= 20) { hits.push({ line: entry.line, evidence: `${normSelector(b.selector)}: ${name} carries the row ${fmtPx(travel)}% sideways, forever` }); break; }
+      }
+    }
+    return hits;
+  });
+}
+
 // ── The cream-serif tasteful default ──
 // Four legs: a CREAM ground, a SERIF display face, the SAGE accent and the CLAY accent (the
 // rusty-orange drift form). The tell is two distinct legs: cream + serif, cream + sage,

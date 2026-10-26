@@ -529,6 +529,14 @@
       "recall": 1
     },
     {
+      "rule": "marquee",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "media-control-glyph",
       "tp": 1,
       "fp": 0,
@@ -860,7 +868,7 @@
     },
     {
       "modality": "design",
-      "tp": 66,
+      "tp": 67,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -884,10 +892,10 @@
     }
   ],
   "overall": {
-    "tp": 132,
+    "tp": 133,
     "fp": 0,
     "fn": 1,
     "precision": 1,
-    "recall": 0.9924812030075187
+    "recall": 0.9925373134328358
   }
 }

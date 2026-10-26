@@ -1368,6 +1368,27 @@
       "note": "Clean partner of live-dot.html, one step from each gate: a 4x24px equaliser bar (not a dot), an 8px dot that pulses once, a 12px dot that floats (it moves), and a 24px spinner (over 16px, role=status with a hidden label). Every infinite animation is opted in under no-preference."
     },
     {
+      "file": "design/marquee-logos.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "marquee",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        }
+      ],
+      "note": "Positive for marquee (anti-slop 2.5.0): a row of customer logos carried 50% sideways by an infinite linear keyframes loop, opted in under prefers-reduced-motion: no-preference."
+    },
+    {
+      "file": "design/marquee-clean.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Clean partner of marquee-logos.html: a one-shot slide-in heading, a notice that rises once (finite), and a scroll-snap rail the reader moves by hand."
+    },
+    {
       "file": "code/cast-to-any.ts",
       "modality": "code",
       "role": "positive",

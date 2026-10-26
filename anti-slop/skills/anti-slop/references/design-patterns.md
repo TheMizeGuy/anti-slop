@@ -175,6 +175,14 @@ A small round dot that pulses forever beside "Live", "Online" or a count: an 8px
 
 The scanner rule is `pulsing-dot`, medium severity, Pattern smell: a 2px to 16px round box, close to square, running an infinite animation whose keyframes pulse in place (opacity, a shadow or a scale, with no movement of 4px or more), or the Tailwind `animate-ping` / `animate-pulse` dot. An equaliser bar, a dot that pulses once, a dot that moves and a spinner over 16px stay clean. It re-expresses impeccable's `pulsing-dot` rule.
 
+### Marquee
+
+A row of logos or headlines that scrolls sideways forever: a `<marquee>`, or a flex track running `translateX(0)` to `translateX(-50%)` on an infinite linear loop. It fills a strip the page had nothing to say in, and the motion never stops asking for attention.
+
+**Remediation:** show the items as a static row, or let the reader scroll the row on demand with a visible pause control.
+
+The scanner rule is `marquee`, low severity, Pattern smell: a `<marquee>` tag, or keyframes that carry the row a fifth of its width or more along the x axis, run forever. A one-shot slide, a scroll-snap rail moved by hand, and a one-step keyframes body that also scales or fades stay clean, and declarations inside `prefers-reduced-motion: reduce` are skipped. It re-expresses impeccable's `marquee` rule.
+
 ### `transition-all`
 
 The one motion default that is a defect on its own technical merits rather than as a taste call. `transition-all` animates every animatable property, layout properties included, so a hover that was meant to fade a shadow also interpolates width, height, and position on any state change that touches them. `frontend-patterns.md` § Animation Performance already says not to animate layout properties; this is the shorthand that does it by accident.
@@ -660,7 +668,7 @@ across every family.
 | Frosted sticky nav | Yes (`frosted-glass-nav`) |
 | Unmodified shadcn card | Yes (`shadcn-default-card`, `shadow-border-rounded-combo`) |
 | Side stripe on a card | Yes (`side-stripe-accent`) |
-| Bounce easing, the pulsing live dot | Yes (`bounce-easing`, `pulsing-dot`) |
+| Bounce easing, the pulsing live dot, the marquee | Yes (`bounce-easing`, `pulsing-dot`, `marquee`) |
 | Text contrast on its surface | Partly (`low-contrast`, `low-contrast-near-bar`: declared surfaces only, no Tailwind colour utilities) |
 | Type below the legibility floor, the reading-mechanics settings | Partly (`text-size-floor`, `tight-leading`, `wide-tracking`, `justified-narrow-column`, `crushed-tracking`: one block at a time) |
 | Icon in a colored circle | Yes (`icon-in-colored-circle`) |

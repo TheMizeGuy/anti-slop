@@ -1081,3 +1081,17 @@ test("generic-font: a listed face matches however it is spelled, and only a list
   assert.ok(fires("generic-font", '.m { font-family: "Plus-Jakarta-Sans", sans-serif }', "a.css"));
   assert.ok(!fires("generic-font", '.m { font-family: "Roboto Slab", serif }', "a.css"), "a different family that shares a word");
 });
+
+// ── marquee (2.5.0, P2) ──────────────────────────────────────────────────────
+
+test("marquee: an infinite sideways loop fires; a one-shot slide, a vertical slide and a scroll rail do not", () => {
+  assert.equal(fired("marquee", corpus("design/marquee-logos.html"), "design/marquee-logos.html").length, 1);
+  assert.deepEqual(fired("marquee", corpus("design/marquee-clean.html"), "design/marquee-clean.html"), []);
+  const loop = "@keyframes scroll { from { transform: translateX(0) } to { transform: translateX(-50%) } }";
+  assert.equal(fired("marquee", `${loop} .t { animation: scroll 30s linear infinite }`).length, 1);
+  assert.deepEqual(fired("marquee", `${loop} .t { animation: scroll 30s linear 1 }`), [], "finite");
+  assert.deepEqual(fired("marquee", "@keyframes nudge { from { transform: translateX(0) } to { transform: translateX(-10%) } } .t { animation: nudge 2s infinite }"), [], "under a fifth of the row");
+  assert.deepEqual(fired("marquee", "@keyframes pop { 50% { transform: translateX(-30%) scale(1.1); opacity: .5 } } .t { animation: pop 2s infinite }"), [], "a one-step body that also scales or fades");
+  assert.deepEqual(fired("marquee", `@media (prefers-reduced-motion: reduce) { ${loop} .t { animation: scroll 30s linear infinite } }`), []);
+  assert.equal(fired("marquee", "<marquee>Sale ends Friday</marquee>", "a.html").length, 1);
+});

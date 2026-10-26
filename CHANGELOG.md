@@ -43,6 +43,8 @@ that decides a combination or a repetition after the escape hatch has dropped it
   single-overshoot curve, an unread curve token, a rise that settles once.
 - `pulsing-dot` (medium, Pattern smell): a 2px to 16px round box pulsing in place forever,
   and the `animate-ping` / `animate-pulse` dot.
+- `marquee` (low, Pattern smell): a `<marquee>`, or keyframes that carry a row sideways by a
+  fifth of its width or more, run forever.
 
 **Rules that fired where they should not, narrowed:**
 
@@ -117,8 +119,8 @@ document is the finding. `choosing-with-intent.md` documents the scoped waiver.
 
 | | Before (2.4.0) | After (2.5.0) |
 |---|--:|--:|
-| True positives / false positives / false negatives | 120 / 0 / 1 | 132 / 0 / 1 |
-| Design modality true positives | 54 | 66 |
+| True positives / false positives / false negatives | 120 / 0 / 1 | 133 / 0 / 1 |
+| Design modality true positives | 54 | 67 |
 | Precision / recall | 100.0% / 99.2% | 100.0% / 99.2% |
 
 `baseline.json` was regenerated with a row for each new rule; no existing row moved. Over
