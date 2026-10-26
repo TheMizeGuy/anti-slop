@@ -867,3 +867,68 @@ test("text-size-floor: only px, rem and the font shorthand are judged", () => {
   assert.equal(floor(".a p { font: 11px/1.5 system-ui, sans-serif }").length, 1);
   assert.equal(floor(".a p { font-size: 0.6875rem }").length, 1);
 });
+
+// ── Reading mechanics (2.5.0): tight-leading, wide-tracking, justified-narrow-column,
+// crushed-tracking ──
+
+const fired = (rule, content, path = "page.css") => scanContent(content, path).filter((v) => v.name === rule);
+
+test("reading mechanics: the shared positive plants one construct per rule, the partner none", () => {
+  const got = names(corpus("design/reading-mechanics.html"), "design/reading-mechanics.html");
+  for (const r of ["tight-leading", "wide-tracking", "justified-narrow-column", "crushed-tracking"]) assert.ok(got.includes(r), `${r}: ${JSON.stringify(got)}`);
+  assert.deepEqual(names(corpus("design/reading-mechanics-clean.html"), "design/reading-mechanics-clean.html"), []);
+});
+
+test("tight-leading: body text under 1.3 fires; headings, lead text, bold titles, code and furniture keep their setting", () => {
+  assert.equal(fired("tight-leading", ".article p { font-size: 16px; line-height: 1.15 }").length, 1);
+  assert.equal(fired("tight-leading", ".article p { font-size: 16px; line-height: 18px }").length, 1, "px leading divides by the size");
+  assert.deepEqual(fired("tight-leading", ".article p { font-size: 16px; line-height: 1.3 }"), []);
+  assert.deepEqual(fired("tight-leading", "h2 { font-size: 20px; line-height: 1.1 }"), []);
+  assert.equal(fired("tight-leading", "p { font-size: 20px; line-height: 1.1 }").length, 1, "the same leading on a paragraph");
+  assert.deepEqual(fired("tight-leading", ".lede { font-size: 22px; line-height: 1.2 }"), [], "lead text at 1.15 or more");
+  assert.equal(fired("tight-leading", ".lede { font-size: 18px; line-height: 1.2 }").length, 1, "below 20px it is body text");
+  assert.deepEqual(fired("tight-leading", ".x { font-size: 16px; font-weight: 600; line-height: 1.1 }"), []);
+  assert.deepEqual(fired("tight-leading", "pre { font-size: 14px; line-height: 1.2 }"), []);
+  assert.deepEqual(fired("tight-leading", ".badge { font-size: 12px; line-height: 1 }"), []);
+  assert.deepEqual(fired("tight-leading", ".x { font-size: 16px; line-height: normal }"), [], "normal is not judged");
+  assert.deepEqual(fired("tight-leading", ".x { font-size: 32px; line-height: 1 }"), [], "display sizes");
+});
+
+test("wide-tracking: running text over 0.05em fires; caps, labels, controls and CJK are exempt", () => {
+  assert.equal(fired("wide-tracking", ".note p { letter-spacing: 0.12em }").length, 1);
+  assert.deepEqual(fired("wide-tracking", ".note p { letter-spacing: 0.05em }"), []);
+  assert.equal(fired("wide-tracking", ".note p { font-size: 16px; letter-spacing: 2px }").length, 1, "px tracking divides by the size");
+  assert.deepEqual(fired("wide-tracking", ".note p { letter-spacing: 2px }"), [], "px tracking with no size is not judged");
+  assert.deepEqual(fired("wide-tracking", ".eyebrow { text-transform: uppercase; letter-spacing: 0.12em }"), []);
+  assert.equal(fired("wide-tracking", ".intro { letter-spacing: 0.12em }").length, 1, "the same tracking in mixed case");
+  assert.deepEqual(fired("wide-tracking", ".s { font-variant-caps: all-small-caps; letter-spacing: 0.06em }"), []);
+  assert.deepEqual(fired("wide-tracking", ":lang(ja) p { letter-spacing: 0.08em }"), []);
+  assert.deepEqual(fired("wide-tracking", ".btn { letter-spacing: 0.06em }"), []);
+});
+
+test("wide-tracking: a class whose every element holds a short label is a label, not running text", () => {
+  const html = (text) => `<style>.entry-no { letter-spacing: 0.1em }</style><p class="entry-no">${text}</p>`;
+  assert.deepEqual(fired("wide-tracking", html("No. 01"), "page.html"), []);
+  assert.equal(fired("wide-tracking", html("The ferry leaves at eleven and reaches the island after midnight."), "page.html").length, 1);
+});
+
+test("justified-narrow-column: a justified measure of 45 characters or less fires unless it hyphenates", () => {
+  assert.equal(fired("justified-narrow-column", ".s { width: 22ch; text-align: justify }").length, 1);
+  assert.deepEqual(fired("justified-narrow-column", ".s { max-width: 65ch; text-align: justify }"), []);
+  assert.deepEqual(fired("justified-narrow-column", ".s { width: 22ch; text-align: justify; hyphens: auto }"), []);
+  assert.deepEqual(fired("justified-narrow-column", ".col { hyphens: auto } .col p { width: 22ch; text-align: justify }"), [], "an ancestor's hyphens");
+  assert.equal(fired("justified-narrow-column", ".s { width: 18rem; text-align: justify }").length, 1, "18rem with no size reads as 36 characters");
+  assert.deepEqual(fired("justified-narrow-column", ".s { text-align: justify }"), [], "no declared measure is not judged");
+  assert.deepEqual(fired("justified-narrow-column", ".s { width: 20ch; text-align: center }"), []);
+  assert.deepEqual(fired("justified-narrow-column", ":lang(ar) .s { width: 22ch; text-align: justify }"), []);
+});
+
+test("crushed-tracking: tighter than -0.07em fires, -0.09em at display sizes; wordmarks are exempt", () => {
+  assert.equal(fired("crushed-tracking", ".hero h1 { font-size: 32px; letter-spacing: -0.1em }").length, 1);
+  assert.deepEqual(fired("crushed-tracking", ".hero h1 { font-size: 32px; letter-spacing: -0.05em }"), []);
+  assert.deepEqual(fired("crushed-tracking", ".display { font-size: 56px; letter-spacing: -0.08em }"), [], "the display bar is -0.09em");
+  assert.equal(fired("crushed-tracking", ".display { font-size: 56px; letter-spacing: -0.1em }").length, 1);
+  assert.deepEqual(fired("crushed-tracking", ".wordmark { font-size: 28px; letter-spacing: -0.08em }"), []);
+  assert.equal(fired("crushed-tracking", ".headline-mark { font-size: 28px; letter-spacing: -0.08em }").length, 1, "the same tracking on a non-wordmark");
+  assert.equal(fired("crushed-tracking", ".x { letter-spacing: -0.08em }").length, 1, "an unknown size takes the body bar");
+});

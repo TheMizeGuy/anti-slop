@@ -1786,3 +1786,184 @@ export function textSizeFloorHits(ctx) {
     return hits;
   });
 }
+
+// ── Reading mechanics: tight-leading, wide-tracking, justified-narrow-column,
+// crushed-tracking ── Block-local judgements: a size or leading inherited from a parent
+// rule is not resolved, so these are floors on recall, never guesses.
+const HEADING_WORDS = /(?:^|[^a-z])(?:heading|title|headline|display|hero|logo|brand|wordmark)(?![a-z])/i;
+const LEADING_EXEMPT_TAGS = new Set(["a", "button", "label", "span", "summary", "small", "code", "kbd", "samp", "pre"]);
+const FURNITURE_WORDS = new Set(["btn", "button", "chip", "badge", "tag", "pill", "label", "meta", "stamp", "num", "count", "icon", "kbd", "code"]);
+const TRACKING_EXEMPT_TAGS = new Set(["a", "button", "label", "nav", "th", "summary"]);
+const TRACKING_LABEL_WORDS = new Set(["btn", "eyebrow", "kicker", "overline", "label", "badge", "tag", "chip", "pill", "meta", "num", "step", "caps"]);
+const CJK_LANG = /:lang\(\s*["']?(?:ja|zh|ko)\b/i;
+const JUSTIFY_EXEMPT_LANG = /:lang\(\s*["']?(?:ar|fa|he|th|ja|zh|ko)\b/i;
+const WORDMARK_WORDS = /logo|brand|wordmark|monogram/i;
+
+function isMonospace(block, props) {
+  return fontStack(block, props).some((f) => /mono|courier|consolas|menlo|monaco/i.test(f));
+}
+
+function letterSpacingEm(block, props, size) {
+  const entry = declEntry(block, "letter-spacing");
+  if (!entry) return undefined;
+  const v = resolveVars(entry.value, props).trim().toLowerCase();
+  if (/^[+-]?(?:\d+\.?\d*|\.\d+)em$/.test(v)) return { em: parseFloat(v), entry };
+  const px = lengthPx(v, props);
+  if (px === undefined || size === undefined || size <= 0) return undefined;
+  return { em: px / size, entry };
+}
+
+// Elements of a markup or JSX file with their tag, classes and text (child tags stripped,
+// up to the element's own closing tag): enough to tell a six-character label from a
+// paragraph, which a stylesheet alone cannot.
+function elementsOf(ctx) {
+  return memo(ctx, "elements", () => {
+    if (!MARKUP_EXT.has(ctx.ext) && ctx.ext !== ".jsx" && ctx.ext !== ".tsx") return [];
+    const text = ctx.text;
+    const lower = text.toLowerCase();
+    const out = [];
+    const re = /<([a-zA-Z][\w-]*)(?=[\s>/])/g;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      let i = m.index + m[0].length;
+      let depth = 0;
+      while (i < text.length) {
+        const c = text[i];
+        if (depth === 0 && (c === '"' || c === "'")) { const j = text.indexOf(c, i + 1); i = j === -1 ? text.length : j + 1; continue; }
+        if (c === "{") depth++;
+        else if (c === "}") depth--;
+        else if (c === ">" && depth === 0 && text[i - 1] !== "=") break;
+        i++;
+      }
+      const head = text.slice(m.index, i);
+      const cls = /\bclass(?:Name)?\s*=\s*["']([^"']*)["']/.exec(head);
+      if (!cls) continue;
+      const tag = m[1].toLowerCase();
+      const close = lower.indexOf(`</${tag}`, i);
+      const inner = text.slice(i + 1, close === -1 ? Math.min(text.length, i + 2000) : close);
+      out.push({ tag, classes: new Set(cls[1].split(/\s+/).filter(Boolean)), text: inner.replace(/<[^>]*>/g, " ").replace(/\{[^}]*\}/g, " ").replace(/\s+/g, " ").trim() });
+    }
+    return out;
+  });
+}
+
+// True when the selector's subject names classes and every element in the file that carries
+// them holds `max` characters of text or fewer. No matching element is unknown (false).
+function shortTextOnly(ctx, selector, max) {
+  const subject = subjectOf(selector).replace(/::?[\w-]+(?:\([^)]*\))?/g, "");
+  const classes = [...subject.matchAll(/\.([\w-]+)/g)].map((x) => x[1]);
+  if (!classes.length) return false;
+  const tag = tagOfCompound(subject);
+  const matches = elementsOf(ctx).filter((e) => (!tag || e.tag === tag) && classes.every((c) => e.classes.has(c)));
+  return matches.length > 0 && matches.every((e) => e.text.length <= max);
+}
+
+export function tightLeadingHits(ctx) {
+  return memo(ctx, "tightLeading", () => {
+    const props = ctx.props;
+    const hits = [];
+    for (const b of ctx.css.blocks) {
+      if (b.selector.startsWith("@")) continue;
+      const size = fontSizePx(b, props);
+      if (size === undefined || size >= 24) continue;
+      const lh = lineHeightValue(b, props);
+      if (lh === undefined) continue;
+      let ratio;
+      if (/^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(lh)) ratio = Number(lh);
+      else if (/^[\d.]+%$/.test(lh)) ratio = parseFloat(lh) / 100;
+      else if (/^[\d.]+em$/i.test(lh)) ratio = parseFloat(lh);
+      else { const px = lengthPx(lh, props); if (px !== undefined) ratio = px / size; }
+      if (ratio === undefined) continue;
+      const r = Math.round(ratio * 100) / 100;
+      if (r >= 1.3) continue;
+      if (fontWeight(b, props) >= 600) continue;
+      if (isCaps(b, props) && r >= 1.0) continue;
+      if (/nowrap|pre/i.test(String(decl(b, "white-space") || ""))) continue;
+      if (declEntry(b, "-webkit-line-clamp") || declEntry(b, "line-clamp")) continue;
+      if (isMonospace(b, props)) continue;
+      if (size >= 20 && r >= 1.15) continue;
+      const sel = splitSelectorList(b.selector).find((s) => {
+        const subject = subjectOf(s);
+        const tag = tagOfCompound(subject);
+        if (tag && (/^h[1-6]$/.test(tag) || LEADING_EXEMPT_TAGS.has(tag))) return false;
+        if (HEADING_WORDS.test(s) || shortTextOnly(ctx, s, 50)) return false;
+        return !classWordsOf(subject).some((w) => FURNITURE_WORDS.has(w));
+      });
+      if (!sel) continue;
+      const at = declEntry(b, "line-height") || declEntry(b, "font");
+      hits.push({ line: at ? at.line : b.line, evidence: `${normSelector(sel)}: line-height ${r.toFixed(2)}x at ${fmtPx(size)}px (need 1.3)` });
+    }
+    return hits;
+  });
+}
+
+export function wideTrackingHits(ctx) {
+  return memo(ctx, "wideTracking", () => {
+    const props = ctx.props;
+    const hits = [];
+    for (const b of ctx.css.blocks) {
+      if (b.selector.startsWith("@")) continue;
+      const ls = letterSpacingEm(b, props, fontSizePx(b, props));
+      if (!ls || ls.em <= 0.05) continue;
+      if (isCaps(b, props) || /smcp|c2sc/i.test(String(decl(b, "font-feature-settings") || ""))) continue;
+      const sel = splitSelectorList(b.selector).find((s) => {
+        if (CJK_LANG.test(s)) return false;
+        const subject = subjectOf(s);
+        const tag = tagOfCompound(subject);
+        if ((tag && TRACKING_EXEMPT_TAGS.has(tag)) || shortTextOnly(ctx, s, 20)) return false;
+        return !classWordsOf(subject).some((w) => TRACKING_LABEL_WORDS.has(w));
+      });
+      if (!sel) continue;
+      hits.push({ line: ls.entry.line, evidence: `${normSelector(sel)}: letter-spacing ${ls.em.toFixed(2)}em on running text` });
+    }
+    return hits;
+  });
+}
+
+export function justifiedNarrowHits(ctx) {
+  return memo(ctx, "justifiedNarrow", () => {
+    const props = ctx.props;
+    const bySelector = selectorIndex(ctx.css.blocks);
+    const hyphenated = (b) => /auto/i.test(`${decl(b, "hyphens") || ""} ${decl(b, "-webkit-hyphens") || ""}`);
+    const hits = [];
+    for (const b of ctx.css.blocks) {
+      if (b.selector.startsWith("@")) continue;
+      const align = declEntry(b, "text-align");
+      if (!align || !/^justify$/i.test(resolveVars(align.value, props).trim())) continue;
+      if (JUSTIFY_EXEMPT_LANG.test(b.selector) || hyphenated(b)) continue;
+      if (descendantAncestors(b.selector).some((a) => bySelector.has(a) && hyphenated(bySelector.get(a)))) continue;
+      const size = fontSizePx(b, props);
+      const measures = ["width", "max-width"].map((p) => decl(b, p)).filter((v) => v !== undefined).map((v) => {
+        const t = resolveVars(v, props).trim().toLowerCase();
+        if (/^[\d.]+ch$/.test(t)) return parseFloat(t);
+        const px = lengthPx(t, props);
+        if (px === undefined) return undefined;
+        return size ? px / (0.5 * size) : px / 8;
+      }).filter((n) => n !== undefined);
+      if (measures.length === 0) continue;
+      const chars = Math.min(...measures);
+      if (chars > 45) continue;
+      hits.push({ line: align.line, evidence: `${normSelector(b.selector)}: justify at about ${Math.round(chars)} characters a line, no hyphens` });
+    }
+    return hits;
+  });
+}
+
+export function crushedTrackingHits(ctx) {
+  return memo(ctx, "crushedTracking", () => {
+    const props = ctx.props;
+    const hits = [];
+    for (const b of ctx.css.blocks) {
+      if (b.selector.startsWith("@")) continue;
+      const size = fontSizePx(b, props);
+      const ls = letterSpacingEm(b, props, size);
+      if (!ls) continue;
+      const display = size !== undefined && size >= 40;
+      if (!(ls.em < (display ? -0.09 : -0.07))) continue;
+      const sel = splitSelectorList(b.selector).find((s) => !CJK_LANG.test(s) && !WORDMARK_WORDS.test(s) && !shortTextOnly(ctx, s, 20));
+      if (!sel) continue;
+      hits.push({ line: ls.entry.line, evidence: `${normSelector(sel)}: letter-spacing ${ls.em.toFixed(2)}em at ${size === undefined ? "an unknown size" : `${fmtPx(size)}px`}` });
+    }
+    return hits;
+  });
+}

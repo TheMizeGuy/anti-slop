@@ -1289,6 +1289,42 @@
       "note": "Clean partner of type-floors.html: an 11px uppercase eyebrow and an 11px .post-meta row (functional, at the floor), a 10px footnote marker (sup is exempt), 10px small print inside .legal (small-print floor 10px), 12px code and an em-sized caption (not judged)."
     },
     {
+      "file": "design/reading-mechanics.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "tight-leading",
+          "severity": "low",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "wide-tracking",
+          "severity": "low",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "justified-narrow-column",
+          "severity": "low",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "crushed-tracking",
+          "severity": "low",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "Shared positive for the four reading-mechanics rules (anti-slop 2.5.0), one construct each: .article p at 16px with line-height 1.15 over a long paragraph, .note p tracked 0.12em in mixed case, .sidebar-note justified at 22ch with no hyphens, and .hero h1 at 32px with letter-spacing -0.1em. A rule cut from a release has its construct removed from this file in the same commit, or its label kept with no severity as a known false negative."
+    },
+    {
+      "file": "design/reading-mechanics-clean.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Clean partner of reading-mechanics.html, one step from each construct: a tight 20px heading, 22px lead text at 1.2, a 12px badge and preformatted code at 1.25, a bold card title; caps, small-caps, Japanese and button tracking; justify on a 65ch measure and on a hyphenated 18rem column; -0.05em on 56px display type, -0.02em on a title and a -0.08em wordmark."
+    },
+    {
       "file": "code/cast-to-any.ts",
       "modality": "code",
       "role": "positive",

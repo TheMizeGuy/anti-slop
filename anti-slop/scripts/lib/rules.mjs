@@ -1,4 +1,7 @@
-import { lowContrastHits, sideStripeHits, textSizeFloorHits } from "./design-detect.mjs";
+import {
+  lowContrastHits, sideStripeHits, textSizeFloorHits, tightLeadingHits, wideTrackingHits,
+  justifiedNarrowHits, crushedTrackingHits,
+} from "./design-detect.mjs";
 
 // ── Confidence classes ──
 // How sure the scanner is that a match is WRONG HERE, which is a different axis from
@@ -324,6 +327,13 @@ export const DESIGN_PATTERNS = [
   // Block-local: a size inherited from a parent rule is not resolved, so recall on
   // component trees is a floor. Footnote markers, code and hidden text are exempt.
   { name: "text-size-floor", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, hits: textSizeFloorHits, fix: "Set running text at 12px or more (16px for body) and functional text at 11px or more; subordinate it with weight, colour or caps tracking instead.", desc: "Text set below the legibility floor (12px running, 11px functional)" },
+  // Reading mechanics, block-local. Headings, display sizes, caps labels, code and one-line
+  // furniture keep their tight or open setting; where the file's markup shows every element
+  // with the selector's classes holding a short label, it is a label and not running text.
+  { name: "tight-leading", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, hits: tightLeadingHits, fix: "Set body leading at 1.4 to 1.6; keep tight leading for display sizes and one-line labels.", desc: "Body text set with line-height under 1.3" },
+  { name: "wide-tracking", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, hits: wideTrackingHits, fix: "Keep running-text tracking between -0.01em and 0.02em; open tracking belongs to short capitalised labels.", desc: "Mixed-case running text tracked wider than 0.05em" },
+  { name: "justified-narrow-column", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, hits: justifiedNarrowHits, fix: "Set the narrow column ragged-right, or keep justify with hyphens: auto and a lang attribute on a measure of 45 characters or more.", desc: "Justified text in a column under about 45 characters with no hyphenation" },
+  { name: "crushed-tracking", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, hits: crushedTrackingHits, fix: "Ease the tracking to between -0.02em and -0.05em (to -0.07em at 40px and up); letters that touch cost legibility.", desc: "Letter-spacing tighter than -0.07em (-0.09em at 40px and up)" },
   // A Hard defect because it is one: WCAG 1.4.4 requires text to scale to 200%, and a
   // viewport that blocks pinch zoom removes the only control a low-vision user has on a
   // phone. The remediation only ever DELETES the two attributes -- the viewport meta a
