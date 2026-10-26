@@ -215,3 +215,30 @@ test("purple gradients: both halves in one class set and one arm fire, split hal
   assert.ok(!fires("purple-blue-gradient", '<i class="from-purple-600"></i><i class="to-blue-500"></i>', "a.html"));
   assert.ok(fires("purple-blue-gradient", ".hero { background: linear-gradient(135deg, #6366f1, #8b5cf6); }", "a.css"), "the hex half is unchanged");
 });
+
+// ── neon-glow is a perceptible coloured glow (2.5.0) ─────────────────────────
+
+test("neon-glow: soft neutral shadows, token definitions and hairline rings are not glows", () => {
+  assert.ok(!fires("neon-glow", ".card { box-shadow: 0 0 24px rgba(0, 0, 0, 0.06); }", "soft-shadow.css"));
+  assert.ok(!fires("neon-glow", ":root { --card-box-shadow: 0 0 20px #000; }", "token-prop.css"));
+  assert.ok(!fires("neon-glow", '<div class="shadow-[0_0_1px_rgba(0,0,0,0.2)] p-4">x</div>', "tw-shadow.html"));
+});
+
+test("neon-glow: a coloured glow fires in computed form and as a Tailwind arbitrary value", () => {
+  assert.ok(fires("neon-glow", ".cta { box-shadow: 0px 0px 28px rgba(34, 211, 238, 0.55); }", "a.css"), "zero offsets written 0px");
+  assert.ok(fires("neon-glow", '<div class="shadow-[0_0_24px_rgba(168,85,247,0.6)]">x</div>', "a.html"));
+  assert.ok(!fires("neon-glow", ".cta { box-shadow: 0 0 4px rgba(34, 211, 238, 1); }", "a.css"), "a 4px blur is a ring, not a glow");
+  assert.ok(!fires("neon-glow", ".cta { box-shadow: 0 0 8px rgba(34, 211, 238, 0.2); }", "a.css"), "strength 1.6 is below what a viewer sees");
+  assert.ok(!fires("neon-glow", ".cta { box-shadow: 0 4px 24px rgba(34, 211, 238, 0.6); }", "a.css"), "an offset shadow is elevation");
+});
+
+test("neon-glow: a focus halo is a state indicator, and the same halo at rest is a glow", () => {
+  assert.ok(!fires("neon-glow", ".btn:focus-visible { box-shadow: 0 0 12px rgba(14, 165, 233, 0.6); }", "a.css"));
+  assert.ok(!fires("neon-glow", '<button class="focus-visible:shadow-[0_0_12px_rgba(14,165,233,0.6)]">x</button>', "a.html"));
+  assert.ok(fires("neon-glow", ".btn { box-shadow: 0 0 12px rgba(14, 165, 233, 0.6); }", "a.css"));
+});
+
+test("neon-glow: a halo lighting more than twice the element's area is ambient light", () => {
+  assert.ok(!fires("neon-glow", ".pass-glow-bar { width: 200px; height: 4px; box-shadow: 0 0 16px rgba(26, 58, 214, .8); }", "a.css"));
+  assert.ok(fires("neon-glow", ".card { width: 320px; height: 200px; box-shadow: 0 0 16px rgba(26, 58, 214, .8); }", "a.css"));
+});

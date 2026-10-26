@@ -1,7 +1,7 @@
 import {
   lowContrastHits, sideStripeHits, textSizeFloorHits, tightLeadingHits, wideTrackingHits,
   justifiedNarrowHits, crushedTrackingHits, bounceEasingHits, pulsingDotHits,
-  classFreeLines, lineRegexHits, matchingClassSets, tailwindToken, isResting,
+  classFreeLines, lineRegexHits, matchingClassSets, tailwindToken, isResting, glowHits,
 } from "./design-detect.mjs";
 
 // ── Confidence classes ──
@@ -308,7 +308,10 @@ export const DESIGN_PATTERNS = [
   { name: "icon-in-colored-circle", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, classAll: ["rounded-full", /^bg-[a-z]+-100$/, "p-3"], fix: "Drop the decorative circle where the icon reads on its own, or vary the treatment per card; the icon should explain the feature, not decorate it.", desc: "Icon in colored circle background" },
   { name: "frosted-glass-nav", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, classAll: [/^backdrop-blur(-[a-z0-9]+)?$/, /^bg-white\/\d+$/, "border-b"], fix: "Vary the nav height and keep the blur only where the layered transparency serves the hierarchy; a solid bar or a sidebar is often the better nav.", desc: "Frosted glass navigation bar" },
   { name: "shadow-border-rounded-combo", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, classAll: ["shadow-sm", /^border(-[a-z]+-\d+)?$/, "rounded-xl"], fix: "Theme the card: set the border colour, radius and shadow to project tokens instead of shipping the library's default trio on every surface.", desc: "shadow-sm + border + rounded-xl AI card combo" },
-  { name: "neon-glow", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /shadow-\[0_0_|drop-shadow-\[0_0_|box-shadow\s*:[^;]*\b0\s+0\s+\d{2,}px/i, fix: "Carry elevation the way the platform does, with a lighter surface and a real shadow scale: `background: var(--surface-2)` plus a 1px shadow.", desc: "Unprompted neon glow (dark-mode tell)" },
+  // The rule enforces its own title: a coloured glow a viewer can see. A soft neutral
+  // shadow, a --card-box-shadow token definition, a 1px hairline ring and a focus halo are
+  // not one; neither is a diffuse wash that lights more than twice the element's area.
+  { name: "neon-glow", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: (ctx) => glowHits(ctx), fix: "Carry elevation the way the platform does, with a lighter surface and a real shadow scale: `background: var(--surface-2)` plus a 1px shadow.", desc: "Unprompted neon glow (dark-mode tell)" },
   // One threshold whatever draws the stripe: a side border, an absolute ::before bar, an
   // inset side shadow, a style object or border-l-N. Square boxes count from 3px (the
   // catalogue bans the coloured left border on any box); selection and live-region edges,

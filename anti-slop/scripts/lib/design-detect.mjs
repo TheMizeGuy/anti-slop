@@ -2204,3 +2204,69 @@ export function pulsingDotHits(ctx) {
     return hits;
   });
 }
+
+// ── neon-glow ──
+// A glow a viewer can see: an outset layer with zero offsets, a blur over 4px, a chromatic
+// colour, and blur x alpha of 3 or more. Where the block states its px size, a halo that
+// lights more than twice the element's own area is ambient light, not a glow. A focus halo
+// is a state indicator and is never this tell.
+const FOCUS_STATE = /:focus\b|:focus-visible\b|:focus-within\b/i;
+
+function glowLayer(layer, props, kind) {
+  const toks = splitOutside(resolveVars(layer, props), " ");
+  if (toks.some((t) => t.toLowerCase() === "inset")) return null;
+  const lengths = [];
+  const rest = [];
+  for (const t of toks) {
+    const px = lengthPx(t, props);
+    if (px !== undefined) lengths.push(px);
+    else rest.push(t);
+  }
+  if (lengths.length < 3) return null;
+  const [x, y, blur] = lengths;
+  if (x !== 0 || y !== 0 || !(blur > 4)) return null;
+  const colourText = rest.join(" ");
+  const c = parseColor(colourText);
+  if (!c) return blur >= 16 ? { blur, strength: null, text: `${kind}: ${layer.trim()}` } : null;
+  const strength = blur * (c.a === undefined ? 1 : c.a);
+  if (rgbSpread(c) < 30 || strength < 3) return null;
+  return { blur, strength, text: `${kind}: ${layer.trim()} (strength ${strength.toFixed(1)})` };
+}
+
+function litAreaTooWide(block, props, blur) {
+  const w = lengthPx(decl(block, "width"), props);
+  const h = lengthPx(decl(block, "height"), props);
+  if (!(w > 0 && h > 0)) return false;
+  return (w + blur) * (h + blur) - w * h > 2 * w * h;
+}
+
+export function glowHits(ctx, opts = {}) {
+  const props = ctx.props;
+  const shadowProps = opts.textShadow ? ["box-shadow", "-webkit-box-shadow", "text-shadow"] : ["box-shadow", "-webkit-box-shadow"];
+  const hits = [];
+  for (const b of ctx.css.blocks) {
+    if (b.selector.startsWith("@") || FOCUS_STATE.test(b.selector)) continue;
+    let hit = null;
+    for (const d of b.decls) {
+      if (!shadowProps.includes(d.prop)) continue;
+      for (const layer of splitOutside(resolveVars(d.value, props), ",")) {
+        const g = glowLayer(layer, props, d.prop);
+        if (g && !(d.prop !== "text-shadow" && litAreaTooWide(b, props, g.blur))) { hit = { line: d.line, evidence: g.text }; break; }
+      }
+      if (hit) break;
+    }
+    if (hit) hits.push(hit);
+  }
+  for (const set of ctx.classSets) {
+    for (const raw of set.tokens) {
+      const t = tailwindToken(raw);
+      if (t.variants.some((v) => /^focus(?:-visible|-within)?$/.test(v))) continue;
+      const m = /^(drop-shadow|shadow)-\[(.+)\]$/.exec(t.base);
+      if (!m) continue;
+      const value = m[2].replace(/_/g, " ");
+      const g = splitOutside(value, ",").map((layer) => glowLayer(layer, props, m[1])).find(Boolean);
+      if (g) { hits.push({ line: set.line, evidence: `${raw}${g.strength === null ? "" : ` (strength ${g.strength.toFixed(1)})`}` }); break; }
+    }
+  }
+  return hits;
+}
