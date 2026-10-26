@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { scanContent } from "../lib/scan.mjs";
+import { countOffScaleSpacing } from "../lib/rules.mjs";
 
 const names = (content, path) => scanContent(content, path).map((v) => v.name);
 const fires = (rule, content, path) => names(content, path).includes(rule);
@@ -241,4 +242,27 @@ test("neon-glow: a focus halo is a state indicator, and the same halo at rest is
 test("neon-glow: a halo lighting more than twice the element's area is ambient light", () => {
   assert.ok(!fires("neon-glow", ".pass-glow-bar { width: 200px; height: 4px; box-shadow: 0 0 16px rgba(26, 58, 214, .8); }", "a.css"));
   assert.ok(fires("neon-glow", ".card { width: 320px; height: 200px; box-shadow: 0 0 16px rgba(26, 58, 214, .8); }", "a.css"));
+});
+
+// ── token-drift-spacing reads spacing declarations, not token definitions (2.5.0) ──
+
+test("countOffScaleSpacing: token definitions and scroll offsets are not spacing; grid-gap still is", () => {
+  assert.equal(countOffScaleSpacing(":root { --space-1: 4px; --space-2: 8px; --card-padding: 13px; --x-margin: 13px; }"), 0);
+  assert.equal(countOffScaleSpacing(".a { scroll-margin-top: 13px; }"), 0);
+  assert.equal(countOffScaleSpacing(".a { padding: 13px; }"), 1);
+  assert.equal(countOffScaleSpacing(".a { grid-gap: 13px; }"), 1, "the legacy alias is spacing");
+  assert.equal(countOffScaleSpacing(".a { grid-row-gap: 13px; grid-column-gap: 13px; }"), 2);
+});
+
+test("countOffScaleSpacing: a JS style object's value stops at its own end", () => {
+  assert.equal(countOffScaleSpacing("<div style={{ padding: '16px', fontSize: '13px', lineHeight: '21px' }}>x</div>"), 0);
+  assert.equal(countOffScaleSpacing("<div style={{ padding: '13px', fontSize: '16px' }}>x</div>"), 1);
+  assert.equal(countOffScaleSpacing("const s = { margin: 13, gap: 8 };"), 0, "bare numbers carry no px unit");
+});
+
+test("token-drift-spacing: the probe files from the history set stay clean", () => {
+  const tokens = ":root { --space-1: 4px; --space-2: 8px; --card-padding: 13px; --x-margin: 13px; }";
+  assert.ok(!fires("token-drift-spacing", tokens, "token-prop.css"));
+  const tsx = ":root { --space-1: 4px; --space-2: 8px; }\nexport const A = () => <div style={{ padding: '16px', fontSize: '13px', lineHeight: '21px' }}>x</div>;";
+  assert.ok(!fires("token-drift-spacing", tsx, "jsx-style.tsx"));
 });

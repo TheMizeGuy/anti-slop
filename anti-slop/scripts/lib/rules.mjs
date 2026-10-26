@@ -76,15 +76,20 @@ export const CONCENTRATION = "concentration";
 // `pattern`, and the scanner calls it once per line exactly where it would have counted
 // regex matches. 1px and 2px are on-scale by construction: hairline borders and 2px
 // offsets are not spacing decisions.
+// The property must start at a token boundary, so `--card-padding: 13px` (a token
+// definition) and `scroll-padding` are not spacing, while the legacy `grid-gap` aliases are.
+// A quoted value ends at its closing quote and a bare one before the next key of a JS
+// object, so `padding: '16px', fontSize: '13px'` reads one value, not three.
 const SPACING_DECLARATION =
-  /\b(?:padding|margin|gap|row-gap|column-gap|inset)(?:-(?:top|right|bottom|left|inline|block)(?:-(?:start|end))?)?\s*:\s*([^;{}]*)/gi;
+  /(?<![\w-])(?:grid-)?(?:padding|margin|gap|row-gap|column-gap|inset)(?:-(?:top|right|bottom|left|inline|block)(?:-(?:start|end))?)?\s*:\s*(?:(["'`])(.*?)\1|((?:(?!,\s*[A-Za-z_$][\w$-]*\s*:)[^;{}\n])*))/gi;
 
 export function countOffScaleSpacing(line) {
   const declarations = new RegExp(SPACING_DECLARATION.source, SPACING_DECLARATION.flags);
   let hits = 0;
   let declaration;
   while ((declaration = declarations.exec(line)) !== null) {
-    const value = declaration[1];
+    if (declaration[0].length === 0) { declarations.lastIndex += 1; continue; }
+    const value = declaration[2] ?? declaration[3] ?? "";
     // A value routed through the design system -- var(--space-3), clamp(), calc() on a
     // token -- is the correct idiom and is what the rule wants people to write.
     if (/var\(|clamp\(|calc\(/i.test(value)) continue;
