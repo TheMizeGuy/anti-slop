@@ -675,3 +675,89 @@ test("the reported line is the line the tell is actually on", () => {
   // the line count precisely so this number is the file's line and not the comment's index.
   assert.equal(found.find((v) => v.name === "apologetic-comment").line, 3);
 });
+
+// ── low-contrast / low-contrast-near-bar (2.5.0) ─────────────────────────────
+// WCAG 1.4.3 arithmetic on surfaces the file declares. Every exemption below has its
+// should-flag twin beside it: an exemption that swallows the case next to it is the
+// failure these pairs exist to catch.
+
+const page = (css, body = "<p>x</p>") => `<!doctype html><html lang="en"><head><style>${css}</style></head><body>${body}</body></html>`;
+const contrast = (content, path = "page.html") => scanContent(content, path).filter((v) => v.name === "low-contrast" || v.name === "low-contrast-near-bar");
+
+test("low-contrast: the corpus pairs fire on the positives and stay silent on their partners", () => {
+  const pairs = names(corpus("design/contrast-pairs.html"), "design/contrast-pairs.html");
+  assert.ok(pairs.includes("low-contrast") && pairs.includes("low-contrast-near-bar"), JSON.stringify(pairs));
+  assert.ok(names(corpus("design/contrast-ground.html"), "design/contrast-ground.html").includes("low-contrast"));
+  assert.deepEqual(contrast(corpus("design/contrast-clean.html")), []);
+  assert.deepEqual(contrast(corpus("design/contrast-ground-clean.html")), []);
+});
+
+test("low-contrast: each tier reports its ratio, its colours and where the surface came from", () => {
+  const [v] = contrast(corpus("design/contrast-pairs.html")).filter((x) => x.name === "low-contrast");
+  assert.equal(v.count, 3);
+  assert.equal(v.line, 11);
+  assert.match(v.evidence, /^\.btn 2\.9:1 \(need 4\.5:1\), text #ffffff on #ca8a10 \(block\)$/);
+  const ground = contrast(corpus("design/contrast-ground.html"))[0];
+  assert.match(ground.evidence, /3\.5:1 .*\(page ground\)/);
+});
+
+test("low-contrast: a hairline miss is near-bar at low severity, a real miss is high", () => {
+  const hairline = contrast(page("body { background: #fff } .t { background: #f1f5f9; color: #6b7280 }"));
+  assert.deepEqual(hairline.map((v) => [v.name, v.severity]), [["low-contrast-near-bar", "low"]]);
+  const real = contrast(page("body { background: #fff } .t { background: #f1f5f9; color: #9ca3af }"));
+  assert.deepEqual(real.map((v) => [v.name, v.severity]), [["low-contrast", "high"]]);
+});
+
+test("low-contrast: a disabled control is exempt, and the same colours enabled are not", () => {
+  assert.deepEqual(contrast(page("button:disabled { background: #fff; color: #9ca3af }")), []);
+  assert.equal(contrast(page("button { background: #fff; color: #9ca3af }")).length, 1);
+});
+
+test("low-contrast: a gradient or image surface is not measured, a solid one is", () => {
+  assert.deepEqual(contrast(page(".hero { background: linear-gradient(#fff, #eee); color: #9ca3af }")), []);
+  assert.deepEqual(contrast(page(".hero { background: #fff url(x.png); color: #9ca3af }")), []);
+  assert.equal(contrast(page(".hero { background: #ffffff; color: #9ca3af }")).length, 1);
+});
+
+test("low-contrast: the page ground holds only when nothing else in the file paints a surface", () => {
+  // The BEM shape: .hero__sub sits on .hero's navy, which no selector chain says.
+  const bem = "body { background: #fff } .hero { background: #0f172a; color: #fff } .hero__sub { color: #9ca3af }";
+  assert.deepEqual(contrast(page(bem)), [], "a second painted surface switches the page-ground tier off");
+  const twin = "body { background: #fff } .hero { color: #111 } .hero__sub { color: #9ca3af }";
+  assert.equal(contrast(page(twin)).length, 1, "with the page ground the only surface, the pair is measured");
+  assert.deepEqual(contrast(page(".note { color: #9ca3af }")), [], "an undeclared ground is unknown, not white");
+});
+
+test("low-contrast: the large-text bar is 3:1, and the same colour at body size fails", () => {
+  assert.deepEqual(contrast(page("body { background: #fff } .d { font-size: 28px; font-weight: 700; color: #8f8f8f }")), []);
+  assert.deepEqual(contrast(page("body { background: #fff } .d { font-size: 19px; font-weight: bold; color: #8f8f8f }")), []);
+  assert.equal(contrast(page("body { background: #fff } .d { font-size: 16px; color: #8f8f8f }")).length, 1);
+});
+
+test("low-contrast: placeholder text is measured, near-bar when the field is labelled", () => {
+  const css = "input { background: #fff; color: #111 } input::placeholder { color: #9ca3af }";
+  const labelled = contrast(page(css, '<label for="a">Name</label><input id="a" placeholder="Ada">'));
+  assert.deepEqual(labelled.map((v) => v.name), ["low-contrast-near-bar"]);
+  const bare = contrast(page(css, '<input placeholder="Ada">'));
+  assert.deepEqual(bare.map((v) => v.name), ["low-contrast"]);
+});
+
+test("low-contrast: gradient text, dark-scheme overrides and unresolved tokens are not measured", () => {
+  assert.deepEqual(contrast(page("body { background: #fff } h1 { background-clip: text; color: #eee }")), []);
+  assert.equal(contrast(page("body { background: #fff } h1 { color: #eee }")).length, 1);
+  assert.deepEqual(contrast(page("body { background: #fff } @media (prefers-color-scheme: dark) { .n { color: #eee } }")), []);
+  assert.deepEqual(contrast(page(".n { background: #fff; color: var(--ink) }")), []);
+  assert.equal(contrast(page(":root { --ink: #eee } .n { background: #fff; color: var(--ink) }")).length, 1);
+});
+
+test("low-contrast: inline styles and JSX style objects are measured as blocks", () => {
+  assert.equal(contrast('<p style="background: #fff; color: #aaa">x</p>').length, 1);
+  assert.equal(contrast('export const N = () => <p style={{ background: "#fff", color: "#aaa" }}>x</p>;', "N.tsx").length, 1);
+});
+
+test("low-contrast: one finding per colour pair, and a waived line drops its hit", () => {
+  const twice = contrast(page("body { background: #fff } .a { background: #fff; color: #aaa } .b { background: #fff; color: #aaa }"));
+  assert.equal(twice[0].count, 1);
+  const hatched = page("body { background: #fff }\n.a { background: #fff; color: #aaa } /* anti-slop-allow: brand grey */");
+  assert.deepEqual(contrast(hatched), []);
+});

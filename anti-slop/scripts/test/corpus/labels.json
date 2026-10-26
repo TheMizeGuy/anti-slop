@@ -772,9 +772,14 @@
           "id": "uniform-literal-radius",
           "severity": "low",
           "confidence": "Quality defect"
+        },
+        {
+          "id": "low-contrast",
+          "severity": "high",
+          "confidence": "Quality defect"
         }
       ],
-      "note": "rounded-everything was REMOVED as a label in 1.7.0 for the same reason as frosted-nav-neon.html: two border-radius:999px declarations (.btn and .pill) is not maximal rounding on every control. uniform-literal-radius was ADDED in 2.1.0 and is a different claim about the same file: four literal border-radius values and no --radius token to vary from. Everything else on this fixture still fires."
+      "note": "rounded-everything was REMOVED as a label in 1.7.0 for the same reason as frosted-nav-neon.html: two border-radius:999px declarations (.btn and .pill) is not maximal rounding on every control. uniform-literal-radius was ADDED in 2.1.0 and is a different claim about the same file: four literal border-radius values and no --radius token to vary from. Everything else on this fixture still fires. The low-contrast label (anti-slop 2.5.0) records a defect the page always carried: white on the #a855f7 primary button measures 3.96:1. The purple stays, because it is a planted ai-purple-hex leg."
     },
     {
       "file": "../fixtures/editorial-bold.html",
@@ -1192,6 +1197,53 @@
       "expected": [],
       "maxIncidentalFindings": 0,
       "note": "The correct form of both 2.4.0 accessibility rules: width=device-width with initial-scale=1 and nothing else, tabindex=\"0\" joining the natural order, tabindex=\"-1\" on a script-focused region, and a maximum-scale=5 cap that still leaves the user a usable zoom range."
+    },
+    {
+      "file": "design/contrast-pairs.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "low-contrast",
+          "severity": "high",
+          "confidence": "Quality defect"
+        },
+        {
+          "id": "low-contrast-near-bar",
+          "severity": "low",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "Positive for the contrast pair (anti-slop 2.5.0). Block tier: .btn white on oklch(0.68 0.14 75) at 2.94:1; :hover tier: .btn:hover takes its text colour from .btn, 2.35:1; ancestor tier: .card .meta #64748b on .card #0f172a at 3.75:1; near-bar: .tag #6b7280 on #f1f5f9 at 4.41:1. Every other pair passes, and body text is #1f2937 on white."
+    },
+    {
+      "file": "design/contrast-clean.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Clean partner of contrast-pairs.html: the same selectors at passing values (.btn 6.65:1, .btn:hover 8.59:1, .tag 6.92:1, .card .meta 6.96:1), one step from each planted pair. It also carries the constructs the rule must leave alone or measure correctly: a disabled button (exempt), a gradient hero surface (not measured), and a labelled field whose placeholder is measured and passes at 4.83:1."
+    },
+    {
+      "file": "design/contrast-ground.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "low-contrast",
+          "severity": "high",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "Positive for the page-ground tier (anti-slop 2.5.0): the page ground is the file's only painted surface, so .note #8a8a8a measures against it at 3.45:1. A file that paints any other surface switches this tier off, which is why the case has its own fixture."
+    },
+    {
+      "file": "design/contrast-ground-clean.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Clean partner of contrast-ground.html: .note #6b6b6b at 5.33:1 on the page ground, and a 28px bold .display #8f8f8f at 3.23:1, which clears the large-text bar of 3:1 (the same colour at body size is the exemption's should-flag twin in rule-additions.test.mjs)."
     },
     {
       "file": "code/cast-to-any.ts",

@@ -1,3 +1,5 @@
+import { lowContrastHits } from "./design-detect.mjs";
+
 // ── Confidence classes ──
 // How sure the scanner is that a match is WRONG HERE, which is a different axis from
 // how much it would cost if it is (that is `severity`). The two never collapse: a
@@ -306,6 +308,14 @@ export const DESIGN_PATTERNS = [
   // image conveys. `alt=""` on a decorative image is correct and deliberately unmatched.
   { name: "outline-none", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\boutline\s*:\s*(?:none|0)\b/gi, unless: /:focus-visible|focus-visible:/, fix: "Replace the ring, never remove it: `:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }`", desc: "outline: none in a file that defines no :focus-visible ring" },
   { name: "missing-alt", severity: "medium", confidence: CONFIDENCE.HARD, mode: PRESENCE, pattern: /<img\s(?![^>]*\balt\s*=)[^>]*>|\balt\s*=\s*["'](?:image|photo|picture|icon|graphic|img)["']/gi, fix: "Write what the image conveys where it sits; `alt=\"\"` is correct for a decorative image, and deleting the element never is.", desc: "<img> with no alt, or a placeholder alt value" },
+  // Arithmetic, not a pattern: the pair's WCAG 2.x ratio on the surface the file declares
+  // for it (the block's own background, the exact ancestor block a descendant chain names,
+  // or the page ground when nothing else in the file paints). An unmeasured pair reports
+  // nothing. A ratio within 0.3 of its bar is the low-severity near-bar rule, so a hairline
+  // miss never reads like a 2:1 one; placeholder text is measured, and reports at near-bar
+  // when the file labels its fields. Tailwind colour utilities are not resolved.
+  { name: "low-contrast", severity: "high", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, hits: (ctx) => lowContrastHits(ctx).filter((h) => !h.near), fix: "Darken the text or the surface until the pair clears 4.5:1 (3:1 at 24px or 18.66px bold); keep the hue and move only the lightness.", desc: "Text below WCAG AA contrast on its declared surface (WCAG 1.4.3)" },
+  { name: "low-contrast-near-bar", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, hits: (ctx) => lowContrastHits(ctx).filter((h) => h.near), fix: "Move the lightness one more step so the pair clears its bar with margin; keep the hue and the surface.", desc: "Text within 0.3 of the WCAG AA contrast bar" },
   // A Hard defect because it is one: WCAG 1.4.4 requires text to scale to 200%, and a
   // viewport that blocks pinch zoom removes the only control a low-vision user has on a
   // phone. The remediation only ever DELETES the two attributes -- the viewport meta a

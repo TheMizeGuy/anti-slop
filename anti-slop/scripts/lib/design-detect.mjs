@@ -1369,3 +1369,121 @@ function pageGroundOf(ctx) {
   }
   return ground;
 }
+
+// ── Selector helpers for the detectors ──
+function normSelector(selector) {
+  return String(selector).replace(/\s+/g, " ").trim();
+}
+
+function selectorIndex(blocks) {
+  const map = new Map();
+  for (const b of blocks) if (!b.inline) map.set(normSelector(b.selector), b);
+  return map;
+}
+
+// The ancestors of a plain descendant chain, nearest first: `.card .body .meta` ->
+// [".card .body", ".card"]. Any other combinator or a selector list has none.
+function descendantAncestors(selector) {
+  const s = normSelector(selector);
+  if (s.includes(",") || /[>+~]/.test(s)) return [];
+  const parts = compoundsOf(s);
+  const out = [];
+  for (let k = parts.length - 1; k >= 1; k--) out.push(parts.slice(0, k).join(" "));
+  return out;
+}
+
+const DARK_SCOPE = /prefers-color-scheme\s*:\s*dark|^print$|\bprint\b/i;
+const DARK_SELECTOR = /(?:^|[\s.#[(:,-])dark(?![\w-])|data-(?:theme|mode|color-scheme)\s*=\s*["']?dark/i;
+
+// ── low-contrast and low-contrast-near-bar ──
+// WCAG 1.4.3 on declared surfaces only. A pair is measured when the text colour and its
+// surface are both known: the block's own background, the background of the exact block
+// its plain descendant chain names, or the page ground when nothing else in the file paints
+// a surface. Anything else is not measured, and no number is printed for it.
+const CONTRAST_SKIP = /:disabled\b|\[disabled\]|\[aria-disabled=["']?true|::?selection\b|::?marker\b|:visited\b|sr-only|visually-hidden|screen-reader/i;
+const CONTRAST_SKIP_SUBJECT = new Set(["svg", "path", "circle", "rect", "line", "polyline", "polygon", "hr", "img", "video", "canvas", "iframe"]);
+const STATE_PSEUDO = /:hover\b|:focus-visible\b|:focus-within\b|:focus\b|:active\b/g;
+const PLACEHOLDER = /::?placeholder\b/g;
+
+function surfaceFrom(bg, ground) {
+  if (!bg) return undefined;
+  if (bg.kind === "none") return undefined;
+  if (bg.kind !== "colour") return null;
+  if (bg.colour.a >= 0.99) return bg.colour;
+  return ground ? composite(bg.colour, ground) : null;
+}
+
+export function lowContrastHits(ctx) {
+  return memo(ctx, "lowContrast", () => {
+    const props = ctx.props;
+    const ground = ctx.pageGround;
+    const blocks = ctx.css.blocks.filter((b) => !b.selector.startsWith("@") && !inAtRule(b, DARK_SCOPE) && !DARK_SELECTOR.test(b.selector));
+    const bySelector = selectorIndex(blocks);
+    const groundOnly = Boolean(ground) && !blocks.some((b) => {
+      if (isRootSelector(b.selector) || /::?(?:selection|marker|placeholder)\b/i.test(b.selector)) return false;
+      const bg = backgroundOf(b, props);
+      if (!bg || bg.kind === "none") return false;
+      if (bg.kind !== "colour") return true;
+      return bg.colour.a >= 0.99 && toHex(bg.colour) !== toHex(ground);
+    });
+    const hasLabel = /<label\b/i.test(ctx.text);
+    const hits = [];
+    const seen = new Set();
+    for (const b of blocks) {
+      const sel = normSelector(b.selector);
+      if (CONTRAST_SKIP.test(sel)) continue;
+      if (CONTRAST_SKIP_SUBJECT.has(tagOfCompound(subjectOf(sel)) || "")) continue;
+      if (b.decls.some((d) => /^(?:-webkit-)?background-clip$/.test(d.prop) && /text/i.test(d.value))) continue;
+      const state = (sel.match(STATE_PSEUDO) || [])[0] || null;
+      const placeholder = PLACEHOLDER.test(sel);
+      PLACEHOLDER.lastIndex = 0;
+      const baseSel = state || placeholder ? normSelector(sel.replace(STATE_PSEUDO, "").replace(PLACEHOLDER, "")) : null;
+      const base = baseSel ? bySelector.get(baseSel) || null : null;
+      let colorEntry = declEntry(b, "color");
+      const ownBg = backgroundOf(b, props);
+      if (state && !colorEntry && !ownBg) continue;
+      if (state && !colorEntry && base) colorEntry = declEntry(base, "color");
+      if (!colorEntry) continue;
+      if (/^(?:transparent|currentcolor|inherit|initial|unset|revert)$/i.test(colorEntry.value.trim())) continue;
+      let fg = parseColor(resolveVars(colorEntry.value, props));
+      if (!fg || fg.a <= 0.02) continue;
+      let surface = surfaceFrom(ownBg, ground);
+      let source = "block";
+      if (surface === undefined && base) surface = surfaceFrom(backgroundOf(base, props), ground);
+      if (surface === undefined && !b.inline) {
+        for (const anc of descendantAncestors(baseSel || sel)) {
+          const a = bySelector.get(anc);
+          if (!a) continue;
+          const s = surfaceFrom(backgroundOf(a, props), ground);
+          if (s === undefined) continue;
+          surface = s;
+          source = "ancestor";
+          break;
+        }
+      }
+      if (surface === undefined && groundOnly) { surface = ground; source = "page ground"; }
+      if (!surface) continue;
+      if (fg.a < 1) fg = composite(fg, surface);
+      const size = fontSizePx(b, props) ?? (base ? fontSizePx(base, props) : undefined) ?? 16;
+      const weight = Math.max(fontWeight(b, props), base ? fontWeight(base, props) : 0);
+      const large = size >= 24 || (size >= 18.66 && weight >= 700);
+      const bar = large ? 3 : 4.5;
+      const ratio = contrastRatio(fg, surface);
+      if (ratio >= bar) continue;
+      const key = `${state ? "s" : "r"}${toHex(fg)}${toHex(surface)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const label = ratioLabel(ratio, bar);
+      const nearBar = (placeholder && hasLabel) || Number(label) >= (large ? 2.8 : 4.2);
+      const at = declEntry(b, "color") || (ownBg && ownBg.entry) || colorEntry;
+      const prefix = state ? `${state} state: ` : placeholder ? "placeholder: " : "";
+      hits.push({
+        line: at.line || b.line,
+        near: nearBar,
+        ratio,
+        evidence: `${prefix}${sel} ${label}:1 (need ${bar}:1), text ${toHex(fg)} on ${toHex(surface)} (${source})`,
+      });
+    }
+    return hits;
+  });
+}
