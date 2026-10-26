@@ -1,6 +1,7 @@
 import {
   lowContrastHits, sideStripeHits, textSizeFloorHits, tightLeadingHits, wideTrackingHits,
   justifiedNarrowHits, crushedTrackingHits, bounceEasingHits, pulsingDotHits,
+  classFreeLines, lineRegexHits, matchingClassSets, tailwindToken, isResting,
 } from "./design-detect.mjs";
 
 // ── Confidence classes ──
@@ -187,6 +188,64 @@ const MEDIA_CONTROL_GLYPH = {
   fix: "Use an icon component from the project's set with an accessible name, or a word: a labelled status reads better than a bare glyph.", desc: "Media-control text glyph used as a control (an icon belongs here)",
 };
 
+// ── Tailwind purple, read per class set ──
+// A purple utility is the palette only when it paints at rest: `hover:bg-indigo-500`, a
+// `/10` tint and a `focus:ring-violet-500` are states and washes, not the brand. A gradient's
+// from-/to- halves must share one class set and one ternary arm; two sibling elements on one
+// line are two elements. Outside class sources (an @apply line) the same vocabulary is
+// matched by token boundaries that refuse a variant prefix and an opacity suffix.
+const PURPLE_UTILITY = /^(?:bg|text|from|via|to|border|ring|fill|stroke|decoration|outline)-(?:indigo|violet|purple|fuchsia)-(?:400|500|600|700|800)$/;
+const PURPLE_UTILITY_TEXT = /(?<![\w:/-])(?:bg|text|from|via|to|border|ring|fill|stroke|decoration|outline)-(?:indigo|violet|purple|fuchsia)-(?:400|500|600|700|800)(?![\w/-])/gi;
+const PURPLE_RAMP_TEXT = /from-(indigo|purple|violet)-[45]00\s.*to-(indigo|purple|violet)-[56]00/i;
+const PURPLE_BLUE_TEXT = /from-(purple|violet|indigo|fuchsia)-\d+\s+(via-[a-z]+-\d+\s+)?to-(blue|indigo|pink|cyan|sky)-\d+/i;
+const PURPLE_HEX_GRADIENT = /linear-gradient\([^)]*#(6366f1|7c3aed|8b5cf6|a855f7)[^)]*\)/i;
+
+function restingBases(tokens) {
+  return tokens.map(tailwindToken).filter(isResting).map((t) => t.base);
+}
+
+function gradientSetHits(ctx, from, to) {
+  return matchingClassSets(ctx.classSets, (tokens) => {
+    const bases = restingBases(tokens);
+    return bases.some((b) => from.test(b)) && bases.some((b) => to.test(b));
+  }).map((set) => ({ line: set.line, evidence: set.tokens.filter((t) => /^(?:[\w-]+:)*(?:from|via|to)-/.test(t)).join(" ") }));
+}
+
+// A from-/via-/to- stop paints nothing unless its element also carries a gradient.
+const GRADIENT_DIRECTION = /^bg-(?:gradient|linear|radial|conic)(?:-|$)/;
+
+function aiPurpleClassHits(ctx) {
+  const bases = new Map();
+  for (const set of ctx.classSets) if (set.arm === null) bases.set(set.group, set.tokens);
+  const hits = [];
+  for (const set of ctx.classSets) {
+    const element = set.arm === null ? set.tokens : [...(bases.get(set.group) || []), ...set.tokens];
+    const gradient = restingBases(element).some((b) => GRADIENT_DIRECTION.test(b));
+    for (const raw of set.tokens) {
+      const t = tailwindToken(raw);
+      if (!isResting(t) || !PURPLE_UTILITY.test(t.base)) continue;
+      if (/^(?:from|via|to)-/.test(t.base) && !gradient) continue;
+      hits.push({ line: set.line, evidence: raw });
+    }
+  }
+  return [...hits, ...lineRegexHits(classFreeLines(ctx), PURPLE_UTILITY_TEXT)];
+}
+
+function purpleRampHits(ctx) {
+  return [
+    ...gradientSetHits(ctx, /^from-(?:indigo|purple|violet)-[45]00$/, /^to-(?:indigo|purple|violet)-[56]00$/),
+    ...lineRegexHits(classFreeLines(ctx), PURPLE_RAMP_TEXT),
+  ];
+}
+
+function purpleBlueHits(ctx) {
+  return [
+    ...gradientSetHits(ctx, /^from-(?:purple|violet|indigo|fuchsia)-\d+$/, /^to-(?:blue|indigo|pink|cyan|sky)-\d+$/),
+    ...lineRegexHits(classFreeLines(ctx), PURPLE_BLUE_TEXT),
+    ...lineRegexHits(ctx.lines, PURPLE_HEX_GRADIENT),
+  ];
+}
+
 // ── UI Design Patterns (WEB surfaces only -- see WEB_SURFACE_EXTENSIONS) ──
 // Ordered roughly by empirical signal where a corpus ranking exists. Severity reflects that
 // ranking: shadcn-default / purple / gradients are the strongest; the rest are lighter.
@@ -209,12 +268,12 @@ const MEDIA_CONTROL_GLYPH = {
 // suppress guard, both of which exist for exactly that reason), and no `fix` may propose it.
 export const DESIGN_PATTERNS = [
   MEDIA_CONTROL_GLYPH,
-  { name: "purple-gradient-default", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /from-(indigo|purple|violet)-[45]00\s.*to-(indigo|purple|violet)-[56]00/i, fix: "Pick the ramp from the project's own palette, or use one flat surface colour; a restaurant site does not need tech-purple.", desc: "Purple/indigo gradient (Tailwind AI default)" },
-  { name: "purple-blue-gradient", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /from-(purple|violet|indigo|fuchsia)-\d+\s+(via-[a-z]+-\d+\s+)?to-(blue|indigo|pink|cyan|sky)-\d+|linear-gradient\([^)]*#(6366f1|7c3aed|8b5cf6|a855f7)[^)]*\)/i, fix: "Choose the gradient from the brand's palette, or carry the section with one flat accent instead of the ramp nobody chose.", desc: "Purple-to-blue/pink gradient" },
+  { name: "purple-gradient-default", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: purpleRampHits, fix: "Pick the ramp from the project's own palette, or use one flat surface colour; a restaurant site does not need tech-purple.", desc: "Purple/indigo gradient (Tailwind AI default)" },
+  { name: "purple-blue-gradient", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: purpleBlueHits, fix: "Choose the gradient from the brand's palette, or carry the section with one flat accent instead of the ramp nobody chose.", desc: "Purple-to-blue/pink gradient" },
   // Hex and utility-class purple are property-level: the tell is "indigo IS the palette",
   // which one stray declaration does not establish.
   { name: "ai-purple-hex", severity: "low", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, pattern: /#(6366f1|4f46e5|818cf8|7c3aed|6d28d9|8b5cf6|a855f7|9333ea|7e22ce|c026d3|d946ef)\b/i, fix: "Replace the indigo/violet hexes with the project's brand tokens, chosen for what the product is rather than the framework default.", desc: "AI purple (indigo/violet hex as brand color)" },
-  { name: "ai-purple-class", severity: "medium", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, pattern: /\b(bg|text|from|via|to|border|ring|fill|stroke|decoration|outline)-(indigo|violet|purple|fuchsia)-(400|500|600|700|800)\b/i, fix: "Name the primary in the project's own palette and use its token class; indigo-500 is the colour nobody chose.", desc: "AI purple as primary (Tailwind indigo/violet/purple class)" },
+  { name: "ai-purple-class", severity: "medium", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, hits: aiPurpleClassHits, fix: "Name the primary in the project's own palette and use its token class; indigo-500 is the colour nobody chose.", desc: "AI purple as primary (Tailwind indigo/violet/purple class)" },
   // Same "unchosen palette" logic, different framework: these three hexes are Bootstrap 5's
   // COMPILED literals ($primary #0d6efd, its hover darken #0b5ed7, $gray-300 border
   // #dee2e6). They reach shipped CSS only by leaving Bootstrap unthemed, and two of them

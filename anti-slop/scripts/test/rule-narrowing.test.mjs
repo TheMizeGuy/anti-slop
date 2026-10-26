@@ -180,3 +180,38 @@ test("native: a one-shot symbol effect is NOT a finding", () => {
   const swift = 'Image(systemName: "checkmark").symbolEffect(.bounce, value: saved)';
   assert.ok(!fires("repeating-symbol-effect", swift, "SaveButton.swift"));
 });
+
+// ── Purple class rules read resting utilities in one class set (2.5.0) ───────
+// A hover or focus purple, a /10 tint, and two halves of a gradient split across sibling
+// elements were all counted through 2.4.0. Breakpoints and dark: still paint at rest.
+
+test("ai-purple-class and purple-gradient-default: states, tints and sibling halves are not the palette", () => {
+  const html = '<button class="hover:bg-indigo-500 text-white">One</button><button class="focus:ring-violet-500 text-white">Two</button>\n' +
+    '<div class="bg-indigo-500/10 p-4">Tint</div><div class="bg-violet-600/5 p-4">Tint</div>\n' +
+    '<span class="from-indigo-500 x"></span><span class="to-violet-600">x</span>';
+  const got = names(html, "state-variant.html");
+  assert.ok(!got.includes("ai-purple-class") && !got.includes("purple-gradient-default"), JSON.stringify(got));
+});
+
+test("ai-purple-class: breakpoint and dark: variants still paint at rest", () => {
+  const v = scanContent('<div class="md:bg-indigo-600 dark:text-violet-400">x</div>', "a.html").find((x) => x.name === "ai-purple-class");
+  assert.equal(v && v.count, 2);
+  assert.equal(scanContent('<div class="bg-violet-600 hover:bg-violet-700">x</div><p class="text-violet-600">y</p>', "a.html").find((x) => x.name === "ai-purple-class").count, 2,
+    "the resting tokens count and the hover one does not");
+  assert.equal(scanContent('<a class="bg-gradient-to-r from-indigo-500 to-violet-600">x</a>', "a.html").find((x) => x.name === "ai-purple-class").count, 2,
+    "gradient stops count beside the gradient they paint");
+  assert.ok(!fires("ai-purple-class", '<i class="from-indigo-500"></i><i class="to-violet-600"></i>', "a.html"), "a stop with no gradient paints nothing");
+});
+
+test("ai-purple-class: an @apply line outside markup is read with token boundaries", () => {
+  assert.ok(fires("ai-purple-class", ".btn { @apply bg-indigo-600 text-violet-500; }", "app.css"));
+  assert.ok(!fires("ai-purple-class", ".btn { @apply hover:bg-indigo-600 bg-indigo-600/10; }", "app.css"));
+});
+
+test("purple gradients: both halves in one class set and one arm fire, split halves do not", () => {
+  assert.ok(fires("purple-gradient-default", '<a class="bg-gradient-to-r from-indigo-500 to-violet-600">x</a>', "a.html"));
+  assert.ok(!fires("purple-gradient-default", '<a className={on ? "from-indigo-500" : "to-violet-600"} />', "A.tsx"));
+  assert.ok(fires("purple-blue-gradient", '<h1 class="to-blue-500 from-purple-600">x</h1>', "a.html"), "order-free inside one set");
+  assert.ok(!fires("purple-blue-gradient", '<i class="from-purple-600"></i><i class="to-blue-500"></i>', "a.html"));
+  assert.ok(fires("purple-blue-gradient", ".hero { background: linear-gradient(135deg, #6366f1, #8b5cf6); }", "a.css"), "the hex half is unchanged");
+});

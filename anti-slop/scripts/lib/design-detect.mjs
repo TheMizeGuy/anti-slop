@@ -898,6 +898,44 @@ export function cssBlocks(text, ext, lineOf = lineIndex(text)) {
   return { blocks: out.blocks.filter((b) => b.decls.length > 0), keyframes };
 }
 
+// ── Class tokens and the text outside class sources ──
+// classTokenHits(ctx, test): one hit per token, in its own set, whose parsed tailwindToken
+// passes `test`. classFreeLines(ctx): the prepared text with every class source blanked,
+// split into lines, for the same vocabulary written outside markup (an @apply line).
+// lineRegexHits(lines, re): one hit per match.
+export function classTokenHits(ctx, test) {
+  const hits = [];
+  for (const set of ctx.classSets) for (const t of set.tokens) if (test(tailwindToken(t))) hits.push({ line: set.line, evidence: t });
+  return hits;
+}
+
+export function classFreeLines(ctx) {
+  return memo(ctx, "classFreeLines", () => {
+    const chars = ctx.text.split("");
+    const seen = new Set();
+    for (const set of ctx.classSets) {
+      if (seen.has(set.group)) continue;
+      seen.add(set.group);
+      blank(chars, set.start, set.end);
+    }
+    return chars.join("").split("\n");
+  });
+}
+
+export function lineRegexHits(lines, re) {
+  const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : `${re.flags}g`);
+  const hits = [];
+  lines.forEach((line, i) => {
+    for (const m of line.matchAll(g)) hits.push({ line: i + 1, evidence: m[0] });
+  });
+  return hits;
+}
+
+// A utility that paints at rest: no state variant and no opacity tint.
+export function isResting(t) {
+  return !t.opacity && !t.variants.some(isStateVariant);
+}
+
 // ── Custom properties ──
 const ROOT_SELECTOR = /^(?::root|html|body|\*|:host)$/i;
 
