@@ -1487,3 +1487,243 @@ export function lowContrastHits(ctx) {
     return hits;
   });
 }
+
+// ── side-stripe-accent ──
+// A coloured stripe on one side of a card, whatever draws it: a side border, an absolute
+// ::before/::after bar, an inset side shadow, a JSX style object, or a Tailwind border-l-N.
+// Square boxes count too (a thicker bar is needed, 3px). Selection and live-region edges are
+// substance, not decoration, and are exempt; so are controls, table parts, list items and
+// inline text, which carry side rules for their own reasons.
+const STRIPE_EXEMPT_TAGS = new Set(["a", "button", "input", "select", "textarea", "option", "pre", "code", "kbd", "span", "th", "td", "tr", "table", "li", "hr", "nav", "summary", "img", "svg", "html", "body"]);
+const STRIPE_STATE = /:hover\b|:focus\b|:focus-visible\b|:active\b|\[aria-selected|\[aria-current|\[role=["']?(?:status|alert|alertdialog|log)\b|\[aria-live|\.(?:is-)?(?:active|current|selected)(?![\w-])/i;
+const NEUTRAL_KEYWORD = /^(?:transparent|currentcolor|inherit|initial|unset|white|black|silver|gainsboro|whitesmoke|(?:dark|light|dim|slate|lightslate|darkslate)?gr[ae]y)$/i;
+const BORDER_STYLES = new Set(["none", "hidden", "solid", "double", "dotted", "dashed", "groove", "ridge", "inset", "outset"]);
+const BORDER_WIDTH_KEYWORD = { thin: 1, medium: 3, thick: 5 };
+
+// true = neutral (clears the hit), false = chromatic, null = unknown (keeps the hit).
+function colourNeutral(token, props) {
+  if (token === undefined || token === null) return null;
+  const t = resolveVars(String(token), props).trim();
+  if (NEUTRAL_KEYWORD.test(t)) return true;
+  const c = parseColor(t);
+  if (!c) return null;
+  return c.a < 0.1 || rgbSpread(c) < 30;
+}
+
+function parseBorderValue(value, props) {
+  const out = { width: undefined, style: undefined, colour: undefined };
+  for (const tok of splitOutside(resolveVars(value, props), " ")) {
+    const t = tok.toLowerCase();
+    if (BORDER_STYLES.has(t)) out.style = t;
+    else if (BORDER_WIDTH_KEYWORD[t] !== undefined) out.width = BORDER_WIDTH_KEYWORD[t];
+    else if (lengthPx(t, props) !== undefined) out.width = lengthPx(t, props);
+    else out.colour = tok;
+  }
+  return out;
+}
+
+function expandBox(value, props, read) {
+  const parts = splitOutside(resolveVars(value, props), " ").map(read);
+  const [t, r = t, b = t, l = r] = parts;
+  return { top: t, right: r, bottom: b, left: l };
+}
+
+const SIDE_OF = { left: "left", right: "right", top: "top", bottom: "bottom", "inline-start": "left", "inline-end": "right", "block-start": "top", "block-end": "bottom" };
+
+// The final width, style and colour of each border side after every declaration in order.
+function borderSides(block, props) {
+  const sides = {};
+  for (const s of ["top", "right", "bottom", "left"]) sides[s] = { width: 0, style: "none", colour: undefined, line: block.line };
+  let at = block.line;
+  const apply = (names, parsed) => {
+    for (const n of names) {
+      sides[n].line = at;
+      if (parsed.width !== undefined) sides[n].width = parsed.width;
+      if (parsed.style !== undefined) sides[n].style = parsed.style;
+      if (parsed.colour !== undefined) sides[n].colour = parsed.colour;
+    }
+  };
+  for (const d of block.decls) {
+    const p = d.prop;
+    at = d.line;
+    let m;
+    if (p === "border") {
+      const v = parseBorderValue(d.value, props);
+      apply(["top", "right", "bottom", "left"], { width: v.width ?? 3, style: v.style ?? "none", colour: v.colour ?? null });
+    } else if (p === "border-width") {
+      const box = expandBox(d.value, props, (t) => lengthPx(t, props) ?? BORDER_WIDTH_KEYWORD[t] ?? 0);
+      for (const s of Object.keys(box)) sides[s].width = box[s];
+    } else if (p === "border-style") {
+      const box = expandBox(d.value, props, (t) => t.toLowerCase());
+      for (const s of Object.keys(box)) sides[s].style = box[s];
+    } else if (p === "border-color") {
+      const box = expandBox(d.value, props, (t) => t);
+      for (const s of Object.keys(box)) sides[s].colour = box[s];
+    } else if (p === "border-inline" || p === "border-block") {
+      const v = parseBorderValue(d.value, props);
+      apply(p === "border-inline" ? ["left", "right"] : ["top", "bottom"], { width: v.width ?? 3, style: v.style ?? "none", colour: v.colour ?? null });
+    } else if ((m = /^border-(left|right|top|bottom|inline-start|inline-end|block-start|block-end)$/.exec(p))) {
+      const v = parseBorderValue(d.value, props);
+      apply([SIDE_OF[m[1]]], { width: v.width ?? 3, style: v.style ?? "none", colour: v.colour ?? null });
+    } else if ((m = /^border-(left|right|top|bottom|inline-start|inline-end|block-start|block-end)-(width|style|color)$/.exec(p))) {
+      const s = sides[SIDE_OF[m[1]]];
+      s.line = d.line;
+      const v = resolveVars(d.value, props).trim();
+      if (m[2] === "width") s.width = lengthPx(v, props) ?? BORDER_WIDTH_KEYWORD[v.toLowerCase()] ?? s.width;
+      else if (m[2] === "style") s.style = v.toLowerCase();
+      else s.colour = v;
+    }
+  }
+  return sides;
+}
+
+// Corner radii in px; undefined where a corner cannot be read (var(), calc(), unknown).
+function cornerRadii(block, props) {
+  const r = { tl: null, tr: null, br: null, bl: null };
+  const read = (t) => {
+    const v = String(t).trim();
+    if (/^\d*\.?\d+%$/.test(v)) return parseFloat(v) > 0 ? 999 : 0;
+    const px = lengthPx(v, props);
+    return px === undefined ? undefined : px;
+  };
+  for (const d of block.decls) {
+    if (d.prop === "border-radius") {
+      const [t, rr = t, b = t, l = rr] = splitOutside(resolveVars(d.value, props).split("/")[0], " ").map(read);
+      Object.assign(r, { tl: t, tr: rr, br: b, bl: l });
+    }
+    const m = /^border-(top|bottom|start|end)-(left|right|start|end)-radius$/.exec(d.prop);
+    if (m) {
+      const key = { "top-left": "tl", "top-right": "tr", "bottom-right": "br", "bottom-left": "bl", "start-start": "tl", "start-end": "tr", "end-end": "br", "end-start": "bl" }[`${m[1]}-${m[2]}`];
+      r[key] = read(splitOutside(resolveVars(d.value, props), " ")[0] || "");
+    }
+  }
+  return r;
+}
+
+// "rounded" | "square" | "unknown" for the two corners away from the stripe side. An
+// unknown radius is not evidence of a square box, and is treated as rounded.
+function farCorners(block, props, side) {
+  const r = cornerRadii(block, props);
+  const far = side === "left" ? [r.tr, r.br] : [r.tl, r.bl];
+  if (far.every((v) => v === null)) return { shape: "unknown" };
+  if (far.some((v) => v === undefined || v === null)) return { shape: "unknown" };
+  return far.every((v) => v >= 4) ? { shape: "rounded", px: Math.min(...far) } : { shape: "square" };
+}
+
+function stripeExempt(selector, extraTags) {
+  const list = splitSelectorList(selector);
+  return list.every((sel) => {
+    if (STRIPE_STATE.test(sel)) return true;
+    const tag = tagOfCompound(subjectOf(sel.replace(/::?(?:before|after)\b/g, "")));
+    return (tag && (STRIPE_EXEMPT_TAGS.has(tag) || (extraTags && extraTags.has(tag)))) || false;
+  });
+}
+
+const PSEUDO_HOST_EXEMPT = new Set(["pre", "code", "nav", "hr"]);
+const STRIPE_SHAPE = (shape, px) => (shape === "square" ? "a square box" : shape === "rounded" ? `a rounded card (${px}px)` : "a card");
+
+function stripeFromBorders(b, props) {
+  const sides = borderSides(b, props);
+  for (const side of ["left", "right"]) {
+    const s = sides[side];
+    if (!(s.width >= 2) || (s.style !== "solid" && s.style !== "double")) continue;
+    const others = ["top", "bottom", side === "left" ? "right" : "left"].map((k) => (sides[k].style === "none" || sides[k].style === "hidden" ? 0 : sides[k].width));
+    const widest = Math.max(...others);
+    if (!(widest <= 1 || s.width >= 2 * widest)) continue;
+    if (colourNeutral(s.colour, props) === true) continue;
+    const corner = farCorners(b, props, side);
+    if (corner.shape === "square" && s.width < 3) continue;
+    const colourText = s.colour ? ` ${resolveVars(String(s.colour), props).trim()}` : "";
+    return { line: s.line, evidence: `border-${side}: ${s.width}px ${s.style}${colourText} on ${STRIPE_SHAPE(corner.shape, corner.px)}` };
+  }
+  return null;
+}
+
+function stripeFromPseudo(b, props) {
+  if (!/::?(?:before|after)\b/.test(b.selector)) return null;
+  const hosts = splitSelectorList(b.selector).map((s) => tagOfCompound(subjectOf(s.replace(/::?(?:before|after)\b/g, ""))));
+  if (hosts.length && hosts.every((h) => h && PSEUDO_HOST_EXEMPT.has(h))) return null;
+  if (!/^(?:absolute|fixed)$/i.test(String(decl(b, "position") || "").trim())) return null;
+  const w = lengthPx(decl(b, "width"), props);
+  if (!(w >= 3 && w <= 12)) return null;
+  const inset = decl(b, "inset") !== undefined;
+  const top = lengthPx(decl(b, "top"), props);
+  const bottom = lengthPx(decl(b, "bottom"), props);
+  const fullHeight = inset || (top !== undefined && bottom !== undefined && top >= 0 && top <= 20 && bottom >= 0 && bottom <= 20) || /^100%$/.test(String(decl(b, "height") || "").trim());
+  const atSide = inset || lengthPx(decl(b, "left"), props) === 0 || lengthPx(decl(b, "right"), props) === 0 || lengthPx(decl(b, "inset-inline-start"), props) === 0;
+  if (!fullHeight || !atSide) return null;
+  const bg = backgroundOf(b, props);
+  if (!bg || bg.kind !== "colour") return null;
+  if (colourNeutral(toHex(bg.colour), props) === true || bg.colour.a < 0.1) return null;
+  return { line: bg.entry.line, evidence: `${subjectOf(b.selector).match(/::?(?:before|after)/)[0]} ${w}px bar ${toHex(bg.colour)}` };
+}
+
+function stripeFromInsetShadow(b, props) {
+  const w = lengthPx(decl(b, "width"), props);
+  if (w !== undefined && w <= 40) return null;
+  for (const d of b.decls) {
+    if (d.prop !== "box-shadow" && d.prop !== "-webkit-box-shadow") continue;
+    for (const layer of splitOutside(resolveVars(d.value, props), ",")) {
+      const toks = splitOutside(layer, " ");
+      if (!toks.some((t) => t.toLowerCase() === "inset")) continue;
+      const lengths = [];
+      let colour;
+      for (const t of toks) {
+        if (t.toLowerCase() === "inset") continue;
+        const px = lengthPx(t, props);
+        if (px !== undefined) lengths.push(px);
+        else colour = t;
+      }
+      const [x = 0, y = 0, blur = 0, spread = 0] = lengths;
+      if (Math.abs(x) < 3 || Math.abs(x) > 12 || y !== 0 || blur !== 0 || spread !== 0) continue;
+      if (colourNeutral(colour, props) === true) continue;
+      return { line: d.line, evidence: `inset ${Math.abs(x)}px side shadow${colour ? ` ${colour}` : ""}` };
+    }
+  }
+  return null;
+}
+
+const TW_SIDE = /^border-([lrse])-(?:(\d+)|\[(\d+(?:\.\d+)?)px\])$/;
+const TW_STRIPE_COLOUR = /^border-(?:[lrse]-)?(?:([a-z]+)-(\d{2,3})|(primary|accent|brand|success|warning|danger|info)|\[#[0-9a-f]{3,8}\])$/i;
+const TW_NEUTRAL_FAMILY = /^(?:gray|grey|slate|zinc|neutral|stone)$/i;
+const TW_STRIPE_TAG_EXEMPT = new Set(["a", "button", "input", "li", "td", "th", "tr", "nav"]);
+
+function stripeFromClassSet(set) {
+  if (set.tag && TW_STRIPE_TAG_EXEMPT.has(set.tag)) return null;
+  const toks = set.tokens.map(tailwindToken);
+  if (toks.some((t) => t.base === "animate-spin")) return null;
+  let side = null;
+  let n = 0;
+  let raw = "";
+  for (const t of toks) {
+    if (t.variants.some(isStateVariant)) continue;
+    const m = TW_SIDE.exec(t.base);
+    if (m) { side = m[1]; n = Number(m[2] ?? m[3]); raw = t.base; }
+  }
+  if (!side) return null;
+  const colour = toks.find((t) => !t.variants.some(isStateVariant) && TW_STRIPE_COLOUR.test(t.base) && !TW_SIDE.test(t.base));
+  if (!colour) return null;
+  const cm = TW_STRIPE_COLOUR.exec(colour.base);
+  if (cm[1] && TW_NEUTRAL_FAMILY.test(cm[1])) return null;
+  const farSide = side === "l" || side === "s" ? /^rounded-(?:r|e|tr|br|te|be)(?:-|$)/ : /^rounded-(?:l|s|tl|bl|ts|bs)(?:-|$)/;
+  const rounded = toks.some((t) => /^rounded(?:-(?:sm|md|lg|xl|2xl|3xl|\[[^\]]+\]))?$/.test(t.base) || farSide.test(t.base));
+  if (n < (rounded ? 2 : 4)) return null;
+  return `${raw} ${colour.base}${rounded ? " on a rounded card" : ""}`;
+}
+
+export function sideStripeHits(ctx) {
+  return memo(ctx, "sideStripe", () => {
+    const props = ctx.props;
+    const hits = [];
+    for (const b of ctx.css.blocks) {
+      if (b.selector.startsWith("@") || stripeExempt(b.selector)) continue;
+      const found = stripeFromPseudo(b, props) || stripeFromBorders(b, props) || stripeFromInsetShadow(b, props);
+      if (found) hits.push({ line: found.line, evidence: `${normSelector(b.selector)}: ${found.evidence}` });
+    }
+    for (const set of ctx.effectiveSets) {
+      const evidence = stripeFromClassSet(set);
+      if (evidence) hits.push({ line: set.line, evidence });
+    }
+    return hits;
+  });
+}

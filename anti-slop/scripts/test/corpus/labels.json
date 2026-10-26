@@ -1246,6 +1246,27 @@
       "note": "Clean partner of contrast-ground.html: .note #6b6b6b at 5.33:1 on the page ground, and a 28px bold .display #8f8f8f at 3.23:1, which clears the large-text bar of 3:1 (the same colour at body size is the exemption's should-flag twin in rule-additions.test.mjs)."
     },
     {
+      "file": "design/side-stripe-cards.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "side-stripe-accent",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        }
+      ],
+      "note": "Positive for side-stripe-accent (anti-slop 2.5.0): one stripe per producer. A 4px border-left on a rounded card, a 3px border-inline-start on a blockquote with no radius (unknown radius keeps the finding), a 4px absolute ::before bar, an inset 4px side shadow, and a rounded-xl border-l-4 border-teal-600 class set. Radii go through --radius."
+    },
+    {
+      "file": "design/side-stripe-clean.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Clean partner of side-stripe-cards.html, one step from each producer: a neutral 2px rule on timeline list items, a selected tab's edge, a live region's severity edge, a uniform 1px card border, a 1px divider, a bottom-border spinner (role=status with a hidden label), and border-l-4 on a button and on a table cell."
+    },
+    {
       "file": "code/cast-to-any.ts",
       "modality": "code",
       "role": "positive",

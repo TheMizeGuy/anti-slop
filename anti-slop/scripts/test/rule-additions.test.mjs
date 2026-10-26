@@ -761,3 +761,57 @@ test("low-contrast: one finding per colour pair, and a waived line drops its hit
   const hatched = page("body { background: #fff }\n.a { background: #fff; color: #aaa } /* anti-slop-allow: brand grey */");
   assert.deepEqual(contrast(hatched), []);
 });
+
+// ── side-stripe-accent (2.5.0) ───────────────────────────────────────────────
+
+const stripe = (content, path = "page.html") => scanContent(content, path).filter((v) => v.name === "side-stripe-accent");
+
+test("side-stripe-accent: every producer in the positive fires, and the partner is silent", () => {
+  const [v] = stripe(corpus("design/side-stripe-cards.html"));
+  assert.equal(v.count, 5);
+  assert.deepEqual(v.lines, [11, 12, 14, 15, 25]);
+  assert.deepEqual(stripe(corpus("design/side-stripe-clean.html")), []);
+});
+
+test("side-stripe-accent: exempt subjects and states, each beside the twin it must not swallow", () => {
+  const css = (rule) => page(rule);
+  assert.deepEqual(stripe(css(".timeline li { border-left: 3px solid #0f766e }")), [], "a list item");
+  assert.equal(stripe(css(".timeline div { border-left: 3px solid #0f766e }")).length, 1, "the same rule on a div");
+  assert.deepEqual(stripe(css('.tabs [aria-selected="true"] { border-left: 3px solid #0f766e }')), [], "a selected tab");
+  assert.equal(stripe(css(".tabs .item { border-left: 3px solid #0f766e }")).length, 1, "the same edge with no selection state");
+  assert.deepEqual(stripe(css('[role="alert"] { border-left: 4px solid #b91c1c }')), [], "a live region");
+  assert.equal(stripe(css(".alert { border-left: 4px solid #b91c1c }")).length, 1, "a class named alert is not a live region");
+  assert.deepEqual(stripe('<button class="border-l-4 border-teal-600">x</button>'), [], "a control");
+  assert.equal(stripe('<div class="border-l-4 border-teal-600">x</div>').length, 1, "the same classes on a div");
+});
+
+test("side-stripe-accent: neutral, hairline and evenly framed borders are not stripes", () => {
+  assert.deepEqual(stripe(page(".a { border-left: 4px solid #d4d4d8 }")), [], "neutral grey");
+  assert.equal(stripe(page(".a { border-left: 4px solid #0f766e }")).length, 1, "chromatic");
+  assert.deepEqual(stripe(page(".a { border-left: 1px solid #0f766e }")), [], "a 1px rule");
+  assert.deepEqual(stripe(page(".a { border: 2px solid #0f766e; border-left-width: 3px }")), [], "not dominant over the other sides");
+  assert.equal(stripe(page(".a { border: 1px solid #e5e7eb; border-left: 4px solid #0f766e }")).length, 1, "a hairline frame with a thick coloured side");
+  assert.equal(stripe(page(".a { border-left: 4px solid var(--accent) }")).length, 1, "an unknown colour keeps the finding");
+});
+
+test("side-stripe-accent: a square box needs 3px, a rounded or unknown radius 2px", () => {
+  assert.deepEqual(stripe(page(".a { border-radius: 0; border-left: 2px solid #0f766e }")), []);
+  assert.equal(stripe(page(".a { border-radius: 0; border-left: 3px solid #0f766e }")).length, 1);
+  assert.equal(stripe(page(".a { border-radius: 8px; border-left: 2px solid #0f766e }")).length, 1);
+  assert.equal(stripe(page(".a { border-left: 2px solid #0f766e }")).length, 1, "no radius is unknown, not square");
+});
+
+test("side-stripe-accent: pseudo bars, inset shadows, style objects and border-l-N", () => {
+  const bar = ".f { position: relative } .f::before { content: \"\"; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #0f766e }";
+  assert.equal(stripe(page(bar)).length, 1);
+  assert.deepEqual(stripe(page(bar.replace("width: 4px", "width: 24px"))), [], "a wide block is not a bar");
+  assert.deepEqual(stripe(page("pre::before { content: \"\"; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #0f766e }")), [], "a code block's gutter");
+  assert.equal(stripe(page(".p { box-shadow: inset 4px 0 0 #0f766e }")).length, 1);
+  assert.deepEqual(stripe(page(".p { box-shadow: inset 0 4px 0 #0f766e }")), [], "a top band is not a side stripe");
+  assert.deepEqual(stripe(page(".p { width: 32px; box-shadow: inset 4px 0 0 #0f766e }")), [], "a small control");
+  assert.equal(stripe('export const C = () => <div style={{ borderLeft: "4px solid #0f766e", borderRadius: 12 }}>x</div>;', "C.tsx").length, 1);
+  assert.deepEqual(stripe('<div class="border-l-2 border-teal-600">x</div>'), [], "border-l-2 on a square box");
+  assert.equal(stripe('<div class="rounded-lg border-l-2 border-teal-600">x</div>').length, 1, "border-l-2 on a rounded card");
+  assert.deepEqual(stripe('<div class="border-l-4 border-slate-300">x</div>'), [], "a neutral Tailwind border");
+  assert.deepEqual(stripe('<div class="hover:border-l-4 border-teal-600">x</div>'), [], "a hover-only stripe is state");
+});

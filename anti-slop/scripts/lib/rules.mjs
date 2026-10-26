@@ -1,4 +1,4 @@
-import { lowContrastHits } from "./design-detect.mjs";
+import { lowContrastHits, sideStripeHits } from "./design-detect.mjs";
 
 // ── Confidence classes ──
 // How sure the scanner is that a match is WRONG HERE, which is a different axis from
@@ -247,6 +247,11 @@ export const DESIGN_PATTERNS = [
   { name: "frosted-glass-nav", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, classAll: [/^backdrop-blur(-[a-z0-9]+)?$/, /^bg-white\/\d+$/, "border-b"], fix: "Vary the nav height and keep the blur only where the layered transparency serves the hierarchy; a solid bar or a sidebar is often the better nav.", desc: "Frosted glass navigation bar" },
   { name: "shadow-border-rounded-combo", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, classAll: ["shadow-sm", /^border(-[a-z]+-\d+)?$/, "rounded-xl"], fix: "Theme the card: set the border colour, radius and shadow to project tokens instead of shipping the library's default trio on every surface.", desc: "shadow-sm + border + rounded-xl AI card combo" },
   { name: "neon-glow", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /shadow-\[0_0_|drop-shadow-\[0_0_|box-shadow\s*:[^;]*\b0\s+0\s+\d{2,}px/i, fix: "Carry elevation the way the platform does, with a lighter surface and a real shadow scale: `background: var(--surface-2)` plus a 1px shadow.", desc: "Unprompted neon glow (dark-mode tell)" },
+  // One threshold whatever draws the stripe: a side border, an absolute ::before bar, an
+  // inset side shadow, a style object or border-l-N. Square boxes count from 3px (the
+  // catalogue bans the coloured left border on any box); selection and live-region edges,
+  // controls, list items and table cells are exempt, because there the edge is substance.
+  { name: "side-stripe-accent", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: sideStripeHits, fix: "Carry the emphasis with a surface tint, a heading or real selection state; a coloured edge on one side of a card reads as the generated default.", desc: "Coloured accent stripe on one side of a card (side tab)" },
   // "Maximal rounding on EVERYTHING": the tell is the uniform treatment across a surface,
   // not any single rounded corner. Below three the floor rule applies -- a lone
   // `rounded-full` on an icon wrapper is not "the same radius on every control".
