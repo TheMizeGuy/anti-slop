@@ -641,6 +641,14 @@
       "recall": 1
     },
     {
+      "rule": "radial-halo",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "repeating-symbol-effect",
       "tp": 1,
       "fp": 0,
@@ -876,7 +884,7 @@
     },
     {
       "modality": "design",
-      "tp": 68,
+      "tp": 69,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -900,10 +908,10 @@
     }
   ],
   "overall": {
-    "tp": 134,
+    "tp": 135,
     "fp": 0,
     "fn": 1,
     "precision": 1,
-    "recall": 0.9925925925925926
+    "recall": 0.9926470588235294
   }
 }

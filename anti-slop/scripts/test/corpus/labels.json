@@ -1410,6 +1410,27 @@
       "note": "Clean partner of pattern-backgrounds.html: one tiled hairline (a ruled-paper rule, not a grid), a repeating gradient that runs its whole length and paints once, and a plain two-colour gradient."
     },
     {
+      "file": "design/radial-halo.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "radial-halo",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        }
+      ],
+      "note": "Positive for radial-halo (anti-slop 2.5.0): on a #0b0b10 page, the hero sits on a cyan radial gradient that starts at 0.8 alpha and fades to transparent."
+    },
+    {
+      "file": "design/radial-halo-clean.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Clean partner of radial-halo.html, on the same dark page: a translucent wash (first stop at 0.3 alpha) and a single untiled radial gradient with a 1px stop (a spot, not a halo, and not a tiled dot field). The same halo on a light page is the should-pass twin in rule-additions.test.mjs."
+    },
+    {
       "file": "code/cast-to-any.ts",
       "modality": "code",
       "role": "positive",

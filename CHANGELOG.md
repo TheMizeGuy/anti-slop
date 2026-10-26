@@ -48,6 +48,8 @@ that decides a combination or a repetition after the escape hatch has dropped it
 - `background-pattern` (low, Pattern smell): a hairline grid or a dot field on a px tile, or
   repeating stripes that stop short of their full length. `technical-mono.html`'s engineering
   grid is its stated surface and carries the scoped waiver.
+- `radial-halo` (low, Pattern smell): a saturated radial glow fading to transparent behind a
+  section of a dark page.
 
 **Rules that fired where they should not, narrowed:**
 
@@ -122,8 +124,8 @@ document is the finding. `choosing-with-intent.md` documents the scoped waiver.
 
 | | Before (2.4.0) | After (2.5.0) |
 |---|--:|--:|
-| True positives / false positives / false negatives | 120 / 0 / 1 | 134 / 0 / 1 |
-| Design modality true positives | 54 | 68 |
+| True positives / false positives / false negatives | 120 / 0 / 1 | 135 / 0 / 1 |
+| Design modality true positives | 54 | 69 |
 | Precision / recall | 100.0% / 99.2% | 100.0% / 99.2% |
 
 `baseline.json` was regenerated with a row for each new rule; no existing row moved. Over

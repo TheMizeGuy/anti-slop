@@ -1115,3 +1115,16 @@ test("background-pattern: a stated surface is waived by name and the rest of the
   assert.deepEqual(fired("background-pattern", css), []);
   assert.deepEqual(names(corpus("../fixtures/technical-mono.html"), "../fixtures/technical-mono.html"), []);
 });
+
+// ── radial-halo (2.5.0, P2) ──────────────────────────────────────────────────
+
+test("radial-halo: a saturated halo on a dark page fires; a light page, a wash and a spot do not", () => {
+  assert.equal(fired("radial-halo", corpus("design/radial-halo.html"), "design/radial-halo.html").length, 1);
+  assert.deepEqual(fired("radial-halo", corpus("design/radial-halo-clean.html"), "design/radial-halo-clean.html"), []);
+  const halo = ".hero { background: radial-gradient(circle at 50% 0%, rgba(34, 211, 238, 0.8), transparent 70%) }";
+  assert.equal(fired("radial-halo", `body { background: #0b0b10 } ${halo}`).length, 1);
+  assert.deepEqual(fired("radial-halo", `body { background: #ffffff } ${halo}`), [], "the same halo on a light page");
+  assert.deepEqual(fired("radial-halo", halo), [], "no declared page ground");
+  assert.deepEqual(fired("radial-halo", "body { background: #0b0b10 } .h { background: radial-gradient(circle, rgba(148, 148, 148, 0.9), transparent 70%) }"), [], "a neutral glow");
+  assert.deepEqual(fired("radial-halo", "body { background: #0b0b10 } .h { background: repeating-radial-gradient(circle, rgba(34, 211, 238, 0.8), transparent 70%) }"), [], "a repeating gradient is a pattern");
+});

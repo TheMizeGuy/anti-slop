@@ -1,7 +1,7 @@
 import {
   lowContrastHits, sideStripeHits, textSizeFloorHits, tightLeadingHits, wideTrackingHits,
   justifiedNarrowHits, crushedTrackingHits, bounceEasingHits, pulsingDotHits, marqueeHits,
-  backgroundPatternHits,
+  backgroundPatternHits, radialHaloHits,
   classFreeLines, lineRegexHits, matchingClassSets, tailwindToken, isResting, isStateVariant, glowHits,
   creamLegHits, creamCombination, framedCardSets, framedCardTrio, primaryFamilyBlocks, familyKey,
 } from "./design-detect.mjs";
@@ -403,6 +403,7 @@ export const DESIGN_PATTERNS = [
   { name: "generic-font", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: genericFontHits, fix: "Choose a face with a source: the brand's own, or a display-plus-body pairing, and state the reason for it.", desc: "Generic default font (Inter/Geist/Roboto and the 2026 successors)" },
   { name: "hype-copy", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\bTransform your\b|\bSupercharge\b|\bUnleash\b|\bEffortlessly\b|take your [^.]{0,30}to the next level/i, fix: "Say what the control does: `Connect your GitHub account`, not `Seamlessly integrate with GitHub`.", desc: "Marketing hype copy in UI" },
   { name: "background-pattern", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: backgroundPatternHits, fix: "Let the surface carry the section with a solid tone, real imagery or space; a faint grid, dot field or stripe behind copy is template texture.", desc: "Decorative grid, dot field or repeating stripes behind content" },
+  { name: "radial-halo", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: radialHaloHits, fix: "Ground the section with a solid or slightly shifted surface; if light must lead the eye, put it on the content rather than a halo behind it.", desc: "Saturated radial halo behind a section of a dark page" },
   { name: "stock-illustration", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /\b(undraw|storyset|drawkit)\b/i, fix: "Replace the illustration with the thing it stands in for: a screenshot of the real screen, or a diagram drawn for this system.", desc: "Generic stock illustration (undraw/storyset)" },
   // The JS style-object form (`zIndex: 9999`) is the dominant one on .jsx/.tsx, which are
   // web surfaces this rule already runs on -- the CSS-only pattern could not see it.

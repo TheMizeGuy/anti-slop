@@ -2393,6 +2393,47 @@ export function backgroundPatternHits(ctx) {
   });
 }
 
+// ── radial-halo ──
+// A saturated radial glow fading to nothing behind a section of a dark page: the first stop
+// opaque (alpha 0.7 or more) and chromatic, the last transparent, no stop pinned within 24px
+// (that is a dot or a spot, not a halo). A light page, or a translucent wash, stays clean.
+function gradientStops(args) {
+  const stops = [];
+  for (const arg of args) {
+    const toks = splitOutside(arg, " ");
+    const idx = toks.findIndex((t) => parseColor(t));
+    if (idx === -1) continue;
+    stops.push({ colour: parseColor(toks[idx]), positions: toks.slice(idx + 1) });
+  }
+  return stops;
+}
+
+export function radialHaloHits(ctx) {
+  return memo(ctx, "radialHalo", () => {
+    const ground = ctx.pageGround;
+    if (!ground || relativeLuminance(ground) >= 0.05) return [];
+    const props = ctx.props;
+    const hits = [];
+    for (const b of ctx.css.blocks) {
+      const entries = b.decls.filter((d) => d.prop === "background" || d.prop === "background-image");
+      if (!entries.length) continue;
+      const value = entries.map((d) => resolveVars(d.value, props)).join(", ");
+      if (/url\(/i.test(value)) continue;
+      for (const args of gradientCalls(value, "radial-gradient")) {
+        const stops = gradientStops(args);
+        if (stops.length < 2) continue;
+        if (stops.some((st) => st.positions.some((p) => { const px = lengthPx(p, props); return px !== undefined && px <= 24; }))) continue;
+        const first = stops[0].colour;
+        const last = stops[stops.length - 1].colour;
+        if (last.a > 0.05 || first.a < 0.7 || rgbSpread(first) < 24) continue;
+        hits.push({ line: entries[entries.length - 1].line, evidence: `${normSelector(b.selector)}: radial halo ${toHex(first)} fading to transparent on a dark page` });
+        break;
+      }
+    }
+    return hits;
+  });
+}
+
 // ── The cream-serif tasteful default ──
 // Four legs: a CREAM ground, a SERIF display face, the SAGE accent and the CLAY accent (the
 // rusty-orange drift form). The tell is two distinct legs: cream + serif, cream + sage,
