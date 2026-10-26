@@ -714,7 +714,7 @@ are listed; a rule absent from this table is presence-flaggable, where one hit i
 | `uniform-literal-radius` | 3 | Same claim in raw CSS, and silenced entirely on any file that states a radius identity (a `--radius` token, or a `border-radius: var(...)`) |
 | `uniform-section-padding` | 3 | One `py-20` beside a `py-12` and a `py-32` is a rhythm, not a default |
 | `cream-serif-default` | 2 | The combination is the signal: two distinct legs, where clay counts only beside the serif display |
-| `ai-purple-hex` / `ai-purple-class` | 2 | The tell is "indigo IS the palette", which one declaration does not establish |
+| `ai-purple-hex` / `ai-purple-class` | 2 | The tell is "indigo IS the palette", which one declaration does not establish. A tokens file that declares the whole Tailwind ramp (`--violet-500`) is not the palette in use until something reads the token; a semantic role (`--primary`, `--brand`) counts where it is declared |
 | `bootstrap-default-blue` | 2 | Same logic, Bootstrap's compiled literals. Counting alone was not enough here: the count sums matches, not distinct hexes, so the rule additionally requires the primary blue to be in the file before the border gray counts toward anything |
 | `important-overuse` | 2 | The rule is named *overuse*; one override against a third-party widget is pragmatism |
 | `transition-all` | 2 | One `transition: all` on a single control is laziness; two is the file's default |

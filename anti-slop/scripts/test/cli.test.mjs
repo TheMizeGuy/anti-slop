@@ -313,7 +313,7 @@ const VIOLATION_KEYS = {
   "emoji": ["confidence", "count", "desc", "fix", "line", "severity", "type"],
   "design-tell": ["confidence", "count", "desc", "evidence", "fix", "line", "lines", "mode", "name", "severity", "type"],
   "native-tell": ["confidence", "count", "desc", "evidence", "fix", "line", "lines", "mode", "name", "severity", "type"],
-  "code-pattern": ["confidence", "count", "desc", "fix", "line", "name", "severity", "type"],
+  "code-pattern": ["confidence", "count", "desc", "fix", "line", "lines", "name", "severity", "type"],
 };
 
 test("D5: every violation type in --format json carries its exact documented key set", () => {
@@ -723,6 +723,17 @@ test("coverage: a declared purple brand in DESIGN.md is named when the purple ru
     const result = runCli(["page.html"], dir);
     assert.equal(result.stdout, "page.html: clean\n");
     assert.match(result.stderr, /coverage: purple rules off: DESIGN\.md declares violet \(#7e4ed7\) \(1 file\)/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a text finding that spans several lines names each of them", () => {
+  const dir = scratchDir();
+  try {
+    writeFileSync(join(dir, "a.css"), ".a { color: #7c3aed }\n.b { padding: 4px }\n.c { border-color: #6d28d9 }\n");
+    const result = runCli(["a.css"], dir);
+    assert.match(result.stdout, /\(ai-purple-hex, lines 1, 3, Pattern smell\)/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

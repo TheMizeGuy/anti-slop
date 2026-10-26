@@ -196,7 +196,10 @@ function formatFinding(v) {
   const facts = [ruleId(v)];
   // Every family carries a line; a violation from an embedder that somehow does not gets
   // the rest of its context rather than the string "line null".
-  if (Number.isInteger(v.line)) facts.push(`line ${v.line}`);
+  // A finding that spans several lines names each of them (up to the 20 the scanner keeps),
+  // so a concentration finding is checkable without hunting for the other hits.
+  if (Array.isArray(v.lines) && v.lines.length > 1) facts.push(`lines ${v.lines.join(", ")}`);
+  else if (Number.isInteger(v.line)) facts.push(`line ${v.line}`);
   if (v.confidence) facts.push(v.confidence);
   const head = `[${v.severity.toUpperCase()}] ${v.desc}  (${facts.join(", ")})`;
   return v.fix ? `${head}\n  fix: ${v.fix}` : head;

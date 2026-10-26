@@ -227,8 +227,27 @@ const unlessPurpleBrand = (fn) => (ctx) => (ctx.designSystem && ctx.designSystem
 const undeclared = (ctx) => (h) => !declaredColour(ctx.designSystem, parseColor(String(h.evidence).match(/#[0-9a-f]{3,8}\b/i)?.[0] || ""));
 const AI_PURPLE_HEX = /#(6366f1|4f46e5|818cf8|7c3aed|6d28d9|8b5cf6|a855f7|9333ea|7e22ce|c026d3|d946ef)\b/gi;
 
+// A tokens file that declares the whole Tailwind palette is not the palette in use: a purple
+// hex in an unread scale-named custom property (`--violet-500`) is skipped. A semantic role
+// (`--primary`, `--brand-accent`, `--link-hover`) counts wherever it is declared, because the
+// file that reads it is often another one, and any token this file reads counts.
+const SEMANTIC_TOKEN = /(?:^|-)(?:primary|brand|accent|cta|action|link|highlight)(?:-|$)/i;
+const SCALE_TOKEN = /^--[a-z]+-\d{2,3}$/i;
+
 function aiPurpleHexHits(ctx) {
-  return lineRegexHits(ctx.lines, AI_PURPLE_HEX).filter(undeclared(ctx));
+  const hits = [];
+  ctx.lines.forEach((line, i) => {
+    for (const m of line.matchAll(AI_PURPLE_HEX)) {
+      const def = /(--[\w-]+)\s*:\s*[^;{}]*$/.exec(line.slice(0, m.index));
+      if (def) {
+        const name = def[1];
+        const read = new RegExp(`var\\(\\s*${name.replace(/-/g, "\\-")}(?![\\w-])`).test(ctx.text);
+        if (!SEMANTIC_TOKEN.test(name.slice(2)) && SCALE_TOKEN.test(name) && !read) continue;
+      }
+      hits.push({ line: i + 1, evidence: m[0] });
+    }
+  });
+  return hits.filter(undeclared(ctx));
 }
 
 function restingBases(tokens) {
@@ -398,7 +417,7 @@ export const DESIGN_PATTERNS = [
   // The rule enforces its own title: a coloured glow a viewer can see. A soft neutral
   // shadow, a --card-box-shadow token definition, a 1px hairline ring and a focus halo are
   // not one; neither is a diffuse wash that lights more than twice the element's area.
-  { name: "neon-glow", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: (ctx) => glowHits(ctx), fix: "Carry elevation the way the platform does, with a lighter surface and a real shadow scale: `background: var(--surface-2)` plus a 1px shadow.", desc: "Unprompted neon glow (dark-mode tell)" },
+  { name: "neon-glow", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: (ctx) => glowHits(ctx, { textShadow: true }), fix: "Carry elevation the way the platform does, with a lighter surface and a real shadow scale: `background: var(--surface-2)` plus a 1px shadow.", desc: "Unprompted neon glow (dark-mode tell)" },
   // One threshold whatever draws the stripe: a side border, an absolute ::before bar, an
   // inset side shadow, a style object or border-l-N. Square boxes count from 3px (the
   // catalogue bans the coloured left border on any box); selection and live-region edges,

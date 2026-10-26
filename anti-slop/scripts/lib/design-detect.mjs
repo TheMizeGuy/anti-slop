@@ -7,10 +7,12 @@
 // (https://github.com/pbakaus/impeccable), Copyright 2025 Paul Bakaus, licensed under the
 // Apache License, Version 2.0, as of commit 3671d50f0: low-contrast, side-tab, tiny-text,
 // undersized-ui-text, tight-leading, wide-tracking, justified-text,
-// extreme-negative-tracking, bounce-easing, pulsing-dot, dark-glow and
-// gpt-thin-border-wide-shadow, with impeccable's lessons on comment blanking, class-set
-// scope, unknown values and rule-scoped waivers. Thresholds and exemptions are restated in
-// this module's own code; no impeccable source is included.
+// extreme-negative-tracking, bounce-easing, pulsing-dot, marquee, codex-grid-background,
+// repeating-stripes-gradient, radial-halo, gray-on-color, skipped-heading, dark-glow,
+// gpt-thin-border-wide-shadow, its DESIGN.md reader and design-system-font, with
+// impeccable's lessons on comment blanking, class-set scope, unknown values and rule-scoped
+// waivers. Thresholds and exemptions are restated in this module's own code; no impeccable
+// source is included.
 
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";

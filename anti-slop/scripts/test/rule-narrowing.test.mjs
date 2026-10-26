@@ -330,3 +330,34 @@ test("neon-glow: a glow in a keyframe step counts when a painted element runs it
   assert.ok(fires("neon-glow", html("pulse"), "a.html"));
   assert.ok(!fires("neon-glow", html("other"), "a.html"), "no element in the markup carries the running class");
 });
+
+// ── Smaller history-proven fixes (2.5.0, P2) ─────────────────────────────────
+
+test("ai-purple-hex: an unread scale-named palette token is a tokens file, a semantic role is the brand", () => {
+  assert.ok(!fires("ai-purple-hex", ":root { --violet-500: #8b5cf6; --indigo-600: #4f46e5; }", "tokens.css"));
+  const read = ":root { --violet-500: #8b5cf6; --indigo-600: #4f46e5; }\n.cta { background: var(--violet-500) } .link { color: var(--indigo-600) }";
+  assert.equal(scanContent(read, "tokens.css").find((v) => v.name === "ai-purple-hex").count, 2, "the same tokens, read");
+  assert.equal(scanContent(":root { --primary: #7c3aed; --primary-hover: #6d28d9; }", "tokens.css").find((v) => v.name === "ai-purple-hex").count, 2,
+    "a semantic role counts even when another file reads it");
+  assert.ok(fires("ai-purple-hex", ".a { color: #7c3aed } .b { border-color: #6d28d9 }", "a.css"), "literal uses are unchanged");
+});
+
+test("em-dash-density: a dash alone in a table cell is the table's none", () => {
+  const table = "| Plan | Seats | SSO | Audit log |\n|---|---|---|---|\n| Free | 1 | — | — |\n| Team | 10 | — | — |\n| Business | 50 | yes | — |\n| Enterprise | any | yes | yes |";
+  assert.ok(!scanContent(table, "table.md").some((v) => v.name === "em-dash-density"));
+  const prose = "One — two — three — four — five — six dashes in a short line of prose.";
+  assert.ok(scanContent(prose, "post.md").some((v) => v.name === "em-dash-density"), "dashes in sentences still count");
+});
+
+test("neon-glow: a coloured text-shadow halo is a glow; a soft drop shadow is not", () => {
+  assert.ok(fires("neon-glow", "h1 { text-shadow: 0 0 20px rgba(168, 85, 247, 0.8); }", "a.css"));
+  assert.ok(!fires("neon-glow", "h1 { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }", "a.css"));
+});
+
+test("a finding that spans several lines carries every line, and the text report names them", () => {
+  const css = ".a { color: #7c3aed }\n.b { padding: 4px }\n.c { border-color: #6d28d9 }";
+  const v = scanContent(css, "a.css").find((x) => x.name === "ai-purple-hex");
+  assert.deepEqual(v.lines, [1, 3]);
+  const js = "eval(a);\nconst b = 1;\neval(c);\n";
+  assert.deepEqual(scanContent(js, "a.js").find((x) => x.name === "eval-usage").lines, [1, 3]);
+});

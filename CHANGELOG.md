@@ -99,13 +99,20 @@ that decides a combination or a repetition after the escape hatch has dropped it
   or the `font` shorthand), by whole name and in any spelling, so `GeistSans` matches and
   `Inter Display` does not. A listed face set only on a button or field label is the UI
   label fallback when the page sets another face for its content.
+- `ai-purple-hex` skips a purple hex in an unread scale-named token (`--violet-500` in a file
+  that declares the whole ramp); a semantic role such as `--primary` counts where it is
+  declared, since the file that reads it is often another one.
+- `em-dash-density` drops markdown table cells holding only a dash, the table's "none".
+- `neon-glow` also reads `text-shadow` halos.
 - Emoji findings run on prose, code, web and native files only, not on data and config files.
 - Prose noise-stripping strips curly-quoted spans the way it strips straight ones.
 - `scan.mjs` writes its binary guard's NUL byte as an escape, so search tools read the file
   as text.
 
 **Output and waivers.** Design and native findings carry `evidence` (the first hit's matched
-text) and `lines` (every contributing line) in `--format json`. Coverage notes say what a
+text) and every finding from a table rule carries `lines` (every contributing line, up to
+20) in `--format json`; the text report names them (`lines 12, 40, 77`) when there is more
+than one. Coverage notes say what a
 static scan of each file type cannot see (Tailwind utilities and cross-file cascades on
 component files, markup rules on stylesheets, design rules on non-UI code); they go to
 stderr in text mode and into a `coverage` array in JSON, and the report stays on stdout. A

@@ -627,7 +627,9 @@ export function scanContent(content, filePath, opts = {}) {
         });
       }
     }
-    const emdashes = (proseScan.match(/—/g) || []).length;
+    // A dash alone in a table cell is the table's "none", not a sentence's em dash.
+    const dashText = proseScan.split("\n").map((l) => (/^\s*\|/.test(l) ? l.replace(/\|\s*[\u2014\u2013]\s*(?=\||$)/g, "| ") : l)).join("\n");
+    const emdashes = (dashText.match(/—/g) || []).length;
     const words = (proseScan.match(/\S+/g) || []).length || 1;
     const density = (emdashes / words) * 1000;
     if (emdashes >= EMDASH_MIN_COUNT && density >= EMDASH_MIN_DENSITY) {
@@ -635,7 +637,7 @@ export function scanContent(content, filePath, opts = {}) {
         type: "text-construct",
         name: "em-dash-density",
         count: emdashes,
-        line: firstMatchLine(proseScan, /—/g),
+        line: firstMatchLine(dashText, /—/g),
         severity: density >= EMDASH_MIN_DENSITY * 2 ? "medium" : "low",
         confidence: EMDASH_CONFIDENCE,
         fix: EMDASH_FIX,
@@ -716,7 +718,7 @@ export function scanContent(content, filePath, opts = {}) {
     for (const pat of CODE_PATTERNS) {
       if (isTestFile && pat.skipInTests) continue;
       if (!fileGuardOk(pat, codeSource(pat).text)) continue;
-      const { count, line } = countLinePattern(codeSource(pat), pat);
+      const { count, line, lines: hitLines } = countLinePattern(codeSource(pat), pat);
       // Same gate as the design table: every code rule shipped before 2.1.0 declares no
       // mode and behaves exactly as the old `count > 0`, while `banner-comment` -- a Taste
       // note whose whole claim is "this file is divided by ASCII art" -- needs two.
@@ -726,6 +728,7 @@ export function scanContent(content, filePath, opts = {}) {
           name: pat.name,
           count,
           line,
+          lines: hitLines,
           severity: resolveSeverity(pat.severity, count),
           confidence: pat.confidence,
           fix: pat.fix,
