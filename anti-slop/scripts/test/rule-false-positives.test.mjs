@@ -405,3 +405,14 @@ test("banned phrases: plurals still match, as the substring search did", () => {
   assert.deepEqual(phrases("Two deep dives later."), ["deep dive"]);
   assert.deepEqual(phrases("A deep diver surfaced."), [], "a longer word is still not the phrase");
 });
+
+// CSS or markup quoted as text inside <code> or <pre> is an example, not the page.
+test("design rules never match CSS quoted in <code> or <pre> on an HTML page", () => {
+  const html = '<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>\n' +
+    "<p>The default looks like <code>background: linear-gradient(135deg, #6366f1, #8b5cf6)</code> with <code>-webkit-background-clip: text</code>.</p>\n" +
+    "<pre>.a { border-radius: 8px; }\n.b { border-radius: 8px; }\n.c { border-radius: 8px; }</pre>\n</body></html>";
+  assert.deepEqual(scanContent(html, "css-in-prose.html").filter((v) => v.type === "design-tell"), []);
+  const live = "<style>.a { border-radius: 8px; } .b { border-radius: 8px; } .c { border-radius: 8px; } h1 { -webkit-background-clip: text; }</style>";
+  const twin = scanContent(live, "live.html").map((v) => v.name);
+  assert.ok(twin.includes("uniform-literal-radius") && twin.includes("gradient-text"), JSON.stringify(twin));
+});
