@@ -207,7 +207,7 @@ The scanner rule is `text-size-floor`, medium severity, Quality defect. It judge
 
 ### Reading Mechanics
 
-Four settings that make running text harder to read, each common in stylesheets that tune the display type and copy the values down to the body:
+Settings that make running text harder to read, each common in stylesheets that tune the display type and copy the values down to the body:
 
 | Tell | Rule | Fires when |
 |---|---|---|
@@ -218,7 +218,7 @@ Four settings that make running text harder to read, each common in stylesheets 
 
 **Remediation:** body leading at 1.4 to 1.6; running-text tracking between -0.01em and 0.02em; a ragged-right narrow column, or justify with hyphens on a measure of 45 characters or more; display tracking between -0.02em and -0.05em. Display tracking of -0.05em is normal, and the rules leave it alone.
 
-All four are low severity, Quality defect, and keep the settings that belong to other text: headings and display sizes, lead text at 20px or more, bold titles, caps and small-caps labels, code, controls, and CJK text, where open tracking is conventional (Arabic, Hebrew and Thai do not justify on word spaces either). A wordmark or logo selector keeps its tight tracking, and where the file's own markup shows that every element carrying the selector's classes holds a short label, the block is read as a label rather than as running text. The thresholds re-express impeccable's `tight-leading`, `wide-tracking`, `justified-text` and `extreme-negative-tracking`.
+All of them are low severity, Quality defect, and keep the settings that belong to other text: headings and display sizes, lead text at 20px or more, bold titles, caps and small-caps labels, code, controls, and CJK text, where open tracking is conventional (Arabic, Hebrew and Thai do not justify on word spaces either). A wordmark or logo selector keeps its tight tracking, and where the file's own markup shows that every element carrying the selector's classes holds a short label, the block is read as a label rather than as running text. The thresholds re-express impeccable's `tight-leading`, `wide-tracking`, `justified-text` and `extreme-negative-tracking`.
 
 ### Emoji as Interface
 

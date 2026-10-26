@@ -2,7 +2,136 @@
 
 All notable changes to the anti-slop plugin. Versions match `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `anti-slop/.claude-plugin/plugin.json`, the SKILL.md frontmatter, and `anti-slop/scripts/package.json` — all five are bumped together. (It was five, then four when 2.0.0 removed the MCP Server constructor, then five again when 2.2.1 brought the scanner's package.json under the same gate.)
 
-## Unreleased
+## 2.5.0 - 2026-10-26
+
+Detection rules re-expressed from [impeccable](https://github.com/pbakaus/impeccable)
+(Copyright 2025 Paul Bakaus, Apache-2.0, at commit 3671d50f0). Its thresholds, exemptions and
+history lessons are restated in this repository's own code and words; no impeccable code is
+included, and the README's Third-party notices section carries the attribution. The parsing,
+the colour maths and every new detector live in one module, `scripts/lib/design-detect.mjs`,
+which ui-craft vendors byte for byte, so the two scanners run one implementation of each rule.
+UI rules may now count with a `hits(ctx)` detector over that module's per-file context (a
+fourth counting shape beside `pattern`, `classAll` and `count`), with an optional `gate`
+that decides a combination or a repetition after the escape hatch has dropped its lines.
+
+**New rules**, each with a positive fixture and a clean partner in the corpus:
+
+- `low-contrast` (high, Quality defect) and `low-contrast-near-bar` (low): WCAG 1.4.3
+  arithmetic on surfaces the file declares. A pair is measured on the block's own background,
+  on the exact block its plain descendant chain names, or on the page ground when nothing
+  else in the file paints a surface; `:hover` blocks borrow the half they do not repaint, and
+  placeholder text is measured, at near-bar when the file labels its fields. A ratio within
+  0.3 of its bar is near-bar, and a failing ratio never prints as the bar (4.4983 reads 4.49).
+  Gradient and image surfaces, unresolved `var()` values, Tailwind colour utilities and
+  dark-mode overrides are not measured, and an unmeasured pair reports nothing.
+- `side-stripe-accent` (medium, Pattern smell): a coloured stripe on one side of a card,
+  drawn by a side border, an absolute `::before`/`::after` bar, an inset side shadow, a JSX
+  style object or `border-l-N`. Square boxes count from 3px, a deliberate divergence from
+  impeccable, whose `side-tab` exempts them; selection and live-region edges, controls, list
+  items and table cells are exempt.
+- `text-size-floor` (medium, Quality defect): running text under 12px, functional text at or
+  under 10.9px, small print at or under 9.9px; px, rem and the `font` shorthand only.
+- `tight-leading`, `wide-tracking`, `justified-narrow-column`, `crushed-tracking` (low,
+  Quality defect): body leading under 1.3, mixed-case running text tracked wider than 0.05em,
+  justify on a measure of about 45 characters with no hyphens, and tracking tighter than
+  -0.07em (-0.09em at 40px and up). Headings, lead text, caps labels, code, controls, CJK
+  text and wordmarks keep their settings, and where the markup shows every element with a
+  selector's classes holding a short label, the block is read as a label.
+- `bounce-easing` (low, Pattern smell): bounce and elastic keyword animations (not SpinKit's
+  fade-and-shrink loaders), `animate-bounce`, a curve that both anticipates and overshoots,
+  and keyframes that reverse direction twice. Springs stay clean: a `linear()` token, a
+  single-overshoot curve, an unread curve token, a rise that settles once.
+- `pulsing-dot` (medium, Pattern smell): a 2px to 16px round box pulsing in place forever,
+  and the `animate-ping` / `animate-pulse` dot.
+
+**Rules that fired where they should not, narrowed:**
+
+- UI and markup-defect rules read comment-blanked text, and markup files also blank the
+  contents of `<code>` and `<pre>`, so a commented-out declaration or CSS quoted as an
+  example is not the page. The escape hatch is still read from the raw line, where its
+  marker lives. Markdown blanks `/* */` and `//` only inside fenced blocks of a language
+  that has them, so a glob such as `aesthetic/*` in prose is never a comment opener.
+- `ai-purple-class`, `purple-gradient-default`, `purple-blue-gradient`: a purple utility
+  counts when it paints at rest (no `hover:`, `focus:` or `group-*` state, no `/10` tint), a
+  gradient stop only beside the gradient it paints, and a gradient's halves only within one
+  class set and one ternary arm. Breakpoints and `dark:` still count.
+- `neon-glow` is a glow a viewer can see: zero offsets, a blur over 4px, a chromatic colour,
+  blur times alpha of 3 or more, and, where the block states its size, light reaching no
+  more than twice the element's area. Focus halos are exempt; a glow in a keyframe step
+  counts when a painted element runs it.
+- `cream-serif-default` counts distinct legs (cream ground, serif display, the `#15573a`
+  sage accent, the clay accent). Resolved on 2026-10-26: clay completes the combination only
+  beside the serif display, so cream with a brick accent and no serif is no longer a
+  finding, and two hits of one leg are one leg. `design-patterns.md` states the same.
+- `shadow-border-rounded-combo` fires on the repeated card treatment (three trio cards, or
+  every card of a two-card surface) and needs a real border leg; a colour-only
+  `border-gray-200` draws nothing.
+- `token-drift-spacing` reads spacing declarations only (`--card-padding` is a token
+  definition, `grid-gap` is still spacing) and ends a value at its own end inside a JS object.
+- Banned phrases match whole words, plurals included (`within today's` is no longer
+  `in today's`; `game-changers` still matches).
+- Class fingerprints read `cn()`, `clsx`, `twMerge`, `cva` and multi-line class attributes,
+  one hit per element, and the two arms of a ternary never pair.
+- `outline-none` reads the Tailwind `outline-none` / `outline-hidden` utilities only where the
+  class set carries no `focus:` or `focus-visible:` replacement, so `focus:outline-none
+  focus:ring-2` is not a finding. `vh-viewport-shell` reads `h-screen` and `min-h-screen`,
+  cleared by `h-dvh` / `min-h-svh`. `positive-tabindex` no longer fires on `data-tabindex`.
+- `uniform-literal-radius` skips zero resets and still counts sub-rem radii such as `0.5rem`.
+- `generic-font` reads the face a block sets (the first non-generic family of `font-family`
+  or the `font` shorthand), by whole name and in any spelling, so `GeistSans` matches and
+  `Inter Display` does not. A listed face set only on a button or field label is the UI
+  label fallback when the page sets another face for its content.
+- Emoji findings run on prose, code, web and native files only, not on data and config files.
+- Prose noise-stripping strips curly-quoted spans the way it strips straight ones.
+- `scan.mjs` writes its binary guard's NUL byte as an escape, so search tools read the file
+  as text.
+
+**Output and waivers.** Design and native findings carry `evidence` (the first hit's matched
+text) and `lines` (every contributing line) in `--format json`. Coverage notes say what a
+static scan of each file type cannot see (Tailwind utilities and cross-file cascades on
+component files, markup rules on stylesheets, design rules on non-UI code); they go to
+stderr in text mode and into a `coverage` array in JSON, and the report stays on stdout. A
+waiver can name rules: `anti-slop-allow: gradient-text -- wordmark` waives only
+`gradient-text` on its line, an unknown id waives nothing and is reported on stderr, and a
+marker without ` -- ` stays line-wide. The README documents `--fail-on medium` for CI; the
+default stays `any`.
+
+**Corpus.** New design fixture pairs for the rules above. Fixtures that the new rules
+proved defective were corrected rather than relabelled, with the before and after values in
+each label note: the fixtures with real contrast failures (among them the clean controls
+`fluid-adaptive-clean`, `utilitarian-fintech`, `warm-consumer` and `technical-mono`),
+`editorial-bold` for a 10.5px table header, and `cream-serif-sage` (the planted Inter moved
+from the button to the hero line) and `legacy-marketing-page` (the hero gained the sub-line
+its `.subtitle` rule styles) for the control-face doctrine. `before.html` gained a
+`low-contrast` label for a defect it always carried (white on `#a855f7`, 3.96:1). The shared
+fixtures that had drifted gained the viewport meta their ui-craft copies already carried. The corpus README
+now states that every exemption ships with a should-flag twin.
+
+**Docs.** `design-patterns.md` gains entries for the side stripe, contrast on the declared
+surface, the type floors, the reading mechanics, bounce easing and the pulsing dot, and its
+cream section and concentration table state the distinct-leg rule. The cluster-word rule
+reads the same in every place that states it: the same cluster-tier word twice in one
+document is the finding. `choosing-with-intent.md` documents the scoped waiver.
+
+**Measured.** `npm run measure`, origin/master against this release, over the labeled corpus:
+
+| | Before (2.4.0) | After (2.5.0) |
+|---|--:|--:|
+| True positives / false positives / false negatives | 120 / 0 / 1 | 132 / 0 / 1 |
+| Design modality true positives | 54 | 66 |
+| Precision / recall | 100.0% / 99.2% | 100.0% / 99.2% |
+
+`baseline.json` was regenerated with a row for each new rule; no existing row moved. Over
+impeccable's labelled antipattern fixtures (450 positive fixture-and-rule pairs; the scoring
+scripts sit outside this repository), this scanner alone went from 60 pairs hit to 184, and
+from 5 of impeccable's rules with any hit to 14: `side-tab` 36 of 41, `undersized-ui-text` 20
+of 20, `tiny-text` 12 of 13, `low-contrast` 25 of 61, `bounce-easing` 10 of 16,
+`tight-leading` 8 of 10, `wide-tracking` 5 of 6, `pulsing-dot` 4 of 5, `justified-text` 3 of
+3. Its findings on impeccable's negative fixtures changed from three on the CSS quoted in
+`css-in-prose-should-pass.html` (now silent) to four on the square-box side-tab twins, the
+deliberate divergence above.
+
+Also in this release:
 
 - `/slop-check` applies fixes only when asked and does not close its report with an offer to
   fix, which `writing-patterns.md` § Agent Closing Messages names a closing-message tell. The
