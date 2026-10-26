@@ -310,3 +310,13 @@ test("shadow-border-rounded-combo: the arms of one element are one card", () => 
   const tsx = 'export const C = ({ on }) => <div className={cn("rounded-xl border shadow-sm p-6", on ? "bg-white" : "bg-stone-50")} />;';
   assert.ok(!fires("shadow-border-rounded-combo", tsx, "C.tsx"));
 });
+
+// ── uniform-literal-radius ignores zero resets (2.5.0) ───────────────────────
+
+test("uniform-literal-radius: three zero resets are not a radius choice; three sub-rem radii are", () => {
+  assert.ok(!fires("uniform-literal-radius", ".a { border-radius: 0px; }\n.b { border-radius: 0px; }\n.c { border-radius: 0px; }", "square.css"));
+  assert.ok(!fires("uniform-literal-radius", ".a { border-radius: 0; }\n.b { border-radius: 0rem; }\n.c { border-radius: 0.0rem; }", "square.css"));
+  assert.ok(fires("uniform-literal-radius", ".a { border-radius: 0.5rem; }\n.b { border-radius: 0.5rem; }\n.c { border-radius: 0.5rem; }", "rem.css"),
+    "0.5rem starts with a zero and is still a radius");
+  assert.ok(fires("uniform-literal-radius", ".a { border-radius: 0.25rem; }\n.b { border-radius: 0.375rem; }\n.c { border-radius: 10px; }", "mixed.css"));
+});

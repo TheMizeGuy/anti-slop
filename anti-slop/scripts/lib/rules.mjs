@@ -414,11 +414,12 @@ export const DESIGN_PATTERNS = [
   // 20-25 times on every clean control in the corpus; gated on the file declaring two or
   // more --space tokens it fires on exactly one file. There is no drift without a scale.
   { name: "token-drift-spacing", severity: "low", confidence: CONFIDENCE.QUALITY, mode: CONCENTRATION, minCount: 2, requires: /--space[-_a-z0-9]*\s*:/i, requiresMinCount: 2, count: countOffScaleSpacing, fix: "Use the nearest existing --space token, or add and name a token where the value is genuinely new; never delete the spacing.", desc: "Raw spacing values bypassing the file's own --space token scale" },
+  // A zero radius is a reset, not a radius choice, and does not count; 0.5rem does.
   // Complements rounded-everything (Tailwind classes and 999px pills) rather than
   // overlapping it: this one is about literal `border-radius` values in a file that names
   // no radius identity to vary from. A file that defines --radius is silenced outright --
   // one clean control carries five literal radii and is protected by that guard alone.
-  { name: "uniform-literal-radius", severity: "low", confidence: CONFIDENCE.QUALITY, mode: CONCENTRATION, minCount: 3, unless: /border-radius\s*:\s*var\(|--radius[-_a-z0-9]*\s*:/i, pattern: /border-radius\s*:\s*\d+(?:\.\d+)?(?:px|rem)\b/gi, fix: "State a radius identity (`--radius`) and reference it, or vary the radius deliberately by control class.", desc: "Repeated literal radius with no stated radius identity (uncommitted default)" },
+  { name: "uniform-literal-radius", severity: "low", confidence: CONFIDENCE.QUALITY, mode: CONCENTRATION, minCount: 3, unless: /border-radius\s*:\s*var\(|--radius[-_a-z0-9]*\s*:/i, pattern: /border-radius\s*:\s*(?!0+(?:\.0+)?(?:px|rem)?(?![.\d]))\d+(?:\.\d+)?(?:px|rem)\b/gi, fix: "State a radius identity (`--radius`) and reference it, or vary the radius deliberately by control class.", desc: "Repeated literal radius with no stated radius identity (uncommitted default)" },
 
   // ── Controls and accessibility ──
   // A visible affordance that does not act is wrong on any reading, which is why this is a
