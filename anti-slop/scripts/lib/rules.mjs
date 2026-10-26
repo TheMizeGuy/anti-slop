@@ -4,6 +4,7 @@ import {
   backgroundPatternHits, radialHaloHits, grayOnColorHits, skippedHeadingHits,
   classFreeLines, lineRegexHits, matchingClassSets, tailwindToken, isResting, isStateVariant, glowHits,
   creamLegHits, creamCombination, framedCardSets, framedCardTrio, primaryFamilyBlocks, familyKey,
+  designSystemFontHits, declaredColour, parseColor,
 } from "./design-detect.mjs";
 
 // ── Confidence classes ──
@@ -219,6 +220,17 @@ const PURPLE_RAMP_TEXT = /from-(indigo|purple|violet)-[45]00\s.*to-(indigo|purpl
 const PURPLE_BLUE_TEXT = /from-(purple|violet|indigo|fuchsia)-\d+\s+(via-[a-z]+-\d+\s+)?to-(blue|indigo|pink|cyan|sky)-\d+/i;
 const PURPLE_HEX_GRADIENT = /linear-gradient\([^)]*#(6366f1|7c3aed|8b5cf6|a855f7)[^)]*\)/i;
 
+// A DESIGN.md that declares a colour on the purple arc documents it as the brand, so the
+// four purple rules stand down for every file under it; independently, a
+// literal within 6 per channel of any declared colour is the palette, never the default.
+const unlessPurpleBrand = (fn) => (ctx) => (ctx.designSystem && ctx.designSystem.purpleBrand ? [] : fn(ctx));
+const undeclared = (ctx) => (h) => !declaredColour(ctx.designSystem, parseColor(String(h.evidence).match(/#[0-9a-f]{3,8}\b/i)?.[0] || ""));
+const AI_PURPLE_HEX = /#(6366f1|4f46e5|818cf8|7c3aed|6d28d9|8b5cf6|a855f7|9333ea|7e22ce|c026d3|d946ef)\b/gi;
+
+function aiPurpleHexHits(ctx) {
+  return lineRegexHits(ctx.lines, AI_PURPLE_HEX).filter(undeclared(ctx));
+}
+
 function restingBases(tokens) {
   return tokens.map(tailwindToken).filter(isResting).map((t) => t.base);
 }
@@ -261,7 +273,7 @@ function purpleBlueHits(ctx) {
   return [
     ...gradientSetHits(ctx, /^from-(?:purple|violet|indigo|fuchsia)-\d+$/, /^to-(?:blue|indigo|pink|cyan|sky)-\d+$/),
     ...lineRegexHits(classFreeLines(ctx), PURPLE_BLUE_TEXT),
-    ...lineRegexHits(ctx.lines, PURPLE_HEX_GRADIENT),
+    ...lineRegexHits(ctx.lines, PURPLE_HEX_GRADIENT).filter(undeclared(ctx)),
   ];
 }
 
@@ -340,12 +352,12 @@ function genericFontHits(ctx) {
 // suppress guard, both of which exist for exactly that reason), and no `fix` may propose it.
 export const DESIGN_PATTERNS = [
   MEDIA_CONTROL_GLYPH,
-  { name: "purple-gradient-default", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: purpleRampHits, fix: "Pick the ramp from the project's own palette, or use one flat surface colour; a restaurant site does not need tech-purple.", desc: "Purple/indigo gradient (Tailwind AI default)" },
-  { name: "purple-blue-gradient", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: purpleBlueHits, fix: "Choose the gradient from the brand's palette, or carry the section with one flat accent instead of the ramp nobody chose.", desc: "Purple-to-blue/pink gradient" },
+  { name: "purple-gradient-default", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: unlessPurpleBrand(purpleRampHits), fix: "Pick the ramp from the project's own palette, or use one flat surface colour; a restaurant site does not need tech-purple.", desc: "Purple/indigo gradient (Tailwind AI default)" },
+  { name: "purple-blue-gradient", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: unlessPurpleBrand(purpleBlueHits), fix: "Choose the gradient from the brand's palette, or carry the section with one flat accent instead of the ramp nobody chose.", desc: "Purple-to-blue/pink gradient" },
   // Hex and utility-class purple are property-level: the tell is "indigo IS the palette",
   // which one stray declaration does not establish.
-  { name: "ai-purple-hex", severity: "low", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, pattern: /#(6366f1|4f46e5|818cf8|7c3aed|6d28d9|8b5cf6|a855f7|9333ea|7e22ce|c026d3|d946ef)\b/i, fix: "Replace the indigo/violet hexes with the project's brand tokens, chosen for what the product is rather than the framework default.", desc: "AI purple (indigo/violet hex as brand color)" },
-  { name: "ai-purple-class", severity: "medium", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, hits: aiPurpleClassHits, fix: "Name the primary in the project's own palette and use its token class; indigo-500 is the colour nobody chose.", desc: "AI purple as primary (Tailwind indigo/violet/purple class)" },
+  { name: "ai-purple-hex", severity: "low", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, hits: unlessPurpleBrand(aiPurpleHexHits), fix: "Replace the indigo/violet hexes with the project's brand tokens, chosen for what the product is rather than the framework default.", desc: "AI purple (indigo/violet hex as brand color)" },
+  { name: "ai-purple-class", severity: "medium", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, hits: unlessPurpleBrand(aiPurpleClassHits), fix: "Name the primary in the project's own palette and use its token class; indigo-500 is the colour nobody chose.", desc: "AI purple as primary (Tailwind indigo/violet/purple class)" },
   // Same "unchosen palette" logic, different framework: these three hexes are Bootstrap 5's
   // COMPILED literals ($primary #0d6efd, its hover darken #0b5ed7, $gray-300 border
   // #dee2e6). They reach shipped CSS only by leaving Bootstrap unthemed, and two of them
@@ -401,6 +413,9 @@ export const DESIGN_PATTERNS = [
   // omitting it costs the rule nothing. Only a block's primary face and the next/font
   // constructor call are read, so the word "Outfit" in body copy stays clean.
   { name: "generic-font", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: genericFontHits, fix: "Choose a face with a source: the brand's own, or a display-plus-body pairing, and state the reason for it.", desc: "Generic default font (Inter/Geist/Roboto and the 2026 successors)" },
+  // Only where DESIGN.md declares its typography: a face set outside it is drift from the
+  // documented system. Colour, radius and type-size drift are not ported (advisory upstream).
+  { name: "design-system-font", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, hits: designSystemFontHits, fix: "Use a family DESIGN.md declares, or add the face to DESIGN.md typography with the reason it was chosen.", desc: "Face set outside the typography DESIGN.md declares" },
   { name: "hype-copy", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\bTransform your\b|\bSupercharge\b|\bUnleash\b|\bEffortlessly\b|take your [^.]{0,30}to the next level/i, fix: "Say what the control does: `Connect your GitHub account`, not `Seamlessly integrate with GitHub`.", desc: "Marketing hype copy in UI" },
   { name: "background-pattern", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: backgroundPatternHits, fix: "Let the surface carry the section with a solid tone, real imagery or space; a faint grid, dot field or stripe behind copy is template texture.", desc: "Decorative grid, dot field or repeating stripes behind content" },
   { name: "radial-halo", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: radialHaloHits, fix: "Ground the section with a solid or slightly shifted surface; if light must lead the eye, put it on the content rather than a halo behind it.", desc: "Saturated radial halo behind a section of a dark page" },

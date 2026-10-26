@@ -12,6 +12,10 @@
 // scope, unknown values and rule-scoped waivers. Thresholds and exemptions are restated in
 // this module's own code; no impeccable source is included.
 
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { homedir } from "node:os";
+
 // ── Extension families ──
 const MARKUP_EXT = new Set([".html", ".htm", ".vue", ".svelte", ".astro"]);
 const SCRIPT_EXT = new Set([".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".mts", ".cts"]);
@@ -1368,13 +1372,14 @@ function lazy(obj, key, fn) {
   });
 }
 
-// makeContext(content, ext) -> { ext, content, text, rawLines, lines, lineOf, classSets,
-// effectiveSets, css, props, pageGround, memo }. Every field after rawLines is computed on
-// first read and once per file; detectors take the context and share it.
-export function makeContext(content, ext) {
+// makeContext(content, ext, { designSystem }) -> { ext, content, text, rawLines, lines,
+// lineOf, classSets, effectiveSets, css, props, pageGround, designSystem, memo }. Every field
+// after rawLines is computed on first read and once per file; detectors take the context and
+// share it. `designSystem` is a readDesignSystem() result or null.
+export function makeContext(content, ext, extras = {}) {
   const e = normExt(ext);
   const { text, rawLines } = prepareSource(content, e);
-  const ctx = { ext: e, content, text, rawLines, memo: new Map() };
+  const ctx = { ext: e, content, text, rawLines, designSystem: extras.designSystem || null, memo: new Map() };
   lazy(ctx, "lineOf", () => lineIndex(text));
   lazy(ctx, "lines", () => text.split("\n"));
   lazy(ctx, "classSets", () => classTokenSets(text, ctx.lineOf));
@@ -2649,4 +2654,108 @@ export function primaryFamilyBlocks(ctx) {
     }
     return out;
   });
+}
+
+// ── DESIGN.md ──
+// A project's DESIGN.md frontmatter is evidence of a documented choice: a declared violet is
+// the brand, not the framework default, and a face set outside the declared typography is
+// drift. Read-only; nothing here writes the file.
+const DESIGN_FILE_NAMES = ["DESIGN.md", "Design.md", "design.md"];
+const designDirCache = new Map();
+const designFileCache = new Map();
+
+// findDesignMd(filePath) -> the nearest DESIGN.md walking up from the file's directory, or
+// null. The walk stops after the first directory holding .git or package.json, and never
+// climbs above the user's home directory. Memoised per directory.
+export function findDesignMd(filePath) {
+  const home = resolve(homedir());
+  let dir = dirname(resolve(filePath));
+  const visited = [];
+  let found = null;
+  for (;;) {
+    if (designDirCache.has(dir)) { found = designDirCache.get(dir); break; }
+    visited.push(dir);
+    const hit = DESIGN_FILE_NAMES.map((n) => join(dir, n)).find((f) => existsSync(f));
+    if (hit) { found = hit; break; }
+    const parent = dirname(dir);
+    if (existsSync(join(dir, ".git")) || existsSync(join(dir, "package.json")) || dir === home || parent === dir) break;
+    dir = parent;
+  }
+  for (const v of visited) designDirCache.set(v, found);
+  return found;
+}
+
+// A small indentation-based reader for the frontmatter maps DESIGN.md uses: nested keys,
+// scalars, quoted strings and # comments. Lists are skipped.
+export function parseFrontmatter(text) {
+  const m = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(String(text));
+  const root = {};
+  if (!m) return root;
+  const stack = [{ indent: -1, node: root }];
+  for (const raw of m[1].split(/\r?\n/)) {
+    if (!raw.trim() || raw.trim().startsWith("#") || raw.trim().startsWith("- ")) continue;
+    const indent = raw.length - raw.trimStart().length;
+    const kv = /^([^:#]+?)\s*:\s*(.*)$/.exec(raw.trim());
+    if (!kv) continue;
+    while (stack.length > 1 && stack[stack.length - 1].indent >= indent) stack.pop();
+    const parent = stack[stack.length - 1].node;
+    const key = kv[1].trim().replace(/^["']|["']$/g, "");
+    let value = kv[2];
+    const quoted = /^(["'])(.*?)\1/.exec(value);
+    if (quoted) value = quoted[2];
+    else value = value.replace(/\s+#.*$/, "").trim();
+    if (value === "") {
+      parent[key] = {};
+      stack.push({ indent, node: parent[key] });
+    } else parent[key] = value;
+  }
+  return root;
+}
+
+// readDesignSystem(path) -> { path, colors: [{ name, value, rgb }], fonts: Set of familyKey,
+// purpleBrand: { name, hex } | null } or null when the file cannot be read. A declared colour
+// on the purple arc (OKLCH hue 250 to 320, chroma 0.12 or more) is a purple brand.
+export function readDesignSystem(path) {
+  if (!path) return null;
+  if (designFileCache.has(path)) return designFileCache.get(path);
+  let result = null;
+  try {
+    const fm = parseFrontmatter(readFileSync(path, "utf8"));
+    const colors = [];
+    for (const [name, value] of Object.entries(fm.colors || fm.colours || {})) {
+      if (typeof value !== "string") continue;
+      const rgb = parseColor(value);
+      if (rgb) colors.push({ name, value, rgb });
+    }
+    const fonts = new Set();
+    for (const role of Object.values(fm.typography || {})) {
+      const family = role && typeof role === "object" ? role.fontFamily || role["font-family"] : null;
+      if (typeof family !== "string") continue;
+      for (const f of splitFamilies(family.replace(/var\(\s*--[\w-]+\s*,\s*([^)]*)\)/g, "$1"))) {
+        if (!GENERIC_FAMILIES.has(f.toLowerCase())) fonts.add(familyKey(f));
+      }
+    }
+    const purple = colors.find((c) => { const o = toOklch(c.rgb); return o.H >= 250 && o.H <= 320 && o.C >= 0.12; });
+    result = { path, colors, fonts, purpleBrand: purple ? { name: purple.name, hex: toHex(purple.rgb) } : null };
+  } catch {
+    result = null;
+  }
+  designFileCache.set(path, result);
+  return result;
+}
+
+// True when a colour literal sits within 6 per channel of a colour DESIGN.md declares.
+export function declaredColour(ds, rgb) {
+  return Boolean(ds && rgb && ds.colors.some((c) => Math.abs(c.rgb.r - rgb.r) <= 6 && Math.abs(c.rgb.g - rgb.g) <= 6 && Math.abs(c.rgb.b - rgb.b) <= 6));
+}
+
+// designSystemFontHits(ctx): a block whose primary face is not among the faces DESIGN.md
+// declares for its typography. A system stack never counts, and nothing fires without a
+// declared typography.
+export function designSystemFontHits(ctx) {
+  const ds = ctx.designSystem;
+  if (!ds || ds.fonts.size === 0) return [];
+  return primaryFamilyBlocks(ctx)
+    .filter((b) => b.kind === "face" && !ds.fonts.has(familyKey(b.name)))
+    .map((b) => ({ line: b.line, evidence: `${b.selector}: ${b.name} is not a face DESIGN.md declares` }));
 }

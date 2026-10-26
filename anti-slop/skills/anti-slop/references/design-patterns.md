@@ -488,6 +488,15 @@ Unmodified shadcn/ui, Material UI, or Ant Design components produce instantly re
 
 **Rule:** Customize component library defaults to match the project's identity. Change the default border colors, radii, shadows, and transitions. An interface should not look like the library's documentation site.
 
+## A Documented Design System (DESIGN.md)
+
+A project that writes its system down has made the choice the tells in this file look for, so a value it documents is not a default. Where a `DESIGN.md` sits beside the code (the nearest one walking up from the file, inside the project), the scanner reads its frontmatter: `colors.<name>` for the palette and `typography.<role>.fontFamily` for the faces.
+
+- **A declared purple is the brand.** When the file declares a colour on the purple arc (OKLCH hue 250 to 320, chroma 0.12 or more), the four purple rules (`ai-purple-hex`, `ai-purple-class`, `purple-gradient-default`, `purple-blue-gradient`) do not run for files under it, and the CLI's coverage notes say so, naming the colour. A literal within 6 per channel of any declared colour never counts toward them.
+- **A face outside the declared typography is drift.** `design-system-font` (medium, Quality defect) fires on a block whose primary face is not one `DESIGN.md` declares. A system stack never counts. Use a declared family, or add the face to `DESIGN.md` with the reason it was chosen.
+
+Colour, radius and type-size drift against the file are not scanner rules: a short declared ramp would flag nearly every file, and the judgment belongs to a reviewer. The file is read, never written. The reader and the font rule re-express impeccable's `DESIGN.md` support and its `design-system-font` rule.
+
 ## Dark Mode Bias
 
 AI disproportionately generates dark mode because dark screenshots look more "modern" and the purple-blue gradient aesthetic works better against dark backgrounds. The result: dark mode delivered without light mode, or light mode as a broken afterthought.
@@ -675,6 +684,7 @@ across every family.
 | Text contrast on its surface | Partly (`low-contrast`, `low-contrast-near-bar`: declared surfaces only, no Tailwind colour utilities) |
 | Grey text on a coloured surface | Yes (`gray-on-color`) |
 | Heading levels skipped | Yes (`skipped-heading`, full HTML documents) |
+| A face outside the typography DESIGN.md declares | Yes (`design-system-font`, only where a DESIGN.md is found) |
 | Type below the legibility floor, the reading-mechanics settings | Partly (`text-size-floor`, `tight-leading`, `wide-tracking`, `justified-narrow-column`, `crushed-tracking`: one block at a time) |
 | Icon in a colored circle | Yes (`icon-in-colored-circle`) |
 | Decorative blur blobs | Yes (`blur-blob`) |

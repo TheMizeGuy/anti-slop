@@ -244,10 +244,10 @@ function countLinePattern(src, pat, escapedOnly = false) {
 // them exist to read. Both views read the escape hatch from the RAW line, where the marker
 // lives, and share one design-detect context, built on first use so a file no rule reaches
 // past its raw lines never pays for it.
-function ruleSources(content, ext) {
+function ruleSources(content, ext, designSystem) {
   const rawLines = content.split("\n");
   let ctx = null;
-  const context = () => ctx || (ctx = makeContext(content, ext));
+  const context = () => ctx || (ctx = makeContext(content, ext, { designSystem }));
   const waivers = new Map();
   const waiverAt = (n) => {
     if (!waivers.has(n)) waivers.set(n, parseWaiver(rawLines[n - 1] ?? "", KNOWN_RULE_IDS));
@@ -524,6 +524,8 @@ export function proseScopeFor(filePath, opts = {}) {
 // behavior is byte-identical to calling scanContent(content, filePath) with no opts.
 // opts.warnings (an array): receives { file, line, unknown } for each scoped waiver that names
 // a rule id no rule has, which therefore suppresses nothing.
+// opts.designSystem: the file's DESIGN.md as design-detect readDesignSystem() returns it, or
+// null. The CLI and the corpus harness resolve it per file; an embedder may pass its own.
 export function scanContent(content, filePath, opts = {}) {
   const violations = [];
   // Binary read as UTF-8 (a PNG, a font, an archive) decodes to replacement characters and
@@ -666,7 +668,7 @@ export function scanContent(content, filePath, opts = {}) {
   }
 
   // ── Design + code patterns (per-line or per-file, with suppress + escape hatch) ──
-  const sources = ruleSources(content, ext);
+  const sources = ruleSources(content, ext, opts.designSystem || null);
   const codeSource = (pat) => (pat.blankComments ? sources.blanked : sources.raw);
   if (isStyle) {
     for (const pat of DESIGN_PATTERNS) {

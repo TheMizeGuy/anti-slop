@@ -209,6 +209,14 @@
       "recall": 1
     },
     {
+      "rule": "design-system-font",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "device-idiom-branch",
       "tp": 1,
       "fp": 0,
@@ -908,7 +916,7 @@
     },
     {
       "modality": "design",
-      "tp": 72,
+      "tp": 73,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -932,10 +940,10 @@
     }
   ],
   "overall": {
-    "tp": 139,
+    "tp": 140,
     "fp": 0,
     "fn": 1,
     "precision": 1,
-    "recall": 0.9928571428571429
+    "recall": 0.9929078014184397
   }
 }

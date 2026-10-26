@@ -1169,3 +1169,77 @@ test("theater-slop-phrase: the dismissive framing fires in both spellings; names
   assert.deepEqual(theater("Seattle Kindness Theater presents a show."), [], "a Title Case name");
   assert.deepEqual(theater("Security theaters across the region."), [], "the plural is a different noun");
 });
+
+// ── DESIGN.md: the palette exemption and design-system-font (2.5.0, P2) ──────
+
+import { mkdtempSync, writeFileSync as writeFile, mkdirSync, rmSync as rmDir } from "node:fs";
+import { tmpdir } from "node:os";
+import { findDesignMd, readDesignSystem, parseFrontmatter } from "../lib/design-detect.mjs";
+
+const DESIGN_MD = '---\ncolors:\n  violet: oklch(0.55 0.2 295)\n  ink: "#1f2937" # body text\ntypography:\n  body:\n    fontFamily: "Söhne, system-ui, sans-serif"\n---\n# System\n';
+
+function withDesignSystem(fn, designMd = DESIGN_MD) {
+  const root = mkdtempSync(join(tmpdir(), "anti-slop-ds-"));
+  try {
+    writeFile(join(root, "package.json"), "{}");
+    if (designMd !== null) writeFile(join(root, "DESIGN.md"), designMd);
+    mkdirSync(join(root, "src"));
+    return fn(root, readDesignSystem(findDesignMd(join(root, "src", "page.html"))));
+  } finally {
+    rmDir(root, { recursive: true, force: true });
+  }
+}
+
+test("DESIGN.md: the reader finds the nearest file, stops at the project root, and reads the frontmatter", () => {
+  const fm = parseFrontmatter(DESIGN_MD);
+  assert.equal(fm.colors.violet, "oklch(0.55 0.2 295)");
+  assert.equal(fm.colors.ink, "#1f2937", "a quoted value with a trailing comment");
+  assert.equal(fm.typography.body.fontFamily, "Söhne, system-ui, sans-serif");
+  withDesignSystem((root, ds) => {
+    assert.equal(ds.path, join(root, "DESIGN.md"));
+    assert.deepEqual(ds.purpleBrand, { name: "violet", hex: "#7e4ed7" });
+    assert.ok(ds.fonts.has("söhne") && !ds.fonts.has("system-ui"));
+  });
+  withDesignSystem((root, ds) => assert.equal(ds, null, "no DESIGN.md inside the project"), null);
+});
+
+test("DESIGN.md: a declared purple brand turns the purple rules off, and its twin without one fires", () => {
+  const page = '<a class="bg-violet-600 text-white">Go</a><div class="bg-gradient-to-r from-violet-500 to-violet-600"></div><p class="text-violet-700">x</p>';
+  withDesignSystem((root, ds) => {
+    const on = names(page, "page.html");
+    assert.ok(on.includes("ai-purple-class") && on.includes("purple-gradient-default"), JSON.stringify(on));
+    const off = scanContent(page, "page.html", { designSystem: ds }).map((v) => v.name);
+    assert.ok(!off.includes("ai-purple-class") && !off.includes("purple-gradient-default"), JSON.stringify(off));
+  });
+  const teal = '---\ncolors:\n  brand: "#0f766e"\n---\n';
+  withDesignSystem((root, ds) => {
+    assert.equal(ds.purpleBrand, null);
+    assert.ok(scanContent(page, "page.html", { designSystem: ds }).some((v) => v.name === "ai-purple-class"), "a brand off the purple arc leaves the purple rules running");
+  }, teal);
+});
+
+test("DESIGN.md: a literal within 6 per channel of a declared colour is the palette", () => {
+  const near = '---\ncolors:\n  accent: "#7d3bec"\n  plain: "#808080"\n---\n';
+  withDesignSystem((root, ds) => {
+    assert.equal(ds.purpleBrand !== null, true);
+  }, near);
+  const neutral = '---\ncolors:\n  mark: "#7c3aed"\n---\n';
+  const css = ".a { color: #7c3aed } .b { border-color: #7c3aed }";
+  withDesignSystem((root, ds) => {
+    const fakeNonPurple = { ...ds, purpleBrand: null };
+    assert.ok(!scanContent(css, "a.css", { designSystem: fakeNonPurple }).some((v) => v.name === "ai-purple-hex"));
+    assert.ok(scanContent(css, "a.css").some((v) => v.name === "ai-purple-hex"), "the same literals with no DESIGN.md");
+  }, neutral);
+});
+
+test("design-system-font: a face outside the declared typography fires; the declared face and system stacks do not", () => {
+  withDesignSystem((root, ds) => {
+    const font = (css) => scanContent(css, "a.css", { designSystem: ds }).filter((v) => v.name === "design-system-font");
+    assert.equal(font('.hero { font-family: "Lobster", cursive }').length, 1);
+    assert.deepEqual(font('.hero { font-family: "Söhne", sans-serif }'), []);
+    assert.deepEqual(font(".hero { font-family: system-ui, sans-serif }"), []);
+    assert.deepEqual(scanContent('.hero { font-family: "Lobster", cursive }', "a.css").filter((v) => v.name === "design-system-font"), [], "no DESIGN.md, no drift");
+  });
+  assert.equal(fired("design-system-font", corpus("design/design-system/drift.css"), "design/design-system/drift.css").length, 0,
+    "the corpus harness and the CLI resolve DESIGN.md; a bare scanContent call does not");
+});

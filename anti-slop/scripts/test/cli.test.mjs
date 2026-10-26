@@ -713,3 +713,17 @@ test("coverage: one line per distinct note with its file count, and --quiet drop
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("coverage: a declared purple brand in DESIGN.md is named when the purple rules stand down", () => {
+  const dir = scratchDir();
+  try {
+    writeFileSync(join(dir, "package.json"), "{}");
+    writeFileSync(join(dir, "DESIGN.md"), "---\ncolors:\n  violet: oklch(0.55 0.2 295)\n---\n");
+    writeFileSync(join(dir, "page.html"), '<a class="bg-violet-600 text-violet-700">Go</a>\n');
+    const result = runCli(["page.html"], dir);
+    assert.equal(result.stdout, "page.html: clean\n");
+    assert.match(result.stderr, /coverage: purple rules off: DESIGN\.md declares violet \(#7e4ed7\) \(1 file\)/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

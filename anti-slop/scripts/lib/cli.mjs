@@ -6,8 +6,9 @@
 // `git diff --name-only | xargs node .../slop-scanner.mjs scan`.
 
 import { readFileSync } from "fs";
-import { extname } from "path";
+import { extname, relative } from "path";
 import { scanContent, calculateScore, verdict, proseScope, proseScopeFor } from "./scan.mjs";
+import { findDesignMd, readDesignSystem } from "./design-detect.mjs";
 import { PROSE_EXTENSIONS, PROSE_SCOPES, CODE_EXTENSIONS, WEB_SURFACE_EXTENSIONS, NATIVE_UI_EXTENSIONS } from "./rules.mjs";
 import { loadLog, saveLog, saveScores, loadScores } from "./store.mjs";
 
@@ -151,13 +152,19 @@ function coverageNote(filePath) {
   return null;
 }
 
-function coverageOf(files) {
+function coverageOf(files, designSystems) {
   const byNote = new Map();
-  for (const file of files) {
-    const note = coverageNote(file);
-    if (!note) continue;
+  const add = (note, file) => {
     if (!byNote.has(note)) byNote.set(note, []);
     byNote.get(note).push(file);
+  };
+  for (const file of files) {
+    const note = coverageNote(file);
+    if (note) add(note, file);
+    const ds = designSystems.get(file);
+    if (ds && ds.purpleBrand && WEB_SURFACE_EXTENSIONS.has(extname(file).toLowerCase())) {
+      add(`purple rules off: ${relative(process.cwd(), ds.path) || ds.path} declares ${ds.purpleBrand.name} (${ds.purpleBrand.hex})`, file);
+    }
   }
   return [...byNote].map(([note, list]) => ({ note, files: list }));
 }
@@ -347,11 +354,14 @@ export async function runCli(argv) {
 
   const results = [];
   const allEntriesByFile = new Map();
+  const designSystems = new Map();
   for (const filePath of toScan) {
     const content = contents.get(filePath);
+    const designSystem = readDesignSystem(findDesignMd(filePath));
+    designSystems.set(filePath, designSystem);
     // Suppressed entries (escape hatch / allowedWords) are logged under --record for rule
     // stats, but never reach output, score, or exit code.
-    const allEntries = scanContent(content, filePath, scanOpts);
+    const allEntries = scanContent(content, filePath, { ...scanOpts, designSystem });
     const violations = allEntries.filter((v) => !v.suppressed);
     const score = calculateScore(violations);
     const tier = classifyVerdict(content, filePath, violations);
@@ -387,7 +397,7 @@ export async function runCli(argv) {
   }
 
   if (!opts.quiet) {
-    const coverage = coverageOf(results.map((r) => r.file));
+    const coverage = coverageOf(results.map((r) => r.file), designSystems);
     if (opts.format === "json") {
       const skippedRows = skipped.map((file) => ({ file, reason: "prose-scope", scope }));
       process.stdout.write(`${JSON.stringify({ files: results, totals, skipped: skippedRows, coverage })}\n`);

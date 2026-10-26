@@ -56,6 +56,11 @@ that decides a combination or a repetition after the escape hatch has dropped it
   level below the one before it; a footer's first heading may start lower.
 - `theater-slop-phrase` (low, Pattern smell, prose): dismissing a practice as theater
   (`security theater`, `growth theatre`), both spellings; a Title Case name is not the framing.
+- `design-system-font` (medium, Quality defect): where a `DESIGN.md` is found (the nearest one
+  walking up from the file, inside the project), a block whose primary face is not one its
+  frontmatter declares. A declared colour on the purple arc turns the four purple rules off
+  for files under it, and the coverage notes name it. Colour, radius and type-size drift
+  against the file are not ported.
 
 **Rules that fired where they should not, narrowed:**
 
@@ -132,8 +137,8 @@ document is the finding. `choosing-with-intent.md` documents the scoped waiver.
 
 | | Before (2.4.0) | After (2.5.0) |
 |---|--:|--:|
-| True positives / false positives / false negatives | 120 / 0 / 1 | 139 / 0 / 1 |
-| Design modality true positives | 54 | 72 |
+| True positives / false positives / false negatives | 120 / 0 / 1 | 140 / 0 / 1 |
+| Design modality true positives | 54 | 73 |
 | Prose modality true positives | 26 | 27 |
 | Precision / recall | 100.0% / 99.2% | 100.0% / 99.2% |
 
