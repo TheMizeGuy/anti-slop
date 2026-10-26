@@ -512,7 +512,7 @@
           "confidence": "Hard defect"
         }
       ],
-      "note": "The dimensionless <img> was always planted here; it became reachable in 2.1.0, when .html joined the code surfaces. Before that, img-no-dimensions -- a CLS rule whose entire target syntax is <img> -- could not fire on plain HTML at all."
+      "note": "The dimensionless <img> was always planted here; it became reachable in 2.1.0, when .html joined the code surfaces. Before that, img-no-dimensions -- a CLS rule whose entire target syntax is <img> -- could not fire on plain HTML at all. Fixture corrected 2026-10 (anti-slop 2.5.0): the hero gained its sub-line with class=\"subtitle\", so the planted .subtitle Inter is set on live copy rather than dead CSS; the labels are unchanged."
     },
     {
       "file": "design/small-avatar-clean.html",
@@ -598,7 +598,7 @@
           "confidence": "Pattern smell"
         }
       ],
-      "note": "The tasteful-default combination in full: cream background + Instrument Serif display + sage accent, so all three legs fire the combination rule. generic-font also fires on the Inter button face; ui-craft accepts that as a permitted T1 fallback, anti-slop's rule does not distinguish fallback from primary, and the label records what this scanner actually reports."
+      "note": "The tasteful-default combination in full: cream background + Instrument Serif display + sage accent, so all three legs fire the combination rule. generic-font also fires on the Inter button face; ui-craft accepts that as a permitted T1 fallback, anti-slop's rule does not distinguish fallback from primary, and the label records what this scanner actually reports. Fixture corrected 2026-10 (anti-slop 2.5.0): the planted Inter moved from .btn to the hero line (.lede), because a reflex face set only on a control is the permitted UI label fallback when the page sets another face for its content; the generic-font label is unchanged."
     },
     {
       "file": "design/clean-intentional.html",

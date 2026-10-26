@@ -2342,3 +2342,35 @@ export function framedCardTrio(cards) {
   if (trio.length >= 3 || (trio.length >= 2 && trio.length === cards.length)) return trio;
   return [];
 }
+
+// ── Primary families ──
+// primaryFamilyBlocks(ctx) -> one entry per block that declares a font stack (font-family or
+// the font shorthand; @font-face and other at-blocks excluded, since they define a face
+// rather than set one): { line, selector, kind, name, control }. `control` is true when
+// every selector in the list is a button, field or label, the place a UI label fallback face
+// lives; a reflex face there is permitted when the page sets another face for content.
+const CONTROL_TAGS = new Set(["button", "input", "select", "textarea", "option", "label"]);
+const CONTROL_WORDS = new Set(["btn", "button", "control", "input", "select", "toggle", "switch"]);
+
+export function isControlSelector(selector) {
+  return splitSelectorList(selector).every((s) => {
+    const subject = subjectOf(s).replace(/::?[\w-]+(?:\([^)]*\))?/g, "");
+    const tag = tagOfCompound(subject);
+    return (tag && CONTROL_TAGS.has(tag)) || classWordsOf(subject).some((w) => CONTROL_WORDS.has(w));
+  });
+}
+
+export function primaryFamilyBlocks(ctx) {
+  return memo(ctx, "primaryFamilies", () => {
+    const out = [];
+    for (const b of ctx.css.blocks) {
+      if (b.selector.startsWith("@")) continue;
+      const stack = fontStack(b, ctx.props);
+      if (stack.length === 0) continue;
+      const pf = primaryFamily(stack);
+      const at = declEntry(b, "font-family") || declEntry(b, "font");
+      out.push({ line: at ? at.line : b.line, selector: normSelector(b.selector), kind: pf.kind, name: pf.name, control: isControlSelector(b.selector) });
+    }
+    return out;
+  });
+}

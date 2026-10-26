@@ -2,7 +2,7 @@ import {
   lowContrastHits, sideStripeHits, textSizeFloorHits, tightLeadingHits, wideTrackingHits,
   justifiedNarrowHits, crushedTrackingHits, bounceEasingHits, pulsingDotHits,
   classFreeLines, lineRegexHits, matchingClassSets, tailwindToken, isResting, isStateVariant, glowHits,
-  creamLegHits, creamCombination, framedCardSets, framedCardTrio,
+  creamLegHits, creamCombination, framedCardSets, framedCardTrio, primaryFamilyBlocks,
 } from "./design-detect.mjs";
 
 // ── Confidence classes ──
@@ -296,6 +296,26 @@ function vhShellHits(ctx) {
   return hits;
 }
 
+// ── The primary face ──
+// The face a block actually sets is the first non-generic family of its stack, read from
+// font-family or the font shorthand. A system stack is never a face, a family named only as
+// a fallback never fires, and the list matches whole names, so "Inter Display" (a recommended
+// alternative) is not Inter. A reflex face on a button or field label is the UI label
+// fallback and is permitted when the page sets another face for its content.
+const GENERIC_FONT_FACE = /^(?:inter|inter tight|inter variable|geist|roboto|space grotesk|manrope|plus jakarta sans|outfit|dm sans)$/;
+const NEXT_FONT_CONSTRUCTOR = /\b(?:Inter|Geist|Geist_Mono|Roboto|Space_Grotesk|Manrope|Plus_Jakarta_Sans|Outfit|DM_Sans)\s*\(/g;
+
+function genericFontHits(ctx) {
+  const blocks = primaryFamilyBlocks(ctx);
+  const hits = [];
+  for (const b of blocks) {
+    if (b.kind !== "face" || !GENERIC_FONT_FACE.test(b.name)) continue;
+    if (b.control && blocks.some((o) => !o.control && o.kind !== "none" && o.name !== b.name)) continue;
+    hits.push({ line: b.line, evidence: `${b.selector}: ${b.name}` });
+  }
+  return [...hits, ...lineRegexHits(ctx.lines, NEXT_FONT_CONSTRUCTOR)];
+}
+
 // ── UI Design Patterns (WEB surfaces only -- see WEB_SURFACE_EXTENSIONS) ──
 // Ordered roughly by empirical signal where a corpus ranking exists. Severity reflects that
 // ranking: shadcn-default / purple / gradients are the strongest; the rest are lighter.
@@ -376,10 +396,9 @@ export const DESIGN_PATTERNS = [
   { name: "rounded-everything", severity: "low", confidence: CONFIDENCE.QUALITY, mode: CONCENTRATION, minCount: 3, pattern: /\brounded-(2xl|3xl|full)\b|border-radius\s*:\s*(999\d*px|9999px)/i, suppress: /\b[hw]-(\d|10|11|12|14|16)(\.5)?\b/i, fix: "State the radius as a token (`--radius: 8px`) and reference it, or vary it deliberately by control class; never remove the rounding.", desc: "Maximal rounding on every control (uncommitted radius)" },
   // The family list is the one two independent 2026 sources converge on, MINUS Poppins:
   // the evidence for Poppins is a single self-published page calling it "overused", and
-  // omitting it costs the rule nothing. `font-family: 'Inter Tight'` matches on \bInter\b
-  // -- same family, accepted. Only the `font-family:` declaration and the next/font
-  // constructor call are matched, so the word "Outfit" in body copy stays clean.
-  { name: "generic-font", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /font-family\s*:\s*['"]?(Inter|Geist|Roboto|Space\s*Grotesk|Manrope|Plus\s*Jakarta\s*Sans|Outfit|DM\s*Sans)\b|\b(Inter|Geist|Geist_Mono|Roboto|Space_Grotesk|Manrope|Plus_Jakarta_Sans|Outfit|DM_Sans)\s*\(/i, fix: "Choose a face with a source: the brand's own, or a display-plus-body pairing, and state the reason for it.", desc: "Generic default font (Inter/Geist/Roboto and the 2026 successors)" },
+  // omitting it costs the rule nothing. Only a block's primary face and the next/font
+  // constructor call are read, so the word "Outfit" in body copy stays clean.
+  { name: "generic-font", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: genericFontHits, fix: "Choose a face with a source: the brand's own, or a display-plus-body pairing, and state the reason for it.", desc: "Generic default font (Inter/Geist/Roboto and the 2026 successors)" },
   { name: "hype-copy", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\bTransform your\b|\bSupercharge\b|\bUnleash\b|\bEffortlessly\b|take your [^.]{0,30}to the next level/i, fix: "Say what the control does: `Connect your GitHub account`, not `Seamlessly integrate with GitHub`.", desc: "Marketing hype copy in UI" },
   { name: "stock-illustration", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /\b(undraw|storyset|drawkit)\b/i, fix: "Replace the illustration with the thing it stands in for: a screenshot of the real screen, or a diagram drawn for this system.", desc: "Generic stock illustration (undraw/storyset)" },
   // The JS style-object form (`zIndex: 9999`) is the dominant one on .jsx/.tsx, which are

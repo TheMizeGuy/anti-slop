@@ -1054,3 +1054,23 @@ test("positive-tabindex: a data attribute that ends in tabindex is not the attri
   assert.ok(!fires("positive-tabindex", '<div data-tabindex="3">x</div>', "a.html"));
   assert.ok(fires("positive-tabindex", '<div tabindex="3">x</div>', "a.html"));
 });
+
+// ── generic-font reads the primary face (2.5.0) ──────────────────────────────
+
+test("generic-font: the font shorthand's family is read, and only the first non-generic family counts", () => {
+  assert.ok(fires("generic-font", 'body { font: 15px/1.4 "Inter", sans-serif }', "a.css"));
+  assert.ok(!fires("generic-font", 'body { font-family: "Söhne", Inter, sans-serif }', "a.css"), "Inter as a fallback");
+  assert.ok(!fires("generic-font", 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif }', "a.css"), "a system stack");
+  assert.ok(!fires("generic-font", 'body { font-family: "Inter Display", sans-serif }', "a.css"), "whole names: Inter Display is not Inter");
+  assert.ok(fires("generic-font", 'body { font-family: "Inter Tight", sans-serif }', "a.css"));
+  assert.ok(fires("generic-font", "export const A = () => <p style={{ fontFamily: 'Geist, sans-serif' }}>x</p>;", "A.tsx"));
+  assert.ok(fires("generic-font", "const inter = Inter({ subsets: ['latin'] });", "layout.tsx"), "the next/font constructor");
+});
+
+test("generic-font: a reflex face on a control is the label fallback when content has its own face", () => {
+  const withContent = 'body { font-family: "Instrument Serif", serif } .btn { font-family: Inter, sans-serif }';
+  assert.ok(!fires("generic-font", withContent, "a.css"));
+  assert.ok(fires("generic-font", ".btn { font-family: Inter, sans-serif }", "a.css"), "no other face: the control's face is the page's face");
+  assert.ok(fires("generic-font", 'body { font-family: "Instrument Serif", serif } .lede { font-family: Inter, sans-serif }', "a.css"), "Inter on content copy");
+  assert.ok(!fires("generic-font", "@font-face { font-family: 'Inter'; src: url(inter.woff2) }", "a.css"), "declaring a face is not setting it");
+});
