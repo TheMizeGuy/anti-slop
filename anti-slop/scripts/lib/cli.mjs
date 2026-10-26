@@ -281,7 +281,8 @@ export async function runCli(argv) {
   // used to scan it twice, record it twice, and double-count it in the totals.
   opts.files = [...new Set(opts.files)];
 
-  const scanOpts = { collectSuppressed: true, proseScope: opts.proseScope };
+  const warnings = [];
+  const scanOpts = { collectSuppressed: true, proseScope: opts.proseScope, warnings };
   const scope = proseScope(scanOpts);
   // Scope is decided BEFORE any file is opened: a prose file outside the project's
   // user-facing list is reported as skipped, never as clean, contributes nothing to the
@@ -334,6 +335,12 @@ export async function runCli(argv) {
   }
 
   const shouldFail = results.some((r) => meetsThreshold(r.violations, opts.failOn));
+
+  if (!opts.quiet) {
+    for (const w of warnings) {
+      process.stderr.write(`${w.file}:${w.line}: anti-slop-allow names unknown rule id(s) ${w.unknown.join(", ")}; the waiver suppresses nothing\n`);
+    }
+  }
 
   // --quiet owns stdout, not stderr: a run that scanned nothing must say so somewhere, or a
   // docs-only CI change passes green with empty output having read no files at all.

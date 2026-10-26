@@ -547,3 +547,44 @@ test("noise-stripping: a word quoted in curly double quotes is not flagged", () 
   assert.deepEqual(words("We delve into release notes."), ["delve"]);
   assert.deepEqual(words("Avoid \u201Cdelve\nacross lines\u201D here."), ["delve"], "a span never crosses a line");
 });
+
+// ── Rule-scoped waivers (2.5.0) ──────────────────────────────────────────────
+// `anti-slop-allow: <id>[, <id>] -- <reason>` waives the named table rules on its line and
+// leaves every other rule reading it; a marker with no ` -- ` is free text, line-wide.
+
+const wordmark = (marker) => `<h1 class="bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-red-700" style="background: #fff; color: #aaa"> <!-- ${marker} -->Halcyon</h1>`;
+const ruleNames = (content, path = "a.html", opts) => scanContent(content, path, opts).map((v) => v.name || v.type);
+
+test("waiver: a scoped waiver suppresses only the rule it names", () => {
+  const got = ruleNames(wordmark("anti-slop-allow: gradient-text -- wordmark from the identity guide"));
+  assert.ok(!got.includes("gradient-text"), JSON.stringify(got));
+  assert.ok(got.includes("low-contrast"), "the contrast failure on the waived line still reports");
+});
+
+test("waiver: free text with no ` -- ` stays line-wide, as every existing marker is", () => {
+  for (const marker of ["anti-slop-allow: the wordmark", "anti-slop-allow: on-brand gradient", "unslop-ignore"]) {
+    const got = ruleNames(wordmark(marker));
+    assert.ok(!got.includes("gradient-text") && !got.includes("low-contrast"), `${marker}: ${JSON.stringify(got)}`);
+  }
+});
+
+test("waiver: an unknown id suppresses nothing, and the scan says so", () => {
+  const warnings = [];
+  const got = ruleNames(wordmark("anti-slop-allow: no-such-rule -- x"), "a.html", { warnings });
+  assert.ok(got.includes("gradient-text") && got.includes("low-contrast"), JSON.stringify(got));
+  assert.deepEqual(warnings, [{ file: "a.html", line: 1, unknown: ["no-such-rule"] }]);
+  const mixed = ruleNames(wordmark("anti-slop-allow: gradient-text, no-such-rule -- x"));
+  assert.ok(mixed.includes("gradient-text"), "one unknown id voids the whole waiver");
+});
+
+test("waiver: code rules take the scoped form; the suppressed capture says which waiver", () => {
+  const js = "run(); eval(payload); // anti-slop-allow: eval-usage -- sandboxed loader\n";
+  assert.ok(!ruleNames(js, "loader.js").includes("eval-usage"));
+  const suppressed = scanContent(wordmark("anti-slop-allow: gradient-text -- wordmark"), "a.html", { collectSuppressed: true }).filter((v) => v.suppressed);
+  assert.deepEqual(suppressed.map((v) => [v.name, v.suppressedBy]), [["gradient-text", "waiver:gradient-text"]]);
+});
+
+test("waiver: the prose families stay line-wide for any marker", () => {
+  const md = "Great question! We delve into it. <!-- anti-slop-allow: gradient-text -- x -->\n";
+  assert.deepEqual(scanContent(md, "post.md").filter((v) => v.type === "banned-phrase" || v.type === "banned-word"), []);
+});

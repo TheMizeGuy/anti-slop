@@ -647,3 +647,18 @@ test("history and stats on an untouched project create no .anti-slop directory",
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("a scoped waiver naming an unknown rule id is reported on stderr, never on stdout", () => {
+  const dir = scratchDir();
+  try {
+    writeFileSync(join(dir, "page.css"), "h1 { background-clip: text; } /* anti-slop-allow: no-such-rule -- brand */\n");
+    const result = runCli(["--format", "json", "page.css"], dir);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /page\.css:1: anti-slop-allow names unknown rule id\(s\) no-such-rule; the waiver suppresses nothing/);
+    assert.ok(JSON.parse(result.stdout).files[0].violations.some((v) => v.name === "gradient-text"));
+    const quiet = runCli(["--quiet", "page.css"], dir);
+    assert.equal(quiet.stderr, "");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

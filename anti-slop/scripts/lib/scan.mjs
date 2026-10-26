@@ -25,6 +25,7 @@ import {
   WEB_SURFACE_EXTENSIONS,
   NATIVE_UI_EXTENSIONS,
   CONCENTRATION,
+  KNOWN_RULE_IDS,
   BANNED_WORD_CONFIDENCE,
   BANNED_PHRASE_CONFIDENCE,
   EMDASH_CONFIDENCE,
@@ -34,7 +35,7 @@ import {
   EMDASH_FIX,
   EMOJI_FIX,
 } from "./rules.mjs";
-import { makeContext, matchingClassSets } from "./design-detect.mjs";
+import { makeContext, matchingClassSets, parseWaiver, waiverCovers } from "./design-detect.mjs";
 
 // ── Concentration gate ──
 // A rule declaring mode CONCENTRATION reports nothing until its match count reaches
@@ -209,7 +210,7 @@ function summariseHits(hits) {
 }
 
 function countLinePattern(src, pat, escapedOnly = false) {
-  const lineOk = (n) => ESCAPE_HATCH.test(src.rawLines[n - 1] ?? "") === escapedOnly;
+  const lineOk = (n) => waiverCovers(src.waiverAt(n), pat.name) === escapedOnly;
   if (pat.hits) {
     // `gate(hits)` runs after the hatch: a rule whose verdict is a combination or a
     // repetition decides it on the hits that survive, so a hatched leg completes nothing.
@@ -247,10 +248,32 @@ function ruleSources(content, ext) {
   const rawLines = content.split("\n");
   let ctx = null;
   const context = () => ctx || (ctx = makeContext(content, ext));
-  return {
-    raw: { lines: rawLines, rawLines, text: content, get ctx() { return context(); } },
-    blanked: { get lines() { return context().lines; }, rawLines, get text() { return context().text; }, get ctx() { return context(); } },
+  const waivers = new Map();
+  const waiverAt = (n) => {
+    if (!waivers.has(n)) waivers.set(n, parseWaiver(rawLines[n - 1] ?? "", KNOWN_RULE_IDS));
+    return waivers.get(n);
   };
+  return {
+    waiverAt,
+    raw: { lines: rawLines, rawLines, text: content, waiverAt, get ctx() { return context(); } },
+    blanked: { get lines() { return context().lines; }, rawLines, waiverAt, get text() { return context().text; }, get ctx() { return context(); } },
+  };
+}
+
+// How a suppressed finding was waived: the line-wide hatch or a waiver naming the rule.
+function suppressedBy(src, line) {
+  const w = line ? src.waiverAt(line) : null;
+  return w && !w.all ? `waiver:${[...w.rules].join(",")}` : "escape-hatch";
+}
+
+// A scoped waiver naming an id no rule has suppresses nothing; the caller hears about it.
+function unknownWaivers(rawLines) {
+  const out = [];
+  rawLines.forEach((raw, i) => {
+    const w = parseWaiver(raw, KNOWN_RULE_IDS);
+    if (w && w.unknown && w.unknown.length) out.push({ line: i + 1, unknown: w.unknown });
+  });
+  return out;
 }
 
 // ── Suppressed-finding capture (opts.collectSuppressed) ──
@@ -353,7 +376,7 @@ function collectSuppressedViolations({ content, sources, isProse, isCode, isStyl
           confidence: pat.confidence, mode: pat.mode,
           fix: pat.fix,
           desc: `${pat.desc} (${count}x)`,
-          suppressed: true, suppressedBy: "escape-hatch",
+          suppressed: true, suppressedBy: suppressedBy(sources.blanked, line),
         });
       }
     }
@@ -372,7 +395,7 @@ function collectSuppressedViolations({ content, sources, isProse, isCode, isStyl
           confidence: pat.confidence,
           fix: pat.fix,
           desc: `${pat.desc} (${count}x)`,
-          suppressed: true, suppressedBy: "escape-hatch",
+          suppressed: true, suppressedBy: suppressedBy(source, line),
         });
       }
     }
@@ -499,6 +522,8 @@ export function proseScopeFor(filePath, opts = {}) {
 // findings that a deliberate suppression choice hid -- an escape-hatched line or an
 // allowedWords config entry -- flagged { suppressed: true, suppressedBy }. Default-off
 // behavior is byte-identical to calling scanContent(content, filePath) with no opts.
+// opts.warnings (an array): receives { file, line, unknown } for each scoped waiver that names
+// a rule id no rule has, which therefore suppresses nothing.
 export function scanContent(content, filePath, opts = {}) {
   const violations = [];
   // Binary read as UTF-8 (a PNG, a font, an archive) decodes to replacement characters and
@@ -706,6 +731,10 @@ export function scanContent(content, filePath, opts = {}) {
         });
       }
     }
+  }
+
+  if (Array.isArray(opts.warnings) && (isStyle || isNative || isCode)) {
+    for (const w of unknownWaivers(sources.raw.rawLines)) opts.warnings.push({ file: filePath, ...w });
   }
 
   if (opts.collectSuppressed) {

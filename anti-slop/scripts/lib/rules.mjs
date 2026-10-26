@@ -726,6 +726,14 @@ export const TEXT_CONSTRUCTS = [
   { name: "plain-aiism-collocation", severity: "low", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, pattern: /\bquietly\s+(?:building|becoming|dominat\w*|transform\w*|reshap\w*|chang\w*|eating)\b|\b(?:this|that)\s+matters\s+because\b|\bwhy\s+(?:this|that|it)\s+matters\b|\bearn(?:s|ed|ing)?\s+the\s+right\s+to\b|\b(?:decisions?|actions?|benefits?|effects?|gains?|habits?)\s+compound\b|\bbuilt\s+different\b|\bthe\s+pull\s+of\b|\bhold(?:s|ing)?\s+space\b|\bsends?\s+(?:a|the)\s+signal\s+that\b|\bdo\s+the\s+work\b/gi, fix: "Say the literal thing the metaphor stands in for; a single collocation is the writer's own prose, and only a cluster is the tell.", desc: "Plain-word metaphor cluster ('quietly building', 'why this matters', 'decisions compound')" },
 ];
 
+// ── Rule ids a scoped waiver may name ──
+// `anti-slop-allow: <id>[, <id>] -- <reason>` waives only the named table rules on its line
+// (design-detect parseWaiver). A marker without ` -- ` is free text and waives the whole
+// line, as it always has; the prose families are line-wide for any marker.
+export const KNOWN_RULE_IDS = new Set([
+  ...DESIGN_PATTERNS, ...NATIVE_PATTERNS, ...CODE_PATTERNS, ...TEXT_CONSTRUCTS,
+].map((r) => r.name).concat(["emoji", "em-dash-density"]));
+
 // ── Context Exceptions ──
 // If any of these domain words appear in the file, the banned word is likely legitimate
 export const CONTEXT_EXCEPTIONS = {
