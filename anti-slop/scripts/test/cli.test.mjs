@@ -662,3 +662,54 @@ test("a scoped waiver naming an unknown rule id is reported on stderr, never on 
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ── Coverage notes (2.5.0) ───────────────────────────────────────────────────
+// The report stays on stdout, which callers pipe; what a static scan cannot see goes to
+// stderr in text mode and into a `coverage` array in JSON.
+
+test("coverage: a component scan names its blind spot on stderr and adds nothing to stdout", () => {
+  const dir = scratchDir();
+  try {
+    writeFileSync(join(dir, "Card.tsx"), "export const Card = () => <div className=\"p-4\">x</div>;\n");
+    const text = runCli(["Card.tsx"], dir);
+    assert.equal(text.status, 0, text.stderr);
+    assert.equal(text.stdout, "Card.tsx: clean\n");
+    assert.match(text.stderr, /^coverage: contrast and type metrics read declared CSS, inline styles and CSS-in-JS only; Tailwind utilities and cross-file cascades are not resolved \(1 file\)\n/);
+    assert.match(text.stderr, /A clean result is a floor: this is a static scan of declared source, not a rendered page\.\n$/);
+    const json = runCli(["--format", "json", "Card.tsx"], dir);
+    const parsed = JSON.parse(json.stdout);
+    assert.ok(Array.isArray(parsed.coverage));
+    assert.deepEqual(parsed.coverage.map((c) => c.files), [["Card.tsx"]]);
+    assert.equal(json.stderr, "", "JSON carries the notes in the object, not on stderr");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("coverage: an HTML-only run that scans fully prints nothing on stderr", () => {
+  const dir = scratchDir();
+  try {
+    writeFileSync(join(dir, "page.html"), "<!doctype html><html lang=\"en\"><body><p>Hi</p></body></html>\n");
+    const result = runCli(["page.html"], dir);
+    assert.equal(result.stderr, "");
+    assert.deepEqual(JSON.parse(runCli(["--format", "json", "page.html"], dir).stdout).coverage, []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("coverage: one line per distinct note with its file count, and --quiet drops them", () => {
+  const dir = scratchDir();
+  try {
+    writeFileSync(join(dir, "a.css"), ".a { color: red; }\n");
+    writeFileSync(join(dir, "b.css"), ".b { color: red; }\n");
+    writeFileSync(join(dir, "job.py"), "x = 1\n");
+    const result = runCli(["a.css", "b.css", "job.py"], dir);
+    assert.match(result.stderr, /coverage: markup rules \(missing-alt, classAll fingerprints\) do not apply \(2 files\)/);
+    assert.match(result.stderr, /coverage: design tells not run \(not a UI surface\) \(1 file\)/);
+    assert.equal((result.stderr.match(/A clean result is a floor/g) || []).length, 1);
+    assert.equal(runCli(["--quiet", "a.css", "job.py"], dir).stderr, "");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
