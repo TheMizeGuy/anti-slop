@@ -151,13 +151,17 @@ document is the finding. `choosing-with-intent.md` documents the scoped waiver.
 
 `baseline.json` was regenerated with a row for each new rule; no existing row moved. Over
 impeccable's labelled antipattern fixtures (450 positive fixture-and-rule pairs; the scoring
-scripts sit outside this repository), this scanner alone went from 60 pairs hit to 184, and
-from 5 of impeccable's rules with any hit to 14: `side-tab` 36 of 41, `undersized-ui-text` 20
-of 20, `tiny-text` 12 of 13, `low-contrast` 25 of 61, `bounce-easing` 10 of 16,
-`tight-leading` 8 of 10, `wide-tracking` 5 of 6, `pulsing-dot` 4 of 5, `justified-text` 3 of
-3. Its findings on impeccable's negative fixtures changed from three on the CSS quoted in
-`css-in-prose-should-pass.html` (now silent) to four on the square-box side-tab twins, the
-deliberate divergence above.
+scripts sit outside this repository), this scanner alone went from 60 pairs hit to 211, and
+from 5 of impeccable's rules with any hit to 20: `side-tab` 36 of 41, `low-contrast` 25 of
+61, `undersized-ui-text` 20 of 20, `tiny-text` 12 of 13, `bounce-easing` 10 of 16,
+`tight-leading` 8 of 10, `skipped-heading` 8 of 8, `dark-glow` 6 to 8 of 10, `wide-tracking`
+5 of 6, `pulsing-dot` 4 of 5, `radial-halo` 4 of 7, `codex-grid-background` 4 of 5,
+`repeating-stripes-gradient` 4 of 5, `marquee` 3 of 4, `gray-on-color` 3 of 4,
+`justified-text` 3 of 3. Two earlier hits are gone on purpose: a cream page that carried one
+leg twice, and a 24px status orb whose 18px glow lights more than twice its own area. On
+impeccable's negative fixtures, the three findings on the CSS quoted in
+`css-in-prose-should-pass.html` are gone, and the new ones are the four square-box side-tab
+twins, the deliberate divergence above.
 
 Also in this release:
 
