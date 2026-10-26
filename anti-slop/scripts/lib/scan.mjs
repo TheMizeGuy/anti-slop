@@ -193,7 +193,10 @@ function summariseHits(hits) {
 function countLinePattern(src, pat, escapedOnly = false) {
   const lineOk = (n) => ESCAPE_HATCH.test(src.rawLines[n - 1] ?? "") === escapedOnly;
   if (pat.hits) {
-    return summariseHits((pat.hits(src.ctx) || []).filter((h) => Number.isInteger(h.line) && lineOk(h.line)));
+    // `gate(hits)` runs after the hatch: a rule whose verdict is a combination or a
+    // repetition decides it on the hits that survive, so a hatched leg completes nothing.
+    const kept = (pat.hits(src.ctx) || []).filter((h) => Number.isInteger(h.line) && lineOk(h.line));
+    return summariseHits(pat.gate ? pat.gate(kept) : kept);
   }
   if (pat.classAll) {
     return summariseHits(classAllMatches(src.ctx, pat.classAll)

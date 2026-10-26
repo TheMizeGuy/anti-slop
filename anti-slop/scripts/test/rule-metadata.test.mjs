@@ -225,6 +225,10 @@ test("every table rule declares exactly one way of counting a line", () => {
     if (rule.classAll !== undefined) assert.ok(Array.isArray(rule.classAll) && rule.classAll.length >= 2, `rule "${rule.name}" needs >= 2 classAll tokens`);
     if (rule.count !== undefined) assert.equal(typeof rule.count, "function", `rule "${rule.name}" has a non-function count`);
     if (rule.hits !== undefined) assert.equal(typeof rule.hits, "function", `rule "${rule.name}" has a non-function hits`);
+    if (rule.gate !== undefined) {
+      assert.equal(typeof rule.gate, "function", `rule "${rule.name}" has a non-function gate`);
+      assert.equal(typeof rule.hits, "function", `rule "${rule.name}" declares a gate with no hits detector to gate`);
+    }
   }
 });
 

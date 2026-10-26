@@ -474,10 +474,14 @@ test("generic-font: Poppins is deliberately absent from the family list", () => 
   assert.ok(!fires("generic-font", "body { font-family: 'Poppins', sans-serif; }", "app.css"));
 });
 
-test("cream-serif-default: the rusty-orange accent leg counts as a leg", () => {
-  const withAccent = '<h1 class="bg-stone-50 text-orange-700">Field notes</h1>';
-  assert.ok(fires("cream-serif-default", withAccent, "page.html"), "cream + rust is two legs");
-  assert.ok(fires("cream-serif-default", '<div class="text-amber-700" style="background:#faf8f5">x</div>', "page.html"));
+// Resolved 2026-10-26: the rusty-orange accent completes the combination beside the serif
+// display only. Cream with a brick accent and no serif is a common human palette, and the
+// accent hues prescribed to replace AI purple sit in that band.
+test("cream-serif-default: the rusty-orange accent is a leg beside the serif display, not beside cream alone", () => {
+  assert.ok(fires("cream-serif-default", '<h1 class="text-orange-700" style="font-family: Fraunces, serif">Field notes</h1>', "page.html"), "serif + clay");
+  assert.ok(fires("cream-serif-default", 'h1 { font-family: "Fraunces", serif } .cta { color: #c2410c }', "page.css"), "serif + clay in CSS");
+  assert.ok(!fires("cream-serif-default", '<h1 class="bg-stone-50 text-orange-700">Field notes</h1>', "page.html"), "cream + clay alone");
+  assert.ok(!fires("cream-serif-default", "body { background: #faf8f5 } .cta { background: #c2410c }", "page.css"), "cream + clay alone in CSS");
 });
 
 test("cream-serif-default: one accent leg alone is below the concentration threshold", () => {

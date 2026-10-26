@@ -2270,3 +2270,35 @@ export function glowHits(ctx, opts = {}) {
   }
   return hits;
 }
+
+// ── The cream-serif tasteful default ──
+// Four legs: a CREAM ground, a SERIF display face, the SAGE accent and the CLAY accent (the
+// rusty-orange drift form). The tell is two distinct legs: cream + serif, cream + sage,
+// serif + sage, or serif + clay. Clay completes the combination only beside the serif
+// display: a warm editorial ground with a brick accent is a common human choice. Two hits of
+// one leg are one leg.
+const CREAM_LEGS = [
+  ["cream", /#(?:faf8f5|f5f1e8|f3eee3|fdfbf7|f7f3ec|faf6ef|f6f1e7|fbf7f0|f4efe4)\b|\bbg-(?:stone|amber|orange)-(?:50|100)\b/gi],
+  ["serif", /\b(?:Instrument\s*Serif|Fraunces|Playfair\s*Display|Cormorant|Spectral|DM\s*Serif)\b/gi],
+  ["sage", /#15573a\b/gi],
+  ["clay", /\b(?:text|bg|border|ring|decoration)-(?:orange|amber)-(?:600|700|800)\b|#(?:b7410e|c2410c|9a3412|a0522d|d97757)\b/gi],
+];
+const CREAM_PAIRS = [["cream", "serif"], ["cream", "sage"], ["serif", "sage"], ["serif", "clay"]];
+
+// creamLegHits(ctx) -> every leg match, { line, leg, evidence }, on the prepared text.
+export function creamLegHits(ctx) {
+  return memo(ctx, "creamLegs", () => {
+    const hits = [];
+    for (const [leg, re] of CREAM_LEGS) for (const h of lineRegexHits(ctx.lines, re)) hits.push({ ...h, leg, evidence: `${leg} ${h.evidence}` });
+    return hits.sort((a, b) => a.line - b.line);
+  });
+}
+
+// creamCombination(hits) -> the hits when their distinct legs form a firing pair, else [].
+// Apply it after waivers, so a waived leg no longer completes the pair.
+export function creamCombination(hits) {
+  const legs = new Set(hits.map((h) => h.leg));
+  if (!CREAM_PAIRS.some(([a, b]) => legs.has(a) && legs.has(b))) return [];
+  const named = [...legs].map((leg) => hits.find((h) => h.leg === leg).evidence).join(" + ");
+  return hits.map((h, i) => (i === 0 ? { ...h, evidence: named } : h));
+}

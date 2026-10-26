@@ -2,6 +2,7 @@ import {
   lowContrastHits, sideStripeHits, textSizeFloorHits, tightLeadingHits, wideTrackingHits,
   justifiedNarrowHits, crushedTrackingHits, bounceEasingHits, pulsingDotHits,
   classFreeLines, lineRegexHits, matchingClassSets, tailwindToken, isResting, glowHits,
+  creamLegHits, creamCombination,
 } from "./design-detect.mjs";
 
 // ── Confidence classes ──
@@ -294,15 +295,15 @@ export const DESIGN_PATTERNS = [
   // right trade for a lone borrowed gray sitting below the signal floor.
   { name: "bootstrap-default-blue", severity: "low", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, requires: /#(0d6efd|0b5ed7)\b/i, pattern: /#(0d6efd|0b5ed7|dee2e6)\b/i, fix: "Theme the framework: set $primary, the border colour and the radius and shadow scales to project values, or adopt the project's own tokens.", desc: "Unthemed Bootstrap compiled defaults (primary blue / gray-300 border)" },
   { name: "gradient-text", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /bg-clip-text\s[^"]*text-transparent|text-transparent\s[^"]*bg-clip-text|-webkit-background-clip\s*:\s*text|\bbackground-clip\s*:\s*text/i, fix: "Carry the headline with size, weight, or one flat accent colour on a single word, and let the typography itself be the design.", desc: "Gradient text on heading (strong AI tell)" },
-  // design-patterns.md has always said "the signal is the combination -- any two of
-  // {cream background, serif display, sage green}. One alone may be a real decision."
-  // minCount 2 is that sentence, enforced: a lone Fraunces heading is a choice.
-  // The accent leg is the rusty-orange/terracotta one, not sage. Two independent 2026
-  // sources and this repo's own 2026-07 spot-check record the drift, and the rule carried
-  // no accent leg at all in either colour. Red is deliberately excluded: it would collide
-  // with every error state on the web. The 200-level band is excluded for the same reason
+  // design-patterns.md: the signal is the combination. Four legs (cream ground, serif
+  // display, the sage accent and its rusty-orange/terracotta drift form, clay), and two
+  // DISTINCT legs fire: cream + serif, cream + sage, serif + sage, serif + clay. Clay pairs
+  // only with the serif display, because a warm editorial ground with a brick accent is a
+  // common human palette and the accent hues prescribed to replace AI purple sit in that band
+  // (resolved 2026-10-26). Two hits of one leg are one leg. Red is excluded from the accent:
+  // it would collide with every error state on the web; the 200-level band likewise, since
   // one amber warning banner is not a palette.
-  { name: "cream-serif-default", severity: "low", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, pattern: /#(faf8f5|f5f1e8|f3eee3|fdfbf7|f7f3ec|faf6ef|f6f1e7|fbf7f0|f4efe4)\b|\bbg-(stone|amber|orange)-(50|100)\b|\b(Instrument\s*Serif|Fraunces|Playfair\s*Display|Cormorant|Spectral|DM\s*Serif)\b|\b(text|bg|border|ring|decoration)-(orange|amber)-(600|700|800)\b|#(b7410e|c2410c|9a3412|a0522d)\b/i, fix: "Anchor colour and type to the real brand or a named reference; where the combination is a stated decision, mark the line anti-slop-allow with the reason.", desc: "Cream/serif 'tasteful default' (the 2026 tell -- two or more legs of the combination)" },
+  { name: "cream-serif-default", severity: "low", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 2, hits: creamLegHits, gate: creamCombination, fix: "Anchor colour and type to the real brand or a named reference; where the combination is a stated decision, mark the line anti-slop-allow with the reason.", desc: "Cream/serif 'tasteful default' (the 2026 tell -- two distinct legs of the combination)" },
   { name: "shadcn-default-card", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, pattern: /rounded-lg\s+border\s+bg-card\s+text-card-foreground\s+shadow-sm|"baseColor"\s*:\s*"(slate|zinc|gray|neutral|stone)"|--radius\s*:\s*0\.5rem/i, fix: "Theme the kit: set the border colour, radius, shadow and transition to project values so the surface stops looking like the library's own docs.", desc: "shadcn/ui card classes left at the library default (unthemed kit)" },
   // The next three are class-attribute FINGERPRINTS, and utility-class order inside a
   // `class=` attribute is arbitrary. Encoded as ordered `A\s[^"]*B\s[^"]*C` sequences they

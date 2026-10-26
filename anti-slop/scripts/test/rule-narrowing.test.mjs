@@ -266,3 +266,23 @@ test("token-drift-spacing: the probe files from the history set stay clean", () 
   const tsx = ":root { --space-1: 4px; --space-2: 8px; }\nexport const A = () => <div style={{ padding: '16px', fontSize: '13px', lineHeight: '21px' }}>x</div>;";
   assert.ok(!fires("token-drift-spacing", tsx, "jsx-style.tsx"));
 });
+
+// ── cream-serif-default counts distinct legs (2.5.0) ─────────────────────────
+
+test("cream-serif-default: two hits of one leg are one leg", () => {
+  assert.ok(!fires("cream-serif-default", ".a { background: #faf8f5 } .b { background: #f5f1e8 }", "a.css"));
+  assert.ok(!fires("cream-serif-default", 'h1 { font-family: "Fraunces" } h2 { font-family: "Playfair Display" }', "a.css"));
+});
+
+test("cream-serif-default: the firing pairs, and a sage accent on cream", () => {
+  assert.ok(fires("cream-serif-default", "body { background: #faf8f5 } .accent { color: #15573a }", "a.css"), "cream + sage");
+  assert.ok(fires("cream-serif-default", 'h1 { font-family: "Instrument Serif" } .accent { color: #15573a }', "a.css"), "serif + sage");
+  assert.ok(!fires("cream-serif-default", ".accent { color: #15573a } .cta { color: #c2410c }", "a.css"), "sage + clay alone");
+  const v = scanContent('body { background: #faf8f5 }\nh1 { font-family: "Instrument Serif", serif }', "a.css").find((x) => x.name === "cream-serif-default");
+  assert.equal(v.evidence, "cream #faf8f5 + serif Instrument Serif");
+});
+
+test("cream-serif-default: a hatched leg no longer completes the pair", () => {
+  const css = 'body { background: #faf8f5 }\n.b { background: #f5f1e8 }\nh1 { font-family: "Instrument Serif" } /* anti-slop-allow: the brand face */';
+  assert.ok(!fires("cream-serif-default", css, "a.css"), "two cream hexes are still one leg once the serif line is waived");
+});
