@@ -27,16 +27,17 @@ that decides a combination or a repetition after the escape hatch has dropped it
 - `side-stripe-accent` (medium, Pattern smell): a coloured stripe on one side of a card,
   drawn by a side border, an absolute `::before`/`::after` bar, an inset side shadow, a JSX
   style object or `border-l-N`. Square boxes count from 3px, a deliberate divergence from
-  impeccable, whose `side-tab` exempts them; selection and live-region edges, controls, list
-  items and table cells are exempt.
+  impeccable, whose `side-tab` exempts them; selection, invalid-field and live-region edges,
+  controls, list items and table cells are exempt.
 - `text-size-floor` (medium, Quality defect): running text under 12px, functional text at or
   under 10.9px, small print at or under 9.9px; px, rem and the `font` shorthand only.
 - `tight-leading`, `wide-tracking`, `justified-narrow-column`, `crushed-tracking` (low,
   Quality defect): body leading under 1.3, mixed-case running text tracked wider than 0.05em,
   justify on a measure of about 45 characters with no hyphens, and tracking tighter than
   -0.07em (-0.09em at 40px and up). Headings, lead text, caps labels, code, controls, CJK
-  text and wordmarks keep their settings, and where the markup shows every element with a
-  selector's classes holding a short label, the block is read as a label.
+  text and wordmarks keep their settings. Where the file carries its own markup, a class, id or
+  attribute selector is read as the element it styles, and a block whose every element holds a
+  short label is read as a label.
 - `bounce-easing` (low, Pattern smell): bounce and elastic keyword animations (not SpinKit's
   fade-and-shrink loaders), `animate-bounce`, a curve that both anticipates and overshoots,
   and keyframes that reverse direction twice. Springs stay clean: a `linear()` token, a

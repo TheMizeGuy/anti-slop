@@ -201,7 +201,7 @@ It arrives with the purple palette because a saturated hue on near-black is wher
 
 A coloured bar down one side of a card, callout or panel: `border-left: 4px solid` in a brand teal, an absolute `::before` strip, an inset side shadow, or `border-l-4 border-teal-600`. It is the generated way to say "this one matters" without deciding what makes it matter, and it lands on every callout of the page at once. The coloured left border is banned on any box here, rounded or square.
 
-**Remediation:** carry the emphasis with something that says why: a surface tint, a heading, or real selection state. The severity edge of a live region (`role="alert"`, `aria-live`) and the edge of the selected tab or the current row are substance rather than decoration, and stay.
+**Remediation:** carry the emphasis with something that says why: a surface tint, a heading, or real selection state. The severity edge of a live region (`role="alert"`, `aria-live`), the error edge of an invalid field, and the edge of the selected tab or the current row are substance rather than decoration, and stay.
 
 The scanner rule is `side-stripe-accent`, medium severity, Pattern smell, on one instance: a stripe of 2px or more (3px on a square box) that dominates the other sides, in a colour that is not neutral, drawn by any of the syntaxes above, including a JSX style object. Controls, list items, table cells and inline text are exempt subjects, and an unreadable radius counts as rounded rather than as evidence of a square box. The thresholds and exemptions re-express impeccable's `side-tab` rule; the square-box ban is this catalogue's own, and is where the two part ways.
 
@@ -226,7 +226,7 @@ Settings that make running text harder to read, each common in stylesheets that 
 
 **Remediation:** body leading at 1.4 to 1.6; running-text tracking between -0.01em and 0.02em; a ragged-right narrow column, or justify with hyphens on a measure of 45 characters or more; display tracking between -0.02em and -0.05em. Display tracking of -0.05em is normal, and the rules leave it alone.
 
-All of them are low severity, Quality defect, and keep the settings that belong to other text: headings and display sizes, lead text at 20px or more, bold titles, caps and small-caps labels, code, controls, and CJK text, where open tracking is conventional (Arabic, Hebrew and Thai do not justify on word spaces either). A wordmark or logo selector keeps its tight tracking, and where the file's own markup shows that every element carrying the selector's classes holds a short label, the block is read as a label rather than as running text. The thresholds re-express impeccable's `tight-leading`, `wide-tracking`, `justified-text` and `extreme-negative-tracking`.
+All of them are low severity, Quality defect, and keep the settings that belong to other text: headings and display sizes, lead text at 20px or more, bold titles, caps and small-caps labels, code, controls, and CJK text, where open tracking is conventional (Arabic, Hebrew and Thai do not justify on word spaces either). A wordmark or logo selector keeps its tight tracking. Where the file carries its own markup, a class, id or attribute selector is read as the element it styles, and a block whose every element holds a short label is read as a label rather than as running text. The thresholds re-express impeccable's `tight-leading`, `wide-tracking`, `justified-text` and `extreme-negative-tracking`.
 
 ### Emoji as Interface
 

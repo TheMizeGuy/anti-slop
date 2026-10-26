@@ -416,3 +416,34 @@ test("design rules never match CSS quoted in <code> or <pre> on an HTML page", (
   const twin = scanContent(live, "live.html").map((v) => v.name);
   assert.ok(twin.includes("uniform-literal-radius") && twin.includes("gradient-text"), JSON.stringify(twin));
 });
+
+// ── Narrowings found on real files (2.5.0) ───────────────────────────────────
+// Each exemption beside the twin it must not swallow.
+
+const ruleHits = (rule, content, path) => scanContent(content, path).filter((v) => v.name === rule);
+
+test("tight-leading: a close or dismiss control keeps its one-line leading; a body block does not", () => {
+  assert.deepEqual(ruleHits("tight-leading", ".tab-close { font-size: 14px; line-height: 1 }", "a.css"), []);
+  assert.equal(ruleHits("tight-leading", ".tab-body { font-size: 14px; line-height: 1 }", "a.css").length, 1);
+});
+
+test("the file's markup tells a class or attribute selector which element it styles", () => {
+  const dismiss = (el) => `<style>[data-dismiss] { font-size: 14px; line-height: 1 }</style>${el}`;
+  assert.deepEqual(ruleHits("tight-leading", dismiss('<button data-dismiss type="button">Close</button>'), "a.html"), [], "a button");
+  assert.equal(ruleHits("tight-leading", dismiss("<p data-dismiss>The ferry leaves at eleven and reaches the island a little after midnight, every night of the week.</p>"), "a.html").length, 1);
+  const stripe = (el) => `<style>.history-item { border-left: 3px solid #0f766e; border-radius: 10px }</style>${el}`;
+  assert.deepEqual(ruleHits("side-stripe-accent", stripe('<ul><li class="history-item">x</li></ul>'), "a.html"), [], "list items");
+  assert.equal(ruleHits("side-stripe-accent", stripe('<div class="history-item">x</div>'), "a.html").length, 1, "the same class on a div");
+});
+
+test("side-stripe-accent: an invalid field's edge is state, and a control is a control", () => {
+  assert.deepEqual(ruleHits("side-stripe-accent", '.field[aria-invalid="true"] { border-left: 3px solid #b91c1c }', "a.css"), []);
+  assert.deepEqual(ruleHits("side-stripe-accent", ".input { border-left: 3px solid #b91c1c }", "a.css"), []);
+  assert.equal(ruleHits("side-stripe-accent", ".note { border-left: 3px solid #b91c1c }", "a.css").length, 1);
+  assert.equal(ruleHits("side-stripe-accent", ".inset { border-left: 3px solid #b91c1c }", "a.css").length, 1, "a word that only starts like input");
+});
+
+test("text-size-floor: a utility class name is a style, not running text", () => {
+  assert.deepEqual(ruleHits("text-size-floor", ".text-xs { font-size: 11px }", "a.css"), []);
+  assert.equal(ruleHits("text-size-floor", ".body-text { font-size: 11px }", "a.css").length, 1);
+});

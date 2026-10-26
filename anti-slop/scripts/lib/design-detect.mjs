@@ -1575,7 +1575,8 @@ export function lowContrastHits(ctx) {
 // substance, not decoration, and are exempt; so are controls, table parts, list items and
 // inline text, which carry side rules for their own reasons.
 const STRIPE_EXEMPT_TAGS = new Set(["a", "button", "input", "select", "textarea", "option", "pre", "code", "kbd", "span", "th", "td", "tr", "table", "li", "hr", "nav", "summary", "img", "svg", "html", "body"]);
-const STRIPE_STATE = /:hover\b|:focus\b|:focus-visible\b|:active\b|\[aria-selected|\[aria-current|\[role=["']?(?:status|alert|alertdialog|log)\b|\[aria-live|\.(?:is-)?(?:active|current|selected)(?![\w-])/i;
+const STRIPE_STATE = /:hover\b|:focus\b|:focus-visible\b|:active\b|\[aria-selected|\[aria-current|\[aria-invalid|:invalid\b|\[role=["']?(?:status|alert|alertdialog|log)\b|\[aria-live|\.(?:is-)?(?:active|current|selected)(?![\w-])/i;
+const STRIPE_CONTROL_WORDS = new Set(["btn", "button", "input", "field", "select", "textarea"]);
 const NEUTRAL_KEYWORD = /^(?:transparent|currentcolor|inherit|initial|unset|white|black|silver|gainsboro|whitesmoke|(?:dark|light|dim|slate|lightslate|darkslate)?gr[ae]y)$/i;
 const BORDER_STYLES = new Set(["none", "hidden", "solid", "double", "dotted", "dashed", "groove", "ridge", "inset", "outset"]);
 const BORDER_WIDTH_KEYWORD = { thin: 1, medium: 3, thick: 5 };
@@ -1690,12 +1691,14 @@ function farCorners(block, props, side) {
   return far.every((v) => v >= 4) ? { shape: "rounded", px: Math.min(...far) } : { shape: "square" };
 }
 
-function stripeExempt(selector, extraTags) {
+function stripeExempt(ctx, selector) {
   const list = splitSelectorList(selector);
   return list.every((sel) => {
     if (STRIPE_STATE.test(sel)) return true;
-    const tag = tagOfCompound(subjectOf(sel.replace(/::?(?:before|after)\b/g, "")));
-    return (tag && (STRIPE_EXEMPT_TAGS.has(tag) || (extraTags && extraTags.has(tag)))) || false;
+    const host = sel.replace(/::?(?:before|after)\b/g, "");
+    if (classWordsOf(subjectOf(host)).some((w) => STRIPE_CONTROL_WORDS.has(w))) return true;
+    const tags = subjectTags(ctx, host);
+    return tags.length > 0 && tags.every((tag) => STRIPE_EXEMPT_TAGS.has(tag));
   });
 }
 
@@ -1796,7 +1799,7 @@ export function sideStripeHits(ctx) {
     const props = ctx.props;
     const hits = [];
     for (const b of ctx.css.blocks) {
-      if (b.selector.startsWith("@") || stripeExempt(b.selector)) continue;
+      if (b.selector.startsWith("@") || stripeExempt(ctx, b.selector)) continue;
       const found = stripeFromPseudo(b, props) || stripeFromBorders(b, props) || stripeFromInsetShadow(b, props);
       if (found) hits.push({ line: found.line, evidence: `${normSelector(b.selector)}: ${found.evidence}` });
     }
@@ -1842,9 +1845,11 @@ export function textSizeFloorHits(ctx) {
       for (const sel of splitSelectorList(b.selector)) {
         if (/\[aria-hidden/i.test(sel)) continue;
         const subject = subjectOf(sel);
-        const tag = tagOfCompound(subject);
-        if (tag && SIZE_EXEMPT_TAGS.has(tag)) continue;
-        const words = classWordsOf(subject);
+        const tags = subjectTags(ctx, sel);
+        const tag = tags.length === 1 ? tags[0] : tagOfCompound(subject);
+        if (tags.length && tags.every((t) => SIZE_EXEMPT_TAGS.has(t))) continue;
+        // A utility class (`text-xs`, `font-small`) names a style, not a kind of text.
+        const words = classWordsOf(subject.replace(/\.(?:text|font|fs|leading|tracking)-[\w-]+/g, ""));
         let kind = "functional text";
         let floor = 11;
         let fires = size <= 10.9;
@@ -1872,7 +1877,7 @@ export function textSizeFloorHits(ctx) {
 // rule is not resolved, so these are floors on recall, never guesses.
 const HEADING_WORDS = /(?:^|[^a-z])(?:heading|title|headline|display|hero|logo|brand|wordmark)(?![a-z])/i;
 const LEADING_EXEMPT_TAGS = new Set(["a", "button", "label", "span", "summary", "small", "code", "kbd", "samp", "pre"]);
-const FURNITURE_WORDS = new Set(["btn", "button", "chip", "badge", "tag", "pill", "label", "meta", "stamp", "num", "count", "icon", "kbd", "code"]);
+const FURNITURE_WORDS = new Set(["btn", "button", "chip", "badge", "tag", "pill", "label", "meta", "stamp", "num", "count", "icon", "kbd", "code", "close", "dismiss", "toggle"]);
 const TRACKING_EXEMPT_TAGS = new Set(["a", "button", "label", "nav", "th", "summary"]);
 const TRACKING_LABEL_WORDS = new Set(["btn", "eyebrow", "kicker", "overline", "label", "badge", "tag", "chip", "pill", "meta", "num", "step", "caps"]);
 const CJK_LANG = /:lang\(\s*["']?(?:ja|zh|ko)\b/i;
@@ -1915,27 +1920,50 @@ function elementsOf(ctx) {
         else if (c === ">" && depth === 0 && text[i - 1] !== "=") break;
         i++;
       }
-      const head = text.slice(m.index, i);
-      const cls = /\bclass(?:Name)?\s*=\s*["']([^"']*)["']/.exec(head);
-      if (!cls) continue;
+      const head = text.slice(m.index + m[0].length, i);
+      const attrs = new Map();
+      for (const a of head.matchAll(/([A-Za-z_:][\w:.-]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|\{[^}]*\}|([^\s"'=<>`]+)))?/g)) attrs.set(a[1].toLowerCase(), a[2] ?? a[3] ?? a[4] ?? "");
+      if (attrs.size === 0) continue;
       const tag = m[1].toLowerCase();
       const close = lower.indexOf(`</${tag}`, i);
       const inner = text.slice(i + 1, close === -1 ? Math.min(text.length, i + 2000) : close);
-      out.push({ tag, classes: new Set(cls[1].split(/\s+/).filter(Boolean)), text: inner.replace(/<[^>]*>/g, " ").replace(/\{[^}]*\}/g, " ").replace(/\s+/g, " ").trim() });
+      const cls = attrs.get("class") ?? attrs.get("classname") ?? "";
+      out.push({ tag, attrs, classes: new Set(cls.split(/\s+/).filter(Boolean)), text: inner.replace(/<[^>]*>/g, " ").replace(/\{[^}]*\}/g, " ").replace(/\s+/g, " ").trim() });
     }
     return out;
   });
 }
 
-// True when the selector's subject names classes and every element in the file that carries
-// them holds `max` characters of text or fewer. No matching element is unknown (false).
-function shortTextOnly(ctx, selector, max) {
+// The elements in the file's own markup that a selector's subject compound names by class, id
+// or attribute; null when the compound names none of those (a bare tag or a pseudo-class).
+function subjectElements(ctx, selector) {
   const subject = subjectOf(selector).replace(/::?[\w-]+(?:\([^)]*\))?/g, "");
   const classes = [...subject.matchAll(/\.([\w-]+)/g)].map((x) => x[1]);
-  if (!classes.length) return false;
+  const ids = [...subject.matchAll(/#([\w-]+)/g)].map((x) => x[1]);
+  const attrs = [...subject.matchAll(/\[\s*([\w:-]+)\s*(?:[~|^$*]?=\s*["']?([^"'\]]*)["']?)?\s*\]/g)].map((x) => [x[1].toLowerCase(), x[2]]);
+  if (!classes.length && !ids.length && !attrs.length) return null;
   const tag = tagOfCompound(subject);
-  const matches = elementsOf(ctx).filter((e) => (!tag || e.tag === tag) && classes.every((c) => e.classes.has(c)));
-  return matches.length > 0 && matches.every((e) => e.text.length <= max);
+  return elementsOf(ctx).filter((e) => (!tag || e.tag === tag)
+    && classes.every((c) => e.classes.has(c))
+    && ids.every((id) => e.attrs.get("id") === id)
+    && attrs.every(([name, value]) => e.attrs.has(name) && (value === undefined || e.attrs.get(name) === value)));
+}
+
+// True when the subject names classes, an id or attributes and every element in the file that
+// it names holds `max` characters of text or fewer. No matching element is unknown (false).
+function shortTextOnly(ctx, selector, max) {
+  const matches = subjectElements(ctx, selector);
+  return Boolean(matches && matches.length > 0 && matches.every((e) => e.text.length <= max));
+}
+
+// The subject's element names: the compound's own tag, or, where the compound names only
+// classes, ids or attributes, the tags of the elements in the file's markup it matches.
+// Empty when neither says.
+function subjectTags(ctx, selector) {
+  const tag = tagOfCompound(subjectOf(selector).replace(/::?[\w-]+(?:\([^)]*\))?/g, ""));
+  if (tag) return [tag];
+  const matches = subjectElements(ctx, selector);
+  return matches ? uniq(matches.map((e) => e.tag)) : [];
 }
 
 export function tightLeadingHits(ctx) {
@@ -1964,8 +1992,8 @@ export function tightLeadingHits(ctx) {
       if (size >= 20 && r >= 1.15) continue;
       const sel = splitSelectorList(b.selector).find((s) => {
         const subject = subjectOf(s);
-        const tag = tagOfCompound(subject);
-        if (tag && (/^h[1-6]$/.test(tag) || LEADING_EXEMPT_TAGS.has(tag))) return false;
+        const tags = subjectTags(ctx, s);
+        if (tags.length && tags.every((tag) => /^h[1-6]$/.test(tag) || LEADING_EXEMPT_TAGS.has(tag))) return false;
         if (HEADING_WORDS.test(s) || shortTextOnly(ctx, s, 50)) return false;
         return !classWordsOf(subject).some((w) => FURNITURE_WORDS.has(w));
       });
@@ -1989,8 +2017,8 @@ export function wideTrackingHits(ctx) {
       const sel = splitSelectorList(b.selector).find((s) => {
         if (CJK_LANG.test(s)) return false;
         const subject = subjectOf(s);
-        const tag = tagOfCompound(subject);
-        if ((tag && TRACKING_EXEMPT_TAGS.has(tag)) || shortTextOnly(ctx, s, 20)) return false;
+        const tags = subjectTags(ctx, s);
+        if ((tags.length && tags.every((tag) => TRACKING_EXEMPT_TAGS.has(tag))) || shortTextOnly(ctx, s, 20)) return false;
         return !classWordsOf(subject).some((w) => TRACKING_LABEL_WORDS.has(w));
       });
       if (!sel) continue;
