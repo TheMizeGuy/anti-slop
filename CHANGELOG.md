@@ -52,6 +52,8 @@ that decides a combination or a repetition after the escape hatch has dropped it
   section of a dark page.
 - `gray-on-color` (low, Pattern smell): neutral mid-grey text on a chromatic surface, in one
   class set or as a CSS pair on its own block or its ancestor.
+- `skipped-heading` (medium, Quality defect): in a full HTML document, a heading more than one
+  level below the one before it; a footer's first heading may start lower.
 
 **Rules that fired where they should not, narrowed:**
 
@@ -111,8 +113,10 @@ each label note: the fixtures with real contrast failures (among them the clean 
 `fluid-adaptive-clean`, `utilitarian-fintech`, `warm-consumer` and `technical-mono`),
 `editorial-bold` for a 10.5px table header, and `cream-serif-sage` (the planted Inter moved
 from the button to the hero line) and `legacy-marketing-page` (the hero gained the sub-line
-its `.subtitle` rule styles) for the control-face doctrine. `before.html` gained a
-`low-contrast` label for a defect it always carried (white on `#a855f7`, 3.96:1). The shared
+its `.subtitle` rule styles) for the control-face doctrine. `before.html` gained
+`low-contrast` and `skipped-heading` labels for defects it always carried (white on `#a855f7`
+at 3.96:1, and feature headings at h3 straight under the h1), and `technical-mono`'s section
+label became the `h2` its outline was missing. The shared
 fixtures that had drifted gained the viewport meta their ui-craft copies already carried. The corpus README
 now states that every exemption ships with a should-flag twin.
 
@@ -126,8 +130,8 @@ document is the finding. `choosing-with-intent.md` documents the scoped waiver.
 
 | | Before (2.4.0) | After (2.5.0) |
 |---|--:|--:|
-| True positives / false positives / false negatives | 120 / 0 / 1 | 136 / 0 / 1 |
-| Design modality true positives | 54 | 70 |
+| True positives / false positives / false negatives | 120 / 0 / 1 | 138 / 0 / 1 |
+| Design modality true positives | 54 | 72 |
 | Precision / recall | 100.0% / 99.2% | 100.0% / 99.2% |
 
 `baseline.json` was regenerated with a row for each new rule; no existing row moved. Over

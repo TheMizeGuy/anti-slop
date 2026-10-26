@@ -778,9 +778,14 @@
           "id": "low-contrast",
           "severity": "high",
           "confidence": "Quality defect"
+        },
+        {
+          "id": "skipped-heading",
+          "severity": "medium",
+          "confidence": "Quality defect"
         }
       ],
-      "note": "rounded-everything was REMOVED as a label in 1.7.0 for the same reason as frosted-nav-neon.html: two border-radius:999px declarations (.btn and .pill) is not maximal rounding on every control. uniform-literal-radius was ADDED in 2.1.0 and is a different claim about the same file: four literal border-radius values and no --radius token to vary from. Everything else on this fixture still fires. The low-contrast label (anti-slop 2.5.0) records a defect the page always carried: white on the #a855f7 primary button measures 3.96:1. The purple stays, because it is a planted ai-purple-hex leg."
+      "note": "rounded-everything was REMOVED as a label in 1.7.0 for the same reason as frosted-nav-neon.html: two border-radius:999px declarations (.btn and .pill) is not maximal rounding on every control. uniform-literal-radius was ADDED in 2.1.0 and is a different claim about the same file: four literal border-radius values and no --radius token to vary from. Everything else on this fixture still fires. The low-contrast label (anti-slop 2.5.0) records a defect the page always carried: white on the #a855f7 primary button measures 3.96:1. The purple stays, because it is a planted ai-purple-hex leg. The skipped-heading label (anti-slop 2.5.0) records the feature cards' h3 headings straight under the h1."
     },
     {
       "file": "../fixtures/editorial-bold.html",
@@ -796,7 +801,7 @@
       "role": "clean-control",
       "expected": [],
       "maxIncidentalFindings": 0,
-      "note": "Contrast corrected 2026-10 (anti-slop 2.5.0): --ink-faint #6b727f -> #858d9a, 3.17:1 -> 4.59:1 on --surface-2; the planted construct is unchanged. Its engineering grid is the fixture's stated brand surface, and since anti-slop 2.5.0 its background-image line carries the scoped waiver anti-slop-allow: background-pattern -- engineering grid is the stated brand surface."
+      "note": "Contrast corrected 2026-10 (anti-slop 2.5.0): --ink-faint #6b727f -> #858d9a, 3.17:1 -> 4.59:1 on --surface-2; the planted construct is unchanged. Its engineering grid is the fixture's stated brand surface, and since anti-slop 2.5.0 its background-image line carries the scoped waiver anti-slop-allow: background-pattern -- engineering grid is the stated brand surface. Heading outline corrected 2026-10 (anti-slop 2.5.0): the values section label became an h2 (font-weight 400 keeps its look), so the feature h3s no longer sit straight under the h1; the planted construct is unchanged."
     },
     {
       "file": "../fixtures/warm-consumer.html",
@@ -1450,6 +1455,27 @@
       "expected": [],
       "maxIncidentalFindings": 0,
       "note": "Clean partner of gray-on-color.html: near-black text-gray-700 on a pale bg-amber-100, a slate link whose red is a hover tint, a grey span beside a blue sibling, a ternary with the grey in one arm and the colour in the other, and off-white #e5e7eb on navy."
+    },
+    {
+      "file": "design/skipped-heading.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "skipped-heading",
+          "severity": "medium",
+          "confidence": "Quality defect"
+        }
+      ],
+      "note": "Positive for skipped-heading (anti-slop 2.5.0): h1, h2, then an h4 chosen for its size in the main content."
+    },
+    {
+      "file": "design/skipped-heading-clean.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Clean partner of skipped-heading.html: h1, h2, h3, back up to h2, then a footer whose first heading is an h4, the h2-to-h4 step the footer exemption must clear."
     },
     {
       "file": "code/cast-to-any.ts",

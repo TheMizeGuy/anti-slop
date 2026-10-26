@@ -2498,6 +2498,49 @@ export function grayOnColorHits(ctx) {
   });
 }
 
+// ── skipped-heading ──
+// In a full HTML document, a heading that jumps more than one level down from the one before
+// it (h2 then h4). The first heading never reports, going back up never reports, and the
+// first heading of a <footer> or role="contentinfo" region may start lower: a site footer's
+// outline is its own. Script and style bodies, comments and <code>/<pre> text are not read.
+function elementRegions(text, open) {
+  const lower = text.toLowerCase();
+  const out = [];
+  let m;
+  while ((m = open.exec(text)) !== null) {
+    const tag = m[1].toLowerCase();
+    const close = lower.indexOf(`</${tag}`, m.index + m[0].length);
+    out.push([m.index, close === -1 ? text.length : close]);
+  }
+  return out;
+}
+
+export function skippedHeadingHits(ctx) {
+  return memo(ctx, "skippedHeading", () => {
+    if (!MARKUP_EXT.has(ctx.ext) || !/<!doctype\s+html|<html\b/i.test(ctx.text)) return [];
+    const chars = ctx.text.split("");
+    for (const [s0, e0] of markupRegions(ctx.text)) blank(chars, s0, e0);
+    const text = chars.join("");
+    const footers = [
+      ...elementRegions(text, /<(footer)\b[^>]*>/gi),
+      ...elementRegions(text, /<([a-zA-Z][\w-]*)\b[^>]*\brole\s*=\s*["']contentinfo["'][^>]*>/gi),
+    ];
+    const firstInFooter = new Set();
+    const headings = [...text.matchAll(/<h([1-6])\b/gi)].map((m) => ({ level: Number(m[1]), index: m.index }));
+    for (const [fs, fe] of footers) {
+      const first = headings.find((h) => h.index > fs && h.index < fe);
+      if (first) firstInFooter.add(first.index);
+    }
+    const hits = [];
+    let prev = 0;
+    for (const h of headings) {
+      if (prev > 0 && h.level > prev + 1 && !firstInFooter.has(h.index)) hits.push({ line: ctx.lineOf(h.index), evidence: `h${prev} then h${h.level}` });
+      prev = h.level;
+    }
+    return hits;
+  });
+}
+
 // ── The cream-serif tasteful default ──
 // Four legs: a CREAM ground, a SERIF display face, the SAGE accent and the CLAY accent (the
 // rusty-orange drift form). The tell is two distinct legs: cream + serif, cream + sage,

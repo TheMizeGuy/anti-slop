@@ -1,7 +1,7 @@
 import {
   lowContrastHits, sideStripeHits, textSizeFloorHits, tightLeadingHits, wideTrackingHits,
   justifiedNarrowHits, crushedTrackingHits, bounceEasingHits, pulsingDotHits, marqueeHits,
-  backgroundPatternHits, radialHaloHits, grayOnColorHits,
+  backgroundPatternHits, radialHaloHits, grayOnColorHits, skippedHeadingHits,
   classFreeLines, lineRegexHits, matchingClassSets, tailwindToken, isResting, isStateVariant, glowHits,
   creamLegHits, creamCombination, framedCardSets, framedCardTrio, primaryFamilyBlocks, familyKey,
 } from "./design-detect.mjs";
@@ -474,6 +474,10 @@ export const DESIGN_PATTERNS = [
   { name: "wide-tracking", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, hits: wideTrackingHits, fix: "Keep running-text tracking between -0.01em and 0.02em; open tracking belongs to short capitalised labels.", desc: "Mixed-case running text tracked wider than 0.05em" },
   { name: "justified-narrow-column", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, hits: justifiedNarrowHits, fix: "Set the narrow column ragged-right, or keep justify with hyphens: auto and a lang attribute on a measure of 45 characters or more.", desc: "Justified text in a column under about 45 characters with no hyphenation" },
   { name: "crushed-tracking", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, hits: crushedTrackingHits, fix: "Ease the tracking to between -0.02em and -0.05em (to -0.07em at 40px and up); letters that touch cost legibility.", desc: "Letter-spacing tighter than -0.07em (-0.09em at 40px and up)" },
+  // The heading outline is how screen-reader users move through a page; a level chosen for
+  // its size breaks it. Full HTML documents only, since a component renders inside an
+  // outline it cannot see; a site footer's first heading may start lower.
+  { name: "skipped-heading", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, hits: skippedHeadingHits, fix: "Use the next heading level and size it with CSS; the heading outline is how screen-reader users move through the page.", desc: "Heading level that jumps more than one step down" },
   // A Hard defect because it is one: WCAG 1.4.4 requires text to scale to 200%, and a
   // viewport that blocks pinch zoom removes the only control a low-vision user has on a
   // phone. The remediation only ever DELETES the two attributes -- the viewport meta a

@@ -1143,3 +1143,18 @@ test("gray-on-color: grey ink on a colour fires in both forms; tints, states, si
   assert.deepEqual(fired("gray-on-color", ".p { background: #1e40af; color: #e5e7eb }"), [], "off-white ink");
   assert.deepEqual(fired("gray-on-color", ".p { background: #f3f4f6; color: #6b7280 }"), [], "grey on grey");
 });
+
+// ── skipped-heading (2.5.0, P2) ──────────────────────────────────────────────
+
+test("skipped-heading: a jump of more than one level fires; going up, the first heading and a footer's start do not", () => {
+  assert.equal(fired("skipped-heading", corpus("design/skipped-heading.html"), "design/skipped-heading.html").length, 1);
+  assert.deepEqual(fired("skipped-heading", corpus("design/skipped-heading-clean.html"), "design/skipped-heading-clean.html"), []);
+  const doc = (body) => `<!doctype html><html lang="en"><body>${body}</body></html>`;
+  assert.equal(fired("skipped-heading", doc("<h1>a</h1><h3>b</h3>"), "a.html").length, 1);
+  assert.deepEqual(fired("skipped-heading", doc("<h3>a</h3><h4>b</h4>"), "a.html"), [], "the first heading sets no level to skip from");
+  assert.deepEqual(fired("skipped-heading", doc("<h1>a</h1><h2>b</h2><h3>c</h3><h2>d</h2>"), "a.html"), [], "going back up");
+  assert.deepEqual(fired("skipped-heading", doc('<h1>a</h1><h2>b</h2><div role="contentinfo"><h4>c</h4></div>'), "a.html"), []);
+  assert.equal(fired("skipped-heading", doc("<h1>a</h1><h2>b</h2><footer><h4>c</h4><h6>d</h6></footer>"), "a.html").length, 1, "only the footer's first heading may start lower");
+  assert.deepEqual(fired("skipped-heading", "<h1>a</h1><h3>b</h3>", "fragment.html"), [], "a fragment is not a full document");
+  assert.deepEqual(fired("skipped-heading", doc("<h1>a</h1><pre>&lt;h3&gt;</pre><code><h3>x</h3></code>"), "a.html"), [], "markup quoted in code is not the outline");
+});

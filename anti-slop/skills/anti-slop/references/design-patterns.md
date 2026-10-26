@@ -383,7 +383,7 @@ AI-generated UI frequently fails accessibility. These are functional defects, no
 **Semantic HTML:**
 - `<div>` and `<span>` for everything instead of semantic elements (`<nav>`, `<main>`, `<article>`, `<button>`, `<dialog>`, `<table>`)
 - `<div onclick>` instead of `<button>` (breaks keyboard nav and screen readers)
-- Heading levels skipped (h1 to h3) or chosen for size instead of hierarchy
+- Heading levels skipped (h1 to h3) or chosen for size instead of hierarchy. The scanner rule is `skipped-heading` (medium, Quality defect), on full HTML documents only: a heading more than one level below the one before it. Going back up, the first heading, and the first heading of a `<footer>` or `role="contentinfo"` region are not findings, and markup quoted in `<code>` or `<pre>` is not read. It re-expresses impeccable's `skipped-heading` rule
 - No landmark elements for screen reader navigation
 
 **Focus and Keyboard:**
@@ -674,6 +674,7 @@ across every family.
 | Dot, grid and stripe background patterns, the radial halo on a dark page | Yes (`background-pattern`, `radial-halo`) |
 | Text contrast on its surface | Partly (`low-contrast`, `low-contrast-near-bar`: declared surfaces only, no Tailwind colour utilities) |
 | Grey text on a coloured surface | Yes (`gray-on-color`) |
+| Heading levels skipped | Yes (`skipped-heading`, full HTML documents) |
 | Type below the legibility floor, the reading-mechanics settings | Partly (`text-size-floor`, `tight-leading`, `wide-tracking`, `justified-narrow-column`, `crushed-tracking`: one block at a time) |
 | Icon in a colored circle | Yes (`icon-in-colored-circle`) |
 | Decorative blur blobs | Yes (`blur-blob`) |

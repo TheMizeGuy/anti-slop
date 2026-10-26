@@ -713,6 +713,14 @@
       "recall": 1
     },
     {
+      "rule": "skipped-heading",
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "stock-illustration",
       "tp": 1,
       "fp": 0,
@@ -892,7 +900,7 @@
     },
     {
       "modality": "design",
-      "tp": 70,
+      "tp": 72,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -916,10 +924,10 @@
     }
   ],
   "overall": {
-    "tp": 136,
+    "tp": 138,
     "fp": 0,
     "fn": 1,
     "precision": 1,
-    "recall": 0.9927007299270073
+    "recall": 0.9928057553956835
   }
 }
