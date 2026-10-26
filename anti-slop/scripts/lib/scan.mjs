@@ -622,7 +622,10 @@ export function scanContent(content, filePath, opts = {}) {
   // the tell (this plugin's own writing-patterns.md reference failed its own scanner over
   // exactly that), whereas a `.emoji` CSS class or an EMOJI_MAP constant is a source file
   // naming a symbol while shipping the glyphs. Code and markup opt out per line instead.
-  const emojiSilenced = isProse && !fileGuardOk(EMOJI_FILE_GUARD, content);
+  // Data and config files (.json, .yml, .toml, .csv, .lock, .svg, .xml) are not a surface a
+  // reader meets the glyph on, and every other family already stays off them.
+  const emojiSurface = isProse || isCode || isStyle || isNative;
+  const emojiSilenced = !emojiSurface || (isProse && !fileGuardOk(EMOJI_FILE_GUARD, content));
   const emojiHaystack = emojiSilenced ? null : stripEscapeHatchLines(content);
   const emojiMatches = emojiHaystack === null ? null : emojiHaystack.match(EMOJI_REGEX);
   if (emojiMatches) {

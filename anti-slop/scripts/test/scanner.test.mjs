@@ -529,3 +529,13 @@ test("precompiled banned-word regexes cover every word, case-insensitively, with
   assert.ok("We DELVE into details.".match(delveRe), "case-insensitive match should still work");
   assert.ok(!"We delved into details.".match(delveRe), '"delved" must not match \\bdelve\\b');
 });
+
+// Data and config files get no emoji findings; the same object literal in a component does.
+test("emoji: data and config files are not a surface, a component is", () => {
+  const obj = '{"label": "✨ New"}';
+  for (const path of ["a.json", "a.yml", "a.toml", "a.csv", "a.svg", "a.xml"]) {
+    assert.ok(!scanContent(obj, path).some((v) => v.type === "emoji"), path);
+  }
+  const tsx = scanContent(`export const badge = ${obj};`, "a.tsx").find((v) => v.type === "emoji");
+  assert.equal(tsx && tsx.severity, "low");
+});
