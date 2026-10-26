@@ -152,9 +152,9 @@ document is the finding. `choosing-with-intent.md` documents the scoped waiver.
 
 `baseline.json` was regenerated with a row for each new rule; no existing row moved. Over
 impeccable's labelled antipattern fixtures (450 positive fixture-and-rule pairs; the scoring
-scripts sit outside this repository), this scanner alone went from 60 pairs hit to 211, and
+scripts sit outside this repository), this scanner alone went from 60 pairs hit to 212, and
 from 5 of impeccable's rules with any hit to 20: `side-tab` 36 of 41, `low-contrast` 25 of
-61, `undersized-ui-text` 20 of 20, `tiny-text` 12 of 13, `bounce-easing` 10 of 16,
+61, `undersized-ui-text` 20 of 20, `tiny-text` 13 of 13, `bounce-easing` 10 of 16,
 `tight-leading` 8 of 10, `skipped-heading` 8 of 8, `dark-glow` 6 to 8 of 10, `wide-tracking`
 5 of 6, `pulsing-dot` 4 of 5, `radial-halo` 4 of 7, `codex-grid-background` 4 of 5,
 `repeating-stripes-gradient` 4 of 5, `marquee` 3 of 4, `gray-on-color` 3 of 4,
