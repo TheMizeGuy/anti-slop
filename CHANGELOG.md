@@ -75,9 +75,10 @@ that decides a combination or a repetition after the escape hatch has dropped it
   gradient stop only beside the gradient it paints, and a gradient's halves only within one
   class set and one ternary arm. Breakpoints and `dark:` still count.
 - `neon-glow` is a glow a viewer can see: zero offsets, a blur over 4px, a chromatic colour,
-  blur times alpha of 3 or more, and, where the block states its size, light reaching no
-  more than twice the element's area. Focus halos are exempt; a glow in a keyframe step
-  counts when a painted element runs it.
+  and blur times alpha of 3 or more. On a bar or track (one declared side at least four times
+  the other) a halo lighting more than twice its area is a lit track, not a glow; a halo
+  around a dot keeps the verdict. Focus halos are exempt; a glow in a keyframe step counts
+  when a painted element runs it.
 - `cream-serif-default` counts distinct legs (cream ground, serif display, the `#15573a`
   sage accent, the clay accent). Resolved on 2026-10-26: clay completes the combination only
   beside the serif display, so cream with a brick accent and no serif is no longer a
@@ -152,14 +153,14 @@ document is the finding. `choosing-with-intent.md` documents the scoped waiver.
 
 `baseline.json` was regenerated with a row for each new rule; no existing row moved. Over
 impeccable's labelled antipattern fixtures (450 positive fixture-and-rule pairs; the scoring
-scripts sit outside this repository), this scanner alone went from 60 pairs hit to 212, and
+scripts sit outside this repository), this scanner alone went from 60 pairs hit to 213, and
 from 5 of impeccable's rules with any hit to 20: `side-tab` 36 of 41, `low-contrast` 25 of
 61, `undersized-ui-text` 20 of 20, `tiny-text` 13 of 13, `bounce-easing` 10 of 16,
-`tight-leading` 8 of 10, `skipped-heading` 8 of 8, `dark-glow` 6 to 8 of 10, `wide-tracking`
+`tight-leading` 8 of 10, `skipped-heading` 8 of 8, `dark-glow` 6 to 9 of 10, `wide-tracking`
 5 of 6, `pulsing-dot` 4 of 5, `radial-halo` 4 of 7, `codex-grid-background` 4 of 5,
 `repeating-stripes-gradient` 4 of 5, `marquee` 3 of 4, `gray-on-color` 3 of 4,
-`justified-text` 3 of 3. Two earlier hits are gone on purpose: a cream page that carried one
-leg twice, and a 24px status orb whose 18px glow lights more than twice its own area. On
+`justified-text` 3 of 3. One earlier hit is gone on purpose: a cream page that carried one leg
+twice. On
 impeccable's negative fixtures, the three findings on the CSS quoted in
 `css-in-prose-should-pass.html` are gone, and the new ones are the four square-box side-tab
 twins, the deliberate divergence above.

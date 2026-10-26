@@ -2255,9 +2255,9 @@ export function pulsingDotHits(ctx) {
 
 // ── neon-glow ──
 // A glow a viewer can see: an outset layer with zero offsets, a blur over 4px, a chromatic
-// colour, and blur x alpha of 3 or more. Where the block states its px size, a halo that
-// lights more than twice the element's own area is ambient light, not a glow. A focus halo
-// is a state indicator and is never this tell.
+// colour, and blur x alpha of 3 or more. On a bar or track whose declared sides differ by four
+// times or more, a halo that lights more than twice the element's own area is a lit track, not
+// a glow. A focus halo is a state indicator and is never this tell.
 const FOCUS_STATE = /:focus\b|:focus-visible\b|:focus-within\b/i;
 
 function glowLayer(layer, props, kind) {
@@ -2281,11 +2281,13 @@ function glowLayer(layer, props, kind) {
   return { blur, spread, strength, text: `${kind}: ${layer.trim()} (strength ${strength.toFixed(1)})` };
 }
 
-// The light reaches half the blur plus the spread past each edge.
+// Only a bar or track (one declared side at least four times the other) can be a lit track:
+// a halo around a dot or a card keeps the glow verdict. The light reaches half the blur plus
+// the spread past each edge.
 function litAreaTooWide(block, props, g) {
   const w = lengthPx(decl(block, "width"), props);
   const h = lengthPx(decl(block, "height"), props);
-  if (!(w > 0 && h > 0)) return false;
+  if (!(w > 0 && h > 0) || Math.max(w, h) < 4 * Math.min(w, h)) return false;
   const extent = g.blur / 2 + g.spread;
   return (w + 2 * extent) * (h + 2 * extent) - w * h > 2 * w * h;
 }

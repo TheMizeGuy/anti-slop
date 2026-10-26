@@ -239,8 +239,10 @@ test("neon-glow: a focus halo is a state indicator, and the same halo at rest is
   assert.ok(fires("neon-glow", ".btn { box-shadow: 0 0 12px rgba(14, 165, 233, 0.6); }", "a.css"));
 });
 
-test("neon-glow: a halo lighting more than twice the element's area is ambient light", () => {
+test("neon-glow: a halo along a thin bar is a lit track; a halo around a dot is the glow", () => {
   assert.ok(!fires("neon-glow", ".pass-glow-bar { width: 200px; height: 4px; box-shadow: 0 0 16px rgba(26, 58, 214, .8); }", "a.css"));
+  assert.ok(fires("neon-glow", ".status-orb { width: 24px; height: 24px; border-radius: 50%; box-shadow: 0 0 18px rgba(34, 197, 94, 0.7); }", "a.css"),
+    "a round element keeps the glow verdict however far its halo reaches");
   assert.ok(fires("neon-glow", ".card { width: 320px; height: 200px; box-shadow: 0 0 16px rgba(26, 58, 214, .8); }", "a.css"));
 });
 
