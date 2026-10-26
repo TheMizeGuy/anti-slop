@@ -796,7 +796,7 @@
       "role": "clean-control",
       "expected": [],
       "maxIncidentalFindings": 0,
-      "note": "Contrast corrected 2026-10 (anti-slop 2.5.0): --ink-faint #6b727f -> #858d9a, 3.17:1 -> 4.59:1 on --surface-2; the planted construct is unchanged."
+      "note": "Contrast corrected 2026-10 (anti-slop 2.5.0): --ink-faint #6b727f -> #858d9a, 3.17:1 -> 4.59:1 on --surface-2; the planted construct is unchanged. Its engineering grid is the fixture's stated brand surface, and since anti-slop 2.5.0 its background-image line carries the scoped waiver anti-slop-allow: background-pattern -- engineering grid is the stated brand surface."
     },
     {
       "file": "../fixtures/warm-consumer.html",
@@ -1387,6 +1387,27 @@
       "expected": [],
       "maxIncidentalFindings": 0,
       "note": "Clean partner of marquee-logos.html: a one-shot slide-in heading, a notice that rises once (finite), and a scroll-snap rail the reader moves by hand."
+    },
+    {
+      "file": "design/pattern-backgrounds.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "background-pattern",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        }
+      ],
+      "note": "Positive for background-pattern (anti-slop 2.5.0): a two-axis hairline grid on a 24px tile behind the page, a 1px dot field on a 16px tile behind the hero, and repeating 45deg stripes behind a promo strip."
+    },
+    {
+      "file": "design/pattern-backgrounds-clean.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Clean partner of pattern-backgrounds.html: one tiled hairline (a ruled-paper rule, not a grid), a repeating gradient that runs its whole length and paints once, and a plain two-colour gradient."
     },
     {
       "file": "code/cast-to-any.ts",

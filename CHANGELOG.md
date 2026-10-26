@@ -45,6 +45,9 @@ that decides a combination or a repetition after the escape hatch has dropped it
   and the `animate-ping` / `animate-pulse` dot.
 - `marquee` (low, Pattern smell): a `<marquee>`, or keyframes that carry a row sideways by a
   fifth of its width or more, run forever.
+- `background-pattern` (low, Pattern smell): a hairline grid or a dot field on a px tile, or
+  repeating stripes that stop short of their full length. `technical-mono.html`'s engineering
+  grid is its stated surface and carries the scoped waiver.
 
 **Rules that fired where they should not, narrowed:**
 
@@ -119,8 +122,8 @@ document is the finding. `choosing-with-intent.md` documents the scoped waiver.
 
 | | Before (2.4.0) | After (2.5.0) |
 |---|--:|--:|
-| True positives / false positives / false negatives | 120 / 0 / 1 | 133 / 0 / 1 |
-| Design modality true positives | 54 | 67 |
+| True positives / false positives / false negatives | 120 / 0 / 1 | 134 / 0 / 1 |
+| Design modality true positives | 54 | 68 |
 | Precision / recall | 100.0% / 99.2% | 100.0% / 99.2% |
 
 `baseline.json` was regenerated with a row for each new rule; no existing row moved. Over

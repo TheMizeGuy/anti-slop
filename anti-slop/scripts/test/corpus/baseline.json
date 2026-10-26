@@ -65,6 +65,14 @@
       "recall": 1
     },
     {
+      "rule": "background-pattern",
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "rule": "banner-comment",
       "tp": 1,
       "fp": 0,
@@ -868,7 +876,7 @@
     },
     {
       "modality": "design",
-      "tp": 67,
+      "tp": 68,
       "fp": 0,
       "fn": 0,
       "precision": 1,
@@ -892,10 +900,10 @@
     }
   ],
   "overall": {
-    "tp": 133,
+    "tp": 134,
     "fp": 0,
     "fn": 1,
     "precision": 1,
-    "recall": 0.9925373134328358
+    "recall": 0.9925925925925926
   }
 }

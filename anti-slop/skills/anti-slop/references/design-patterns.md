@@ -669,6 +669,7 @@ across every family.
 | Unmodified shadcn card | Yes (`shadcn-default-card`, `shadow-border-rounded-combo`) |
 | Side stripe on a card | Yes (`side-stripe-accent`) |
 | Bounce easing, the pulsing live dot, the marquee | Yes (`bounce-easing`, `pulsing-dot`, `marquee`) |
+| Dot, grid and stripe background patterns | Yes (`background-pattern`) |
 | Text contrast on its surface | Partly (`low-contrast`, `low-contrast-near-bar`: declared surfaces only, no Tailwind colour utilities) |
 | Type below the legibility floor, the reading-mechanics settings | Partly (`text-size-floor`, `tight-leading`, `wide-tracking`, `justified-narrow-column`, `crushed-tracking`: one block at a time) |
 | Icon in a colored circle | Yes (`icon-in-colored-circle`) |
@@ -741,6 +742,8 @@ A circular button (`fixed bottom-4 right-4 rounded-full w-14 h-14 bg-indigo-600 
 CSS `radial-gradient(circle, #e5e7eb 1px, transparent 1px)` with `background-size: 20px 20px` behind hero sections. A decorative pattern that adds no information.
 
 **Instead:** Use a solid background, a photograph, a subtle texture, or white space. If a grid pattern serves a specific purpose (graph paper aesthetic for a data tool), use it intentionally.
+
+The scanner rule is `background-pattern`, low severity, Pattern smell: two or more hairline stops on a px tile (a grid), a radial stop of 2px or less on a px tile (a dot field), or a repeating gradient whose last stop falls short of its full length (stripes). One hairline is a ruled line or a rail, and a repeating gradient that runs its whole length paints once; both stay clean. Where the grid is the stated surface, mark the line `anti-slop-allow: background-pattern -- <reason>`. It re-expresses impeccable's `codex-grid-background` and `repeating-stripes-gradient` rules.
 
 ### The SaaS Landing Page Sequence
 AI produces pages in this exact order regardless of project type: nav, hero, logo bar, stats row, feature grid, alternating L-R features, testimonials, pricing, FAQ accordion, CTA repeat, footer. A restaurant, portfolio, e-commerce store, and SaaS product all get this same structure.

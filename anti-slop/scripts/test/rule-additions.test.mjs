@@ -1095,3 +1095,23 @@ test("marquee: an infinite sideways loop fires; a one-shot slide, a vertical sli
   assert.deepEqual(fired("marquee", `@media (prefers-reduced-motion: reduce) { ${loop} .t { animation: scroll 30s linear infinite } }`), []);
   assert.equal(fired("marquee", "<marquee>Sale ends Friday</marquee>", "a.html").length, 1);
 });
+
+// ── background-pattern (2.5.0, P2) ───────────────────────────────────────────
+
+test("background-pattern: grids, dot fields and stripes fire; a rule, a one-pass band and a plain gradient do not", () => {
+  const [v] = fired("background-pattern", corpus("design/pattern-backgrounds.html"), "design/pattern-backgrounds.html");
+  assert.equal(v.count, 3);
+  assert.deepEqual(fired("background-pattern", corpus("design/pattern-backgrounds-clean.html"), "design/pattern-backgrounds-clean.html"), []);
+  const grid = ".g { background-image: linear-gradient(#ddd 1px, transparent 1px), linear-gradient(90deg, #ddd 1px, transparent 1px);";
+  assert.equal(fired("background-pattern", `${grid} background-size: 24px 24px }`).length, 1);
+  assert.deepEqual(fired("background-pattern", `${grid} }`), [], "no tile: not a repeating grid");
+  assert.deepEqual(fired("background-pattern", ".g { background-image: linear-gradient(#ddd 1px, transparent 1px); background-size: 24px 24px }"), [], "one hairline is a rule");
+  assert.deepEqual(fired("background-pattern", ".d { background: radial-gradient(circle, #ccc 6px, transparent 6px) 0 0 / 16px 16px }"), [], "a 6px stop is a spot, not a dot field");
+  assert.deepEqual(fired("background-pattern", ".s { background: repeating-linear-gradient(90deg, #eee 0, #ddd) }"), [], "an unpositioned last stop");
+});
+
+test("background-pattern: a stated surface is waived by name and the rest of the line still reads", () => {
+  const css = ".g { background-image: linear-gradient(#ddd 1px, transparent 1px), linear-gradient(90deg, #ddd 1px, transparent 1px); background-size: 24px 24px } /* anti-slop-allow: background-pattern -- the brand grid */";
+  assert.deepEqual(fired("background-pattern", css), []);
+  assert.deepEqual(names(corpus("../fixtures/technical-mono.html"), "../fixtures/technical-mono.html"), []);
+});

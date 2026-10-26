@@ -2336,6 +2336,63 @@ export function marqueeHits(ctx) {
   });
 }
 
+// ── background-pattern ──
+// Template texture behind content: a grid of two or more hairline stops on a px tile, a dot
+// field (a radial stop of 2px or less on a px tile), or repeating stripes whose last stop
+// falls short of the full length. One hairline is a rule or a rail, and a repeating
+// gradient that runs its whole length paints once; both stay clean.
+function gradientCalls(value, name) {
+  const out = [];
+  const re = new RegExp(`(?<![\\w-])${name}\\(`, "gi");
+  let m;
+  while ((m = re.exec(value)) !== null) {
+    const open = m.index + m[0].length - 1;
+    const close = matchClose(value, open);
+    if (close === -1) break;
+    out.push(splitOutside(value.slice(open + 1, close), ","));
+    re.lastIndex = close + 1;
+  }
+  return out;
+}
+
+const FULL_LENGTH = /^(?:100%|360deg|1turn|400grad|6\.2832rad)$/i;
+
+export function backgroundPatternHits(ctx) {
+  return memo(ctx, "backgroundPattern", () => {
+    const props = ctx.props;
+    const hits = [];
+    for (const b of ctx.css.blocks) {
+      const entries = b.decls.filter((d) => d.prop === "background" || d.prop === "background-image");
+      if (!entries.length) continue;
+      const value = entries.map((d) => resolveVars(d.value, props)).join(", ");
+      const size = resolveVars(String(decl(b, "background-size") || ""), props);
+      const tile = /\b\d{1,3}(?:\.\d+)?px\b/.test(size) || /\/\s*\d{1,3}(?:\.\d+)?px\b/.test(value);
+      const at = entries[entries.length - 1];
+      let kind = null;
+      const hairlines = (value.match(/\b\d{1,3}px\s*,\s*transparent\s+\d{1,3}px/gi) || []).length + (value.match(/transparent\s+calc\(\s*100%\s*-\s*\d{1,3}px\s*\)/gi) || []).length;
+      if (hairlines >= 2 && tile) kind = "a grid of hairlines on a tile";
+      if (!kind && tile) {
+        for (const args of gradientCalls(value, "radial-gradient")) {
+          const dot = args.some((a, i) => { const m = /(\d*\.?\d+)px\s*$/.exec(a); return m && Number(m[1]) <= 2 && /^transparent\b/i.test(args[i + 1] || ""); });
+          if (dot) { kind = "a dot field on a tile"; break; }
+        }
+      }
+      if (!kind) {
+        for (const fn of ["repeating-linear-gradient", "repeating-radial-gradient", "repeating-conic-gradient"]) {
+          for (const args of gradientCalls(value, fn)) {
+            const last = splitOutside(args[args.length - 1] || "", " ");
+            const pos = last[last.length - 1] || "";
+            if (last.length > 1 && /^-?\d*\.?\d+(?:px|rem|em|%|deg|turn|grad|rad)$/i.test(pos) && !FULL_LENGTH.test(pos)) { kind = `repeating stripes (${fn})`; break; }
+          }
+          if (kind) break;
+        }
+      }
+      if (kind) hits.push({ line: at.line, evidence: `${normSelector(b.selector)}: ${kind}` });
+    }
+    return hits;
+  });
+}
+
 // ── The cream-serif tasteful default ──
 // Four legs: a CREAM ground, a SERIF display face, the SAGE accent and the CLAY accent (the
 // rusty-orange drift form). The tell is two distinct legs: cream + serif, cream + sage,
