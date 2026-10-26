@@ -1967,3 +1967,180 @@ export function crushedTrackingHits(ctx) {
     return hits;
   });
 }
+
+// ── Motion: bounce-easing and pulsing-dot ──
+const ANIMATION_KEYWORDS = new Set(["none", "infinite", "normal", "reverse", "alternate", "alternate-reverse", "forwards", "backwards", "both", "running", "paused", "linear", "ease", "ease-in", "ease-out", "ease-in-out", "step-start", "step-end", "initial", "inherit", "unset", "auto"]);
+const BOUNCE_NAME = /bounce|elastic|wobble|jiggle|rubber/i;
+
+// The keyframes names a block runs, from `animation` layers and `animation-name`.
+function animationNames(block, props) {
+  const out = [];
+  for (const d of block.decls) {
+    if (d.prop === "animation-name") {
+      for (const n of splitOutside(resolveVars(d.value, props), ",")) out.push({ name: n.trim(), entry: d });
+    } else if (d.prop === "animation") {
+      for (const layer of splitOutside(resolveVars(d.value, props), ",")) {
+        const name = splitOutside(layer, " ").find((t) => /^-?[a-zA-Z_][\w-]*$/.test(t) && !ANIMATION_KEYWORDS.has(t.toLowerCase()));
+        if (name) out.push({ name, entry: d });
+      }
+    }
+  }
+  return out;
+}
+
+function runsInfinitely(block, props) {
+  return block.decls.some((d) => (d.prop === "animation" || d.prop === "animation-iteration-count") && /(?:^|[\s,])infinite(?:$|[\s,])/i.test(resolveVars(d.value, props)));
+}
+
+function cubicBeziers(value) {
+  return [...String(value).matchAll(/cubic-bezier\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/gi)].map((m) => ({ text: m[0], y1: Number(m[2]), y2: Number(m[4]) }));
+}
+
+// Anticipation and overshoot together is the elastic shape; a single overshoot settles once,
+// the way a spring does, and stays clean.
+const elastic = (c) => c.y1 < -0.1 && c.y2 > 1.1;
+
+function transformChannels(value) {
+  const ch = {};
+  const num = (t) => { const m = /^([-+]?(?:\d+\.?\d*|\.\d+))(px|%)?$/.exec(t.trim()); return m ? { v: Number(m[1]), unit: m[2] || "" } : null; };
+  for (const m of String(value).matchAll(/(translate3d|translateX|translateY|translate|scale3d|scaleX|scaleY|scale)\(([^)]*)\)/gi)) {
+    const fn = m[1].toLowerCase();
+    const args = m[2].split(",").map((a) => a.trim());
+    if (fn === "translatex") ch.x = num(args[0]);
+    else if (fn === "translatey") ch.y = num(args[0]);
+    else if (fn === "translate" || fn === "translate3d") { ch.x = num(args[0]); ch.y = args[1] !== undefined ? num(args[1]) : ch.y || { v: 0, unit: "" }; }
+    else if (fn === "scalex") ch.sx = num(args[0]);
+    else if (fn === "scaley") ch.sy = num(args[0]);
+    else ch.s = num(args[0]);
+  }
+  return ch;
+}
+
+function keyframePoints(kf) {
+  const points = [];
+  for (const step of kf.steps) {
+    const t = step.decls.filter((d) => d.prop === "transform").pop();
+    for (const offset of step.offsets) points.push({ offset, ch: t ? transformChannels(t.value) : {} });
+  }
+  return points.sort((a, b) => a.offset - b.offset);
+}
+
+function reversals(values) {
+  let sign = 0;
+  let count = 0;
+  for (let i = 1; i < values.length; i++) {
+    const d = values[i] - values[i - 1];
+    if (Math.abs(d) < 1e-9) continue;
+    const s = d > 0 ? 1 : -1;
+    if (sign !== 0 && s !== sign) count++;
+    sign = s;
+  }
+  return count;
+}
+
+// The most direction reversals any one transform channel makes across a keyframes block of
+// four or more points.
+function bounceReversals(kf) {
+  const points = keyframePoints(kf);
+  if (points.length < 4) return 0;
+  let most = 0;
+  for (const key of ["x", "y", "s", "sx", "sy"]) {
+    const seq = points.map((p) => (p.ch[key] ? p.ch[key].v : key.startsWith("s") ? 1 : 0));
+    if (!points.some((p) => p.ch[key])) continue;
+    most = Math.max(most, reversals(seq));
+  }
+  return most;
+}
+
+// SpinKit's "bounce" loaders only fade and shrink: every declaration is opacity, a shadow, a
+// filter opacity, an in-range timing function, or a scale between 0 and 1.
+function onlyPulses(kf) {
+  return kf.steps.every((step) => step.decls.every((d) => {
+    if (d.prop === "opacity" || d.prop === "box-shadow") return true;
+    if (d.prop === "filter") return /^\s*opacity\([^)]*\)\s*$/i.test(d.value);
+    if (d.prop === "animation-timing-function") return cubicBeziers(d.value).every((c) => c.y1 >= 0 && c.y1 <= 1 && c.y2 >= 0 && c.y2 <= 1);
+    if (d.prop === "transform") {
+      const fns = [...d.value.matchAll(/([a-zA-Z0-9]+)\(([^)]*)\)/g)];
+      return fns.length > 0 && fns.every((f) => /^scale(?:3d|X|Y)?$/i.test(f[1]) && f[2].split(",").every((n) => { const v = Number(n.trim()); return v >= 0 && v <= 1; }));
+    }
+    return false;
+  }));
+}
+
+export function bounceEasingHits(ctx) {
+  return memo(ctx, "bounceEasing", () => {
+    const props = ctx.props;
+    const kfs = ctx.css.keyframes;
+    const hits = [];
+    for (const b of ctx.css.blocks) {
+      if (inAtRule(b, REDUCED_MOTION)) continue;
+      let hit = null;
+      for (const { name, entry } of animationNames(b, props)) {
+        const kf = kfs.get(name);
+        if (BOUNCE_NAME.test(name) && !(kf && onlyPulses(kf))) { hit = { line: entry.line, evidence: `${entry.prop}: ${name}` }; break; }
+        const n = kf ? bounceReversals(kf) : 0;
+        if (n >= 2) { hit = { line: entry.line, evidence: `${entry.prop}: ${name} (keyframes reverse ${n} times)` }; break; }
+      }
+      if (!hit) {
+        for (const d of b.decls) {
+          const timing = /^(?:animation|animation-timing-function|transition|transition-timing-function)$/.test(d.prop);
+          const readToken = d.prop.startsWith("--") && new RegExp(`var\\(\\s*${d.prop.replace(/[-]/g, "\\-")}(?![\\w-])`).test(ctx.text);
+          if (!timing && !readToken) continue;
+          const c = cubicBeziers(d.value).find(elastic);
+          if (c) { hit = { line: d.line, evidence: c.text }; break; }
+        }
+      }
+      if (hit) hits.push(hit);
+    }
+    for (const set of ctx.classSets) {
+      if (set.tokens.some((t) => tailwindToken(t).base === "animate-bounce")) hits.push({ line: set.line, evidence: "animate-bounce" });
+    }
+    return hits;
+  });
+}
+
+const TW_DOT_SIZE = /^(?:w|h|size)-(?:1|1\.5|2|2\.5|3|3\.5|4)$/;
+const TW_ANY_SIZE = /^(?:w|h|size)-/;
+
+export function pulsingDotHits(ctx) {
+  return memo(ctx, "pulsingDot", () => {
+    const props = ctx.props;
+    const kfs = ctx.css.keyframes;
+    const hits = [];
+    for (const b of ctx.css.blocks) {
+      if (inAtRule(b, REDUCED_MOTION) || !runsInfinitely(b, props)) continue;
+      const names = animationNames(b, props);
+      const pulsing = names.find(({ name }) => {
+        const kf = kfs.get(name);
+        if (!kf) return /pulse|blink|ping|glow|breathe/i.test(name);
+        const decls = kf.steps.flatMap((s) => s.decls);
+        const pulses = decls.some((d) => d.prop === "opacity" || d.prop === "box-shadow" || (d.prop === "transform" && /scale/i.test(d.value)));
+        const heightOnly = decls.some((d) => d.prop === "height") && !decls.some((d) => d.prop === "width");
+        const pts = keyframePoints(kf);
+        const travel = (key) => { const v = pts.filter((p) => p.ch[key] && p.ch[key].unit !== "%").map((p) => p.ch[key].v); return v.length ? Math.max(...v) - Math.min(...v) : 0; };
+        return pulses && !heightOnly && travel("x") < 4 && travel("y") < 4;
+      });
+      if (!pulsing) continue;
+      // An animation opted in under a media query keeps its box in the base rule.
+      const twins = ctx.css.blocks.filter((o) => o !== b && normSelector(o.selector) === normSelector(b.selector));
+      const geo = (prop) => decl(b, prop) ?? twins.map((o) => decl(o, prop)).filter((v) => v !== undefined).pop();
+      const w = lengthPx(geo("width"), props);
+      const h = lengthPx(geo("height"), props);
+      if (!(w >= 2 && w <= 16 && h >= 2 && h <= 16) || Math.max(w, h) / Math.min(w, h) > 1.5) continue;
+      const r = resolveVars(String(geo("border-radius") || ""), props).trim();
+      const pct = /^(\d*\.?\d+)%$/.exec(r);
+      const rpx = lengthPx(r, props);
+      if (!((pct && Number(pct[1]) >= 40) || (rpx !== undefined && (rpx >= 999 || rpx >= 0.4 * Math.min(w, h))))) continue;
+      hits.push({ line: pulsing.entry.line, evidence: `${normSelector(b.selector)}: ${fmtPx(w)}x${fmtPx(h)}px dot running ${pulsing.name} forever` });
+    }
+    for (const set of ctx.effectiveSets) {
+      const toks = set.tokens.map(tailwindToken).filter((t) => !t.variants.some(isStateVariant));
+      const anim = toks.find((t) => t.base === "animate-ping" || t.base === "animate-pulse");
+      if (!anim || !toks.some((t) => t.base === "rounded-full")) continue;
+      const sizes = toks.filter((t) => TW_ANY_SIZE.test(t.base));
+      if (sizes.length === 0 || !sizes.every((t) => TW_DOT_SIZE.test(t.base))) continue;
+      hits.push({ line: set.line, evidence: `${anim.base} rounded-full ${sizes.map((t) => t.base).join(" ")}` });
+    }
+    return hits;
+  });
+}

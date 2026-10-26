@@ -932,3 +932,74 @@ test("crushed-tracking: tighter than -0.07em fires, -0.09em at display sizes; wo
   assert.equal(fired("crushed-tracking", ".headline-mark { font-size: 28px; letter-spacing: -0.08em }").length, 1, "the same tracking on a non-wordmark");
   assert.equal(fired("crushed-tracking", ".x { letter-spacing: -0.08em }").length, 1, "an unknown size takes the body bar");
 });
+
+// ── bounce-easing and pulsing-dot (2.5.0) ────────────────────────────────────
+
+test("bounce-easing: the corpus positive fires on all three forms, and springs stay clean", () => {
+  const [v] = fired("bounce-easing", corpus("design/motion-bounce.html"), "design/motion-bounce.html");
+  assert.equal(v.count, 3);
+  assert.deepEqual(fired("bounce-easing", corpus("design/motion-spring-clean.html"), "design/motion-spring-clean.html"), []);
+});
+
+test("bounce-easing: anticipation plus overshoot fires; a single overshoot settles like a spring", () => {
+  assert.equal(fired("bounce-easing", ".m { transition: transform 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55) }").length, 1);
+  assert.deepEqual(fired("bounce-easing", ".m { transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1) }"), []);
+  assert.deepEqual(fired("bounce-easing", ".m { transition: transform 300ms linear(0, 0.42 12%, 0.99 31%, 1.09 42%, 1) }"), []);
+});
+
+test("bounce-easing: a curve token counts only when something reads it", () => {
+  const token = ":root { --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55) }";
+  assert.deepEqual(fired("bounce-easing", token), []);
+  assert.equal(fired("bounce-easing", `${token} .m { transition: transform 300ms var(--ease-bounce) }`).length, 1);
+});
+
+test("bounce-easing: a bounce-named animation that only pulses is SpinKit's loader, not a bounce", () => {
+  const pulse = "@keyframes bounce-soft { 0%, 100% { opacity: .5; transform: scale(.98) } 50% { opacity: 1; transform: scale(1) } } .s { animation: bounce-soft 1s infinite }";
+  assert.deepEqual(fired("bounce-easing", pulse), []);
+  const moves = "@keyframes bounce-soft { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-10px) } } .s { animation: bounce-soft 1s infinite }";
+  assert.equal(fired("bounce-easing", moves).length, 1, "the same name with movement in it");
+  assert.equal(fired("bounce-easing", ".s { animation: wobble 1s }").length, 1, "keyframes outside the file keep the name's verdict");
+});
+
+test("bounce-easing: keyframes that reverse twice are a bounce; rise-and-settle is not", () => {
+  const twice = "@keyframes drop { 0% { transform: translateY(0) } 30% { transform: translateY(-24px) } 50% { transform: translateY(0) } 70% { transform: translateY(-10px) } 100% { transform: translateY(0) } } .t { animation: drop 600ms }";
+  assert.equal(fired("bounce-easing", twice).length, 1);
+  const once = "@keyframes rise { 0% { transform: translateY(8px) } 60% { transform: translateY(-2px) } 80% { transform: translateY(0) } 100% { transform: translateY(0) } } .t { animation: rise 300ms }";
+  assert.deepEqual(fired("bounce-easing", once), []);
+});
+
+test("bounce-easing: animate-bounce fires with or without a variant; reduced-motion blocks are skipped", () => {
+  assert.equal(fired("bounce-easing", '<svg class="animate-bounce"></svg>', "a.html").length, 1);
+  assert.equal(fired("bounce-easing", '<svg class="motion-safe:animate-bounce"></svg>', "a.html").length, 1);
+  assert.deepEqual(fired("bounce-easing", "@media (prefers-reduced-motion: reduce) { .m { transition-timing-function: cubic-bezier(0.68, -0.55, 0.265, 1.55) } }"), []);
+});
+
+test("pulsing-dot: the corpus positive fires on the CSS and Tailwind forms, the partner is silent", () => {
+  const [v] = fired("pulsing-dot", corpus("design/live-dot.html"), "design/live-dot.html");
+  assert.equal(v.count, 2);
+  assert.deepEqual(fired("pulsing-dot", corpus("design/live-dot-clean.html"), "design/live-dot-clean.html"), []);
+});
+
+test("pulsing-dot: each gate beside its twin (forever, small, round, pulsing in place)", () => {
+  const kf = "@keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .4 } }";
+  const dot = (decls) => `${kf} .d { width: 8px; height: 8px; border-radius: 50%; ${decls} }`;
+  assert.equal(fired("pulsing-dot", dot("animation: pulse 1.6s infinite")).length, 1);
+  assert.deepEqual(fired("pulsing-dot", dot("animation: pulse 1.6s 1")), [], "finite");
+  assert.deepEqual(fired("pulsing-dot", dot("animation: pulse 1.6s infinite").replace("width: 8px; height: 8px", "width: 24px; height: 24px")), [], "over 16px");
+  assert.deepEqual(fired("pulsing-dot", dot("animation: pulse 1.6s infinite").replace("border-radius: 50%", "border-radius: 1px")), [], "square");
+  const float = "@keyframes float { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-8px) } } .d { width: 8px; height: 8px; border-radius: 50%; animation: float 3s infinite }";
+  assert.deepEqual(fired("pulsing-dot", float), [], "a dot that moves");
+  assert.equal(fired("pulsing-dot", ".d { width: 8px; height: 8px; border-radius: 50%; animation: ping 1s infinite }").length, 1, "keyframes outside the file: the name decides");
+  assert.deepEqual(fired("pulsing-dot", "@media (prefers-reduced-motion: reduce) { .d { width: 8px; height: 8px; border-radius: 50%; animation: ping 1s infinite } }"), []);
+});
+
+test("pulsing-dot: the Tailwind form needs a dot-sized box", () => {
+  assert.equal(fired("pulsing-dot", '<span class="h-2 w-2 rounded-full animate-ping"></span>', "a.html").length, 1);
+  assert.deepEqual(fired("pulsing-dot", '<span class="h-10 w-10 rounded-full animate-pulse"></span>', "a.html"), [], "a skeleton avatar");
+  assert.deepEqual(fired("pulsing-dot", '<span class="h-2 w-2 rounded animate-ping"></span>', "a.html"), [], "not round");
+});
+
+test("pulsing-dot: an approved live badge is one marker away", () => {
+  const badge = '<span class="h-2 w-2 rounded-full animate-ping"></span> <!-- anti-slop-allow: the brief asks for a live badge -->';
+  assert.deepEqual(fired("pulsing-dot", badge, "a.html"), []);
+});

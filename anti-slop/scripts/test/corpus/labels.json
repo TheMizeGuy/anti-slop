@@ -1325,6 +1325,48 @@
       "note": "Clean partner of reading-mechanics.html, one step from each construct: a tight 20px heading, 22px lead text at 1.2, a 12px badge and preformatted code at 1.25, a bold card title; caps, small-caps, Japanese and button tracking; justify on a 65ch measure and on a hyphenated 18rem column; -0.05em on 56px display type, -0.02em on a title and a -0.08em wordmark."
     },
     {
+      "file": "design/motion-bounce.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "bounce-easing",
+          "severity": "low",
+          "confidence": "Pattern smell"
+        }
+      ],
+      "note": "Positive for bounce-easing (anti-slop 2.5.0): a bounce-in toast whose keyframes rise and fall twice, a menu transition on cubic-bezier(0.68, -0.55, 0.265, 1.55) (anticipation and overshoot), and an animate-bounce scroll cue. The motion is opted in under prefers-reduced-motion: no-preference."
+    },
+    {
+      "file": "design/motion-spring-clean.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Clean partner of motion-bounce.html: a linear() spring token that is read, an elastic --ease-bounce token that nothing reads, a single-overshoot pop curve, a skeleton named bounce-soft whose keyframes only fade and shrink, and a float that rises and settles once."
+    },
+    {
+      "file": "design/live-dot.html",
+      "modality": "design",
+      "role": "positive",
+      "expected": [
+        {
+          "id": "pulsing-dot",
+          "severity": "medium",
+          "confidence": "Pattern smell"
+        }
+      ],
+      "note": "Positive for pulsing-dot (anti-slop 2.5.0): an 8px round .live-dot running an infinite opacity and scale pulse beside the word Live (the animation is opted in under no-preference and the box lives in the base rule), and an h-2 w-2 rounded-full animate-ping span."
+    },
+    {
+      "file": "design/live-dot-clean.html",
+      "modality": "design",
+      "role": "clean-control",
+      "expected": [],
+      "maxIncidentalFindings": 0,
+      "note": "Clean partner of live-dot.html, one step from each gate: a 4x24px equaliser bar (not a dot), an 8px dot that pulses once, a 12px dot that floats (it moves), and a 24px spinner (over 16px, role=status with a hidden label). Every infinite animation is opted in under no-preference."
+    },
+    {
       "file": "code/cast-to-any.ts",
       "modality": "code",
       "role": "positive",

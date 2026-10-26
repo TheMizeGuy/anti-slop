@@ -1,6 +1,6 @@
 import {
   lowContrastHits, sideStripeHits, textSizeFloorHits, tightLeadingHits, wideTrackingHits,
-  justifiedNarrowHits, crushedTrackingHits,
+  justifiedNarrowHits, crushedTrackingHits, bounceEasingHits, pulsingDotHits,
 } from "./design-detect.mjs";
 
 // ── Confidence classes ──
@@ -379,6 +379,12 @@ export const DESIGN_PATTERNS = [
   // frontend-patterns.md § Animation Performance already forbids by hand. The fix is
   // naming the properties, so nothing about prefers-reduced-motion handling is touched.
   { name: "transition-all", severity: "low", confidence: CONFIDENCE.QUALITY, mode: CONCENTRATION, minCount: 2, pattern: /\btransition-all\b|transition\s*:\s*all[\s;]/gi, fix: "Name the properties: `transition-[background-color,box-shadow] duration-150` animates the same thing and removes no motion.", desc: "transition-all (animates every property, layout ones included)" },
+  // Springs are the tool, not the tell: a linear() spring token, a single-overshoot curve
+  // and an unread curve token stay clean. The tell is a keyword bounce or elastic animation,
+  // animate-bounce, a curve that anticipates AND overshoots, or keyframes that reverse
+  // direction twice. Low severity: the doctrine weighs it against the action's gravity.
+  { name: "bounce-easing", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: bounceEasingHits, fix: "Ease out with an exponential curve or a spring token that settles once; match the motion's energy to the action it confirms.", desc: "Bounce or elastic easing (keyword animation, animate-bounce, overshooting curve)" },
+  { name: "pulsing-dot", severity: "medium", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: pulsingDotHits, fix: "Let liveness show in the content (rows arriving, a timestamp updating); if the brief asks for a live badge, mark the line anti-slop-allow.", desc: "Small round dot pulsing forever (the generated live badge)" },
   // A deliberate uniform 5rem rhythm is a real design decision, which is why this is low
   // severity at three hits: one py-20 beside a py-12 and a py-32 is a rhythm, not a default.
   { name: "uniform-section-padding", severity: "low", confidence: CONFIDENCE.SMELL, mode: CONCENTRATION, minCount: 3, pattern: /\bpy-(?:20|24)\b/gi, fix: "Vary the vertical rhythm by what each section holds; a dense table does not want the same air as a hero.", desc: "Same section padding on every section (uncommitted vertical rhythm)" },
