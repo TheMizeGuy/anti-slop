@@ -58,7 +58,7 @@ that decides a combination or a repetition after the escape hatch has dropped it
   (`security theater`, `growth theatre`), both spellings; a Title Case name is not the framing.
 - `design-system-font` (medium, Quality defect): where a `DESIGN.md` is found (the nearest one
   walking up from the file, inside the project), a block whose primary face is not one its
-  frontmatter declares. A declared colour on the purple arc turns the four purple rules off
+  frontmatter declares; test, fixture and story files are skipped. A declared colour on the purple arc turns the four purple rules off
   for files under it, and the coverage notes name it. Colour, radius and type-size drift
   against the file are not ported.
 

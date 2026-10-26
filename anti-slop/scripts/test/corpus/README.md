@@ -107,7 +107,7 @@ corrections record the change and the measured before and after values in each e
 Two path traps worth knowing:
 - Code samples are scanned under the exact path you put in `labels.json`. Positives that rely
   on `skipInTests`-gated rules (`innerhtml-usage`, `hardcoded-secret`, `boilerplate-marker`,
-  `dead-branch`, `cast-to-any`) need a
+  `dead-branch`, `cast-to-any`, and the design rule `design-system-font`) need a
   **non**-test-looking path (e.g. `code/auth-handler.js`) to actually fire; a deliberately
   test-shaped path (e.g. `code/auth.test.js`) is how you build a *tricky-clean negative* that
   proves the skip works.

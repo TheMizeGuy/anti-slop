@@ -1239,6 +1239,8 @@ test("design-system-font: a face outside the declared typography fires; the decl
     assert.deepEqual(font('.hero { font-family: "Söhne", sans-serif }'), []);
     assert.deepEqual(font(".hero { font-family: system-ui, sans-serif }"), []);
     assert.deepEqual(scanContent('.hero { font-family: "Lobster", cursive }', "a.css").filter((v) => v.name === "design-system-font"), [], "no DESIGN.md, no drift");
+    assert.deepEqual(scanContent('.hero { font-family: "Lobster", cursive }', "tests/fixtures/a.css", { designSystem: ds }).filter((v) => v.name === "design-system-font"), [],
+      "a fixture file is off-system on purpose, and the product's DESIGN.md does not describe it");
   });
   assert.equal(fired("design-system-font", corpus("design/design-system/drift.css"), "design/design-system/drift.css").length, 0,
     "the corpus harness and the CLI resolve DESIGN.md; a bare scanContent call does not");

@@ -433,8 +433,10 @@ export const DESIGN_PATTERNS = [
   // constructor call are read, so the word "Outfit" in body copy stays clean.
   { name: "generic-font", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: genericFontHits, fix: "Choose a face with a source: the brand's own, or a display-plus-body pairing, and state the reason for it.", desc: "Generic default font (Inter/Geist/Roboto and the 2026 successors)" },
   // Only where DESIGN.md declares its typography: a face set outside it is drift from the
-  // documented system. Colour, radius and type-size drift are not ported (advisory upstream).
-  { name: "design-system-font", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, hits: designSystemFontHits, fix: "Use a family DESIGN.md declares, or add the face to DESIGN.md typography with the reason it was chosen.", desc: "Face set outside the typography DESIGN.md declares" },
+  // documented system. A project's DESIGN.md describes the product, so test, fixture and
+  // story files, which are off-system on purpose, are skipped. Colour, radius and type-size
+  // drift are not ported (advisory upstream).
+  { name: "design-system-font", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, skipInTests: true, hits: designSystemFontHits, fix: "Use a family DESIGN.md declares, or add the face to DESIGN.md typography with the reason it was chosen.", desc: "Face set outside the typography DESIGN.md declares" },
   { name: "hype-copy", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\bTransform your\b|\bSupercharge\b|\bUnleash\b|\bEffortlessly\b|take your [^.]{0,30}to the next level/i, fix: "Say what the control does: `Connect your GitHub account`, not `Seamlessly integrate with GitHub`.", desc: "Marketing hype copy in UI" },
   { name: "background-pattern", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: backgroundPatternHits, fix: "Let the surface carry the section with a solid tone, real imagery or space; a faint grid, dot field or stripe behind copy is template texture.", desc: "Decorative grid, dot field or repeating stripes behind content" },
   { name: "radial-halo", severity: "low", confidence: CONFIDENCE.SMELL, mode: PRESENCE, hits: radialHaloHits, fix: "Ground the section with a solid or slightly shifted surface; if light must lead the eye, put it on the content rather than a halo behind it.", desc: "Saturated radial halo behind a section of a dark page" },

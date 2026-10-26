@@ -365,6 +365,7 @@ function collectSuppressedViolations({ content, sources, isProse, isCode, isStyl
 
   if (isStyle) {
     for (const pat of DESIGN_PATTERNS) {
+      if (isTestFile && pat.skipInTests) continue;
       if (!fileGuardOk(pat, sources.blanked.text)) continue;
       // A suppress-regex guard still applies inside: if it matches, the rule would not have
       // fired even without the escape hatch, so that hit is a rule-internal exclusion.
@@ -674,6 +675,7 @@ export function scanContent(content, filePath, opts = {}) {
   const codeSource = (pat) => (pat.blankComments ? sources.blanked : sources.raw);
   if (isStyle) {
     for (const pat of DESIGN_PATTERNS) {
+      if (isTestFile && pat.skipInTests) continue;
       if (!fileGuardOk(pat, sources.blanked.text)) continue;
       const { count, line, lines: hitLines, evidence } = countLinePattern(sources.blanked, pat);
       if (meetsThreshold(pat, count)) {
