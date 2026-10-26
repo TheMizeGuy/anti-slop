@@ -2223,21 +2223,35 @@ function glowLayer(layer, props, kind) {
     else rest.push(t);
   }
   if (lengths.length < 3) return null;
-  const [x, y, blur] = lengths;
+  const [x, y, blur, spread = 0] = lengths;
   if (x !== 0 || y !== 0 || !(blur > 4)) return null;
   const colourText = rest.join(" ");
   const c = parseColor(colourText);
-  if (!c) return blur >= 16 ? { blur, strength: null, text: `${kind}: ${layer.trim()}` } : null;
+  if (!c) return blur >= 16 ? { blur, spread, strength: null, text: `${kind}: ${layer.trim()}` } : null;
   const strength = blur * (c.a === undefined ? 1 : c.a);
   if (rgbSpread(c) < 30 || strength < 3) return null;
-  return { blur, strength, text: `${kind}: ${layer.trim()} (strength ${strength.toFixed(1)})` };
+  return { blur, spread, strength, text: `${kind}: ${layer.trim()} (strength ${strength.toFixed(1)})` };
 }
 
-function litAreaTooWide(block, props, blur) {
+// The light reaches half the blur plus the spread past each edge.
+function litAreaTooWide(block, props, g) {
   const w = lengthPx(decl(block, "width"), props);
   const h = lengthPx(decl(block, "height"), props);
   if (!(w > 0 && h > 0)) return false;
-  return (w + blur) * (h + blur) - w * h > 2 * w * h;
+  const extent = g.blur / 2 + g.spread;
+  return (w + 2 * extent) * (h + 2 * extent) - w * h > 2 * w * h;
+}
+
+// False when the markup shows no element carrying the selector's classes; a stylesheet
+// with no markup beside it, or a selector naming no class, is taken as used.
+function selectorUsed(ctx, selector) {
+  const els = elementsOf(ctx);
+  if (!els.length) return true;
+  return splitSelectorList(selector).some((s) => {
+    const subject = subjectOf(s).replace(/::?[\w-]+(?:\([^)]*\))?/g, "");
+    const classes = [...subject.matchAll(/\.([\w-]+)/g)].map((x) => x[1]);
+    return classes.length === 0 || els.some((e) => classes.every((c) => e.classes.has(c)));
+  });
 }
 
 export function glowHits(ctx, opts = {}) {
@@ -2251,11 +2265,24 @@ export function glowHits(ctx, opts = {}) {
       if (!shadowProps.includes(d.prop)) continue;
       for (const layer of splitOutside(resolveVars(d.value, props), ",")) {
         const g = glowLayer(layer, props, d.prop);
-        if (g && !(d.prop !== "text-shadow" && litAreaTooWide(b, props, g.blur))) { hit = { line: d.line, evidence: g.text }; break; }
+        if (g && !(d.prop !== "text-shadow" && litAreaTooWide(b, props, g))) { hit = { line: d.line, evidence: g.text }; break; }
       }
       if (hit) break;
     }
     if (hit) hits.push(hit);
+  }
+  // A glow in a keyframe step counts when a painted element runs it: not a focus state, not
+  // a block that sets display: none, and not a class no element in the markup carries.
+  const run = new Set();
+  for (const b of ctx.css.blocks) {
+    if (FOCUS_STATE.test(b.selector) || inAtRule(b, REDUCED_MOTION) || /^\s*none\s*$/i.test(String(decl(b, "display") || ""))) continue;
+    if (!selectorUsed(ctx, b.selector)) continue;
+    for (const { name } of animationNames(b, props)) run.add(name);
+  }
+  for (const [name, kf] of ctx.css.keyframes) {
+    if (!run.has(name)) continue;
+    const found = kf.steps.flatMap((step) => step.decls).find((d) => shadowProps.includes(d.prop) && splitOutside(resolveVars(d.value, props), ",").some((layer) => glowLayer(layer, props, d.prop)));
+    if (found) hits.push({ line: found.line, evidence: `@keyframes ${name}: ${found.prop}: ${found.value}` });
   }
   for (const set of ctx.classSets) {
     for (const raw of set.tokens) {
@@ -2351,6 +2378,12 @@ export function framedCardTrio(cards) {
 // lives; a reflex face there is permitted when the page sets another face for content.
 const CONTROL_TAGS = new Set(["button", "input", "select", "textarea", "option", "label"]);
 const CONTROL_WORDS = new Set(["btn", "button", "control", "input", "select", "toggle", "switch"]);
+
+// familyKey(name): a family name compared the way a person spells it many ways: lower case,
+// quotes, spaces, hyphens and underscores removed ("Geist Sans", "GeistSans", "geist-sans").
+export function familyKey(name) {
+  return String(name || "").toLowerCase().replace(/["']/g, "").replace(/[\s_-]+/g, "");
+}
 
 export function isControlSelector(selector) {
   return splitSelectorList(selector).every((s) => {

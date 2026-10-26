@@ -1074,3 +1074,10 @@ test("generic-font: a reflex face on a control is the label fallback when conten
   assert.ok(fires("generic-font", 'body { font-family: "Instrument Serif", serif } .lede { font-family: Inter, sans-serif }', "a.css"), "Inter on content copy");
   assert.ok(!fires("generic-font", "@font-face { font-family: 'Inter'; src: url(inter.woff2) }", "a.css"), "declaring a face is not setting it");
 });
+
+test("generic-font: a listed face matches however it is spelled, and only a listed face", () => {
+  assert.ok(fires("generic-font", "body { font: 16px/24px GeistSans, sans-serif }", "a.css"));
+  assert.ok(fires("generic-font", '.m { font-family: "Geist Sans", sans-serif }', "a.css"));
+  assert.ok(fires("generic-font", '.m { font-family: "Plus-Jakarta-Sans", sans-serif }', "a.css"));
+  assert.ok(!fires("generic-font", '.m { font-family: "Roboto Slab", serif }', "a.css"), "a different family that shares a word");
+});

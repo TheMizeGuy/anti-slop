@@ -320,3 +320,13 @@ test("uniform-literal-radius: three zero resets are not a radius choice; three s
     "0.5rem starts with a zero and is still a radius");
   assert.ok(fires("uniform-literal-radius", ".a { border-radius: 0.25rem; }\n.b { border-radius: 0.375rem; }\n.c { border-radius: 10px; }", "mixed.css"));
 });
+
+test("neon-glow: a glow in a keyframe step counts when a painted element runs it", () => {
+  const kf = "@keyframes breathe { 50% { box-shadow: 0 0 14px rgba(255, 0, 200, 0.5); } }";
+  assert.ok(fires("neon-glow", `${kf}\n.pulse { animation: breathe 3s infinite; }`, "a.css"));
+  assert.ok(!fires("neon-glow", kf, "a.css"), "keyframes nothing runs");
+  assert.ok(!fires("neon-glow", `${kf}\n.pulse { display: none; animation: breathe 3s infinite; }`, "a.css"), "run only by a hidden element");
+  const html = (cls) => `<style>${kf} .pulse { animation: breathe 3s infinite; }</style><button class="${cls}">Go</button>`;
+  assert.ok(fires("neon-glow", html("pulse"), "a.html"));
+  assert.ok(!fires("neon-glow", html("other"), "a.html"), "no element in the markup carries the running class");
+});

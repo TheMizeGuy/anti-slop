@@ -2,7 +2,7 @@ import {
   lowContrastHits, sideStripeHits, textSizeFloorHits, tightLeadingHits, wideTrackingHits,
   justifiedNarrowHits, crushedTrackingHits, bounceEasingHits, pulsingDotHits,
   classFreeLines, lineRegexHits, matchingClassSets, tailwindToken, isResting, isStateVariant, glowHits,
-  creamLegHits, creamCombination, framedCardSets, framedCardTrio, primaryFamilyBlocks,
+  creamLegHits, creamCombination, framedCardSets, framedCardTrio, primaryFamilyBlocks, familyKey,
 } from "./design-detect.mjs";
 
 // ── Confidence classes ──
@@ -299,17 +299,18 @@ function vhShellHits(ctx) {
 // ── The primary face ──
 // The face a block actually sets is the first non-generic family of its stack, read from
 // font-family or the font shorthand. A system stack is never a face, a family named only as
-// a fallback never fires, and the list matches whole names, so "Inter Display" (a recommended
-// alternative) is not Inter. A reflex face on a button or field label is the UI label
-// fallback and is permitted when the page sets another face for its content.
-const GENERIC_FONT_FACE = /^(?:inter|inter tight|inter variable|geist|roboto|space grotesk|manrope|plus jakarta sans|outfit|dm sans)$/;
+// a fallback never fires, and the list matches whole names however they are spelled ("Geist
+// Sans", "GeistSans"), so "Inter Display" (a recommended alternative) is not Inter. A reflex
+// face on a button or field label is the UI label fallback and is permitted when the page sets
+// another face for its content.
+const GENERIC_FONT_FACES = new Set(["inter", "intertight", "intervariable", "intervar", "geist", "geistsans", "geistmono", "roboto", "spacegrotesk", "manrope", "plusjakartasans", "outfit", "dmsans"]);
 const NEXT_FONT_CONSTRUCTOR = /\b(?:Inter|Geist|Geist_Mono|Roboto|Space_Grotesk|Manrope|Plus_Jakarta_Sans|Outfit|DM_Sans)\s*\(/g;
 
 function genericFontHits(ctx) {
   const blocks = primaryFamilyBlocks(ctx);
   const hits = [];
   for (const b of blocks) {
-    if (b.kind !== "face" || !GENERIC_FONT_FACE.test(b.name)) continue;
+    if (b.kind !== "face" || !GENERIC_FONT_FACES.has(familyKey(b.name))) continue;
     if (b.control && blocks.some((o) => !o.control && o.kind !== "none" && o.name !== b.name)) continue;
     hits.push({ line: b.line, evidence: `${b.selector}: ${b.name}` });
   }
