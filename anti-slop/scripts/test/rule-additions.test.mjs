@@ -1027,3 +1027,30 @@ test("classAll: a multi-line set is reported, and waived, on the line where it s
   assert.equal(circles('<div class="rounded-full\n bg-blue-100 p-3" data-note="anti-slop-allow: brand circle">x</div>').length, 1,
     "a marker on a later line of the attribute is not on the set's line");
 });
+
+// ── Tailwind outline-none and the h-screen shell (2.5.0) ─────────────────────
+
+test("outline-none: a Tailwind outline kill with no focus replacement in its set fires", () => {
+  assert.ok(fires("outline-none", '<button class="focus:outline-none px-3">Save</button>', "a.html"));
+  assert.ok(fires("outline-none", '<button class="outline-hidden px-3">Save</button>', "a.html"));
+  assert.ok(!fires("outline-none", '<button class="focus:outline-none px-3">Save</button>\n<a class="focus-visible:ring-2">x</a>', "a.html"),
+    "a focus-visible utility anywhere in the file clears it");
+});
+
+test("outline-none: the canonical focus:ring replacement is not a removed indicator", () => {
+  assert.ok(!fires("outline-none", '<button class="focus:outline-none focus:ring-2 focus:ring-teal-500">Save</button>', "a.html"));
+  assert.ok(fires("outline-none", '<button class="focus:outline-none focus:ring-teal-500">Save</button>', "a.html"), "a ring colour with no width draws nothing");
+  assert.ok(!fires("outline-none", '<button class="focus-visible:outline-none focus-visible:ring-2">Save</button>', "a.html"));
+});
+
+test("vh-viewport-shell: h-screen and min-h-screen are the 100vh shell; a dvh fallback clears them", () => {
+  assert.ok(fires("vh-viewport-shell", '<main class="min-h-screen">x</main>', "a.html"));
+  assert.ok(fires("vh-viewport-shell", '<main class="h-screen">x</main>', "a.html"));
+  assert.ok(!fires("vh-viewport-shell", '<main class="min-h-screen min-h-dvh">x</main>', "a.html"));
+  assert.ok(!fires("vh-viewport-shell", '<main class="h-screen h-svh">x</main>', "a.html"));
+});
+
+test("positive-tabindex: a data attribute that ends in tabindex is not the attribute", () => {
+  assert.ok(!fires("positive-tabindex", '<div data-tabindex="3">x</div>', "a.html"));
+  assert.ok(fires("positive-tabindex", '<div tabindex="3">x</div>', "a.html"));
+});

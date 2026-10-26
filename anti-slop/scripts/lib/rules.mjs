@@ -1,7 +1,7 @@
 import {
   lowContrastHits, sideStripeHits, textSizeFloorHits, tightLeadingHits, wideTrackingHits,
   justifiedNarrowHits, crushedTrackingHits, bounceEasingHits, pulsingDotHits,
-  classFreeLines, lineRegexHits, matchingClassSets, tailwindToken, isResting, glowHits,
+  classFreeLines, lineRegexHits, matchingClassSets, tailwindToken, isResting, isStateVariant, glowHits,
   creamLegHits, creamCombination, framedCardSets, framedCardTrio,
 } from "./design-detect.mjs";
 
@@ -264,6 +264,38 @@ function purpleBlueHits(ctx) {
   ];
 }
 
+// ── Tailwind forms of the focus and viewport rules ──
+// `focus:outline-none` with a focus ring in the same class set replaces the indicator
+// (WCAG 2.4.7 holds); with none, it removes it. A `focus-visible:` utility anywhere in the
+// file clears the rule through its `unless` guard, as `:focus-visible` in CSS does.
+const OUTLINE_KILL_CSS = /\boutline\s*:\s*(?:none|0)\b/gi;
+const FOCUS_REPLACEMENT = /^(?:ring(?:-\d+|-\[[^\]]+\])?|outline(?:-\d+|-solid|-dashed|-double|-\[[^\]]+\])|shadow-\[.+\]|(?:border|outline)-[a-z]+-\d{2,3})$/;
+
+function outlineNoneHits(ctx) {
+  const hits = lineRegexHits(ctx.lines, OUTLINE_KILL_CSS);
+  for (const set of ctx.effectiveSets) {
+    const toks = set.tokens.map(tailwindToken);
+    const kill = toks.find((t) => /^outline-(?:none|hidden)$/.test(t.base) && !t.variants.includes("focus-visible"));
+    if (!kill) continue;
+    const replaced = toks.some((t) => (t.variants.includes("focus") || t.variants.includes("focus-visible")) && FOCUS_REPLACEMENT.test(t.base));
+    if (!replaced) hits.push({ line: set.line, evidence: [...kill.variants, kill.base].join(":") });
+  }
+  return hits;
+}
+
+const VH_SHELL_CSS = /\b(?:height|min-height)\s*:\s*100vh\b/gi;
+
+function vhShellHits(ctx) {
+  const hits = lineRegexHits(ctx.lines, VH_SHELL_CSS);
+  for (const set of ctx.classSets) {
+    for (const raw of set.tokens) {
+      const t = tailwindToken(raw);
+      if (/^(?:min-)?h-screen$/.test(t.base) && !t.variants.some(isStateVariant)) hits.push({ line: set.line, evidence: raw });
+    }
+  }
+  return hits;
+}
+
 // ── UI Design Patterns (WEB surfaces only -- see WEB_SURFACE_EXTENSIONS) ──
 // Ordered roughly by empirical signal where a corpus ranking exists. Severity reflects that
 // ranking: shadcn-default / purple / gradients are the strongest; the rest are lighter.
@@ -377,7 +409,7 @@ export const DESIGN_PATTERNS = [
   { name: "fixed-grid-tracks", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /grid-template-(?:columns|rows)\s*:[^;{}]*\brepeat\(\s*\d+\s*,\s*\d*\.?\d+px\s*\)/gi, fix: "Let the track list respond: `grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr))` gains columns with no breakpoint.", desc: "Fixed grid track list (gains no columns as the window grows)" },
   // File-scoped, not line-scoped: the progressive-enhancement idiom writes its fallback on
   // the NEXT line (`height: 100vh; height: 100dvh;`), which a per-line suppress cannot see.
-  { name: "vh-viewport-shell", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\b(?:height|min-height)\s*:\s*100vh\b/gi, unless: /100dvh|100svh/i, fix: "Use `100dvh` (or `100svh`), and pad the last row with `max(0.75rem, env(safe-area-inset-bottom))`.", desc: "100vh app shell (the mobile URL bar clips the last row)" },
+  { name: "vh-viewport-shell", severity: "low", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, hits: vhShellHits, unless: /100dvh|100svh|\b(?:min-)?h-(?:dvh|svh)\b/i, fix: "Use `100dvh` (or `100svh`), and pad the last row with `max(0.75rem, env(safe-area-inset-bottom))`.", desc: "100vh app shell (the mobile URL bar clips the last row)" },
   // Only fires where there IS a scale to drift from. Ungated, an off-4px-grid rule fires
   // 20-25 times on every clean control in the corpus; gated on the file declaring two or
   // more --space tokens it fires on exactly one file. There is no drift without a scale.
@@ -397,7 +429,7 @@ export const DESIGN_PATTERNS = [
   // Both rules below are file-scoped or value-scoped so their remediation can only ADD
   // accessible behaviour. Replace the ring, never remove it (WCAG 2.4.7); write what the
   // image conveys. `alt=""` on a decorative image is correct and deliberately unmatched.
-  { name: "outline-none", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\boutline\s*:\s*(?:none|0)\b/gi, unless: /:focus-visible|focus-visible:/, fix: "Replace the ring, never remove it: `:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }`", desc: "outline: none in a file that defines no :focus-visible ring" },
+  { name: "outline-none", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, hits: outlineNoneHits, unless: /:focus-visible|focus-visible:/, fix: "Replace the ring, never remove it: `:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }`", desc: "outline: none in a file that defines no :focus-visible ring" },
   { name: "missing-alt", severity: "medium", confidence: CONFIDENCE.HARD, mode: PRESENCE, pattern: /<img\s(?![^>]*\balt\s*=)[^>]*>|\balt\s*=\s*["'](?:image|photo|picture|icon|graphic|img)["']/gi, fix: "Write what the image conveys where it sits; `alt=\"\"` is correct for a decorative image, and deleting the element never is.", desc: "<img> with no alt, or a placeholder alt value" },
   // Arithmetic, not a pattern: the pair's WCAG 2.x ratio on the surface the file declares
   // for it (the block's own background, the exact ancestor block a descendant chain names,
@@ -431,7 +463,7 @@ export const DESIGN_PATTERNS = [
   // natural order) and `-1` (focusable by script only) are the two correct values and are
   // both outside the character class. The fix is DOM order, never dropping the attribute
   // from a control that needs to be focusable.
-  { name: "positive-tabindex", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /\btabindex\s*=\s*[{"']*\s*[1-9]\d*\b/gi, fix: "Use tabindex=\"0\" or none, and fix the DOM order so focus follows the reading order", desc: "Positive tabindex (overrides the natural focus order)" },
+  { name: "positive-tabindex", severity: "medium", confidence: CONFIDENCE.QUALITY, mode: PRESENCE, pattern: /(?<![\w-])tabindex\s*=\s*[{"']*\s*[1-9]\d*\b/gi, fix: "Use tabindex=\"0\" or none, and fix the DOM order so focus follows the reading order", desc: "Positive tabindex (overrides the natural focus order)" },
 
   // ── Documented fingerprints that had no rule ──
   // The first two are class-attribute compositions, so they use the unordered token-set
