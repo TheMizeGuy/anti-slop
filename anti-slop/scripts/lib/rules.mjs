@@ -535,7 +535,10 @@ export const DESIGN_PATTERNS = [
   // there is no reading of this rule under which clearing it costs adaptive behaviour.
   // `maximum-scale=1` is matched exactly (1, 1.0, 1.00): a cap of 5 still leaves the user
   // a usable range and stays clean, which is why the lookahead refuses a further digit.
-  { name: "viewport-zoom-lock", severity: "medium", confidence: CONFIDENCE.HARD, mode: PRESENCE, pattern: /\bviewport\b[^\n]*?(?:user-scalable\s*=\s*(?:no|0)\b|maximum-scale\s*=\s*1(?:\.0+)?(?![\d.]))/gi, fix: "Delete user-scalable and maximum-scale; `width=device-width, initial-scale=1` is the whole viewport meta", desc: "Viewport meta blocks pinch zoom (user-scalable=no / maximum-scale=1); fails WCAG 1.4.4" },
+  // The match lives inside the viewport <meta> tag, in either attribute order: the word
+  // viewport in prose followed by a quoted token on the same line is documentation, not
+  // the tag (2.5.1; a reference line about grepping for user-scalable=no fired 2.5.0).
+  { name: "viewport-zoom-lock", severity: "medium", confidence: CONFIDENCE.HARD, mode: PRESENCE, pattern: /<meta\b(?=[^>]*\bname\s*=\s*["']?viewport\b)[^>]*?\bcontent\s*=\s*["'][^"'>]*?(?:user-scalable\s*=\s*(?:no|0)\b|maximum-scale\s*=\s*1(?:\.0+)?(?![\d.]))/gi, fix: "Delete user-scalable and maximum-scale; `width=device-width, initial-scale=1` is the whole viewport meta", desc: "Viewport meta blocks pinch zoom (user-scalable=no / maximum-scale=1); fails WCAG 1.4.4" },
   // A Quality defect rather than Hard: a positive tabindex is reachable, so nothing is
   // unreachable by keyboard, but it jumps the whole document ahead of every natural stop
   // and the order it produces is invisible to the author who wrote it. `0` (join the

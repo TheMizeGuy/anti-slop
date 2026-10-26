@@ -595,6 +595,14 @@ test("viewport-zoom-lock: a viewport meta that blocks pinch zoom is a finding", 
   }
 });
 
+test("viewport-zoom-lock: either attribute order fires, and the word viewport in prose does not", () => {
+  assert.ok(fires("viewport-zoom-lock", '<meta content="width=device-width, user-scalable=no" name="viewport">', "index.html"));
+  assert.ok(fires("viewport-zoom-lock", "<meta name='viewport' content='width=device-width, maximum-scale=1'>", "index.html"));
+  // A reference line about the tag is documentation: 2.5.0 fired on it.
+  assert.ok(!fires("viewport-zoom-lock", "Grep the viewport meta for `user-scalable=no` and `maximum-scale=1`; delete both.", "docs/notes.html"));
+  assert.ok(!fires("viewport-zoom-lock", '<meta name="description" content="viewport tips: user-scalable=no is wrong">', "index.html"));
+});
+
 test("viewport-zoom-lock: the correct viewport meta and a usable zoom cap are NOT findings", () => {
   assert.ok(!fires("viewport-zoom-lock", '<meta name="viewport" content="width=device-width, initial-scale=1">', "index.html"));
   // A cap of 5 still leaves the user a range; 1 is the one that removes the control.
