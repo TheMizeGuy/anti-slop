@@ -257,10 +257,13 @@ test("a count() predicate drives the same gate a pattern does, end to end", () =
   };
   DESIGN_PATTERNS.push(probe);
   try {
+    // Design rules read comment-blanked text (2.5.0), so the planted hits sit in
+    // declarations and only the hatch sits in a comment.
     const fired = (css) => scanContent(css, "app.css").some((v) => v.name === "count-probe");
-    assert.equal(fired(".a { /* odd */ }"), false, "one hit is below minCount");
-    assert.equal(fired(".a { /* odd */ }\n.b { /* odd */ }"), true);
-    assert.equal(fired(".a { /* odd */ } // anti-slop-allow: opted out\n.b { /* odd */ }"), false,
+    assert.equal(fired(".a { odd: 1 }"), false, "one hit is below minCount");
+    assert.equal(fired(".a { odd: 1 }\n.b { odd: 1 }"), true);
+    assert.equal(fired(".a { /* odd */ }\n.b { /* odd */ }"), false, "a commented-out declaration is not on the page");
+    assert.equal(fired(".a { odd: 1 } /* anti-slop-allow: opted out */\n.b { odd: 1 }"), false,
       "the escape hatch must reach a count() rule the same way it reaches a pattern rule");
   } finally {
     DESIGN_PATTERNS.pop();

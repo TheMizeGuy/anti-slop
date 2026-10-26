@@ -233,15 +233,19 @@ function countLinePattern(src, pat, escapedOnly = false) {
   return summariseHits(hits);
 }
 
-// The per-file view the table rules read: the lines a pattern is matched against, the raw
-// lines a hatch is read from, and the shared design-detect context, built on first use so a
-// file no `hits` rule reaches never pays for it.
-function ruleSource(content, ext, lines) {
+// The per-file views the table rules read. UI tells (and a code rule that declares
+// `blankComments`) match the comment-blanked text, since a commented-out declaration is not
+// on the page; every other code rule matches raw lines, because comments are what several of
+// them exist to read. Both views read the escape hatch from the RAW line, where the marker
+// lives, and share one design-detect context, built on first use so a file no rule reaches
+// past its raw lines never pays for it.
+function ruleSources(content, ext) {
+  const rawLines = content.split("\n");
   let ctx = null;
+  const context = () => ctx || (ctx = makeContext(content, ext));
   return {
-    lines,
-    rawLines: lines,
-    get ctx() { return ctx || (ctx = makeContext(content, ext)); },
+    raw: { lines: rawLines, rawLines, text: content, get ctx() { return context(); } },
+    blanked: { get lines() { return context().lines; }, rawLines, get text() { return context().text; }, get ctx() { return context(); } },
   };
 }
 
@@ -284,7 +288,7 @@ function extractEscapeHatchedComments(content) {
 // banned-phrase, design-tell, code-pattern. text-construct and emoji are deferred:
 // their per-line escape semantics differ (density/whole-document rules), so counting
 // a hatched line as one suppressed construct would misstate what was avoided.
-function collectSuppressedViolations({ content, src, isProse, isCode, isStyle, isTestFile, proseScan, allowedWords, contentLower }) {
+function collectSuppressedViolations({ content, sources, isProse, isCode, isStyle, isTestFile, proseScan, allowedWords, contentLower }) {
   const suppressed = [];
 
   // (a) escape-hatch: words/phrases/design/code hits confined to escape-hatched lines.
@@ -342,10 +346,10 @@ function collectSuppressedViolations({ content, src, isProse, isCode, isStyle, i
 
   if (isStyle) {
     for (const pat of DESIGN_PATTERNS) {
-      if (!fileGuardOk(pat, content)) continue;
+      if (!fileGuardOk(pat, sources.blanked.text)) continue;
       // A suppress-regex guard still applies inside: if it matches, the rule would not have
       // fired even without the escape hatch, so that hit is a rule-internal exclusion.
-      const { count, line } = countLinePattern(src, pat, true);
+      const { count, line } = countLinePattern(sources.blanked, pat, true);
       if (meetsThreshold(pat, count)) {
         suppressed.push({
           type: "design-tell", name: pat.name, count, line,
@@ -362,8 +366,9 @@ function collectSuppressedViolations({ content, src, isProse, isCode, isStyle, i
   if (isCode) {
     for (const pat of CODE_PATTERNS) {
       if (isTestFile && pat.skipInTests) continue;
-      if (!fileGuardOk(pat, content)) continue;
-      const { count, line } = countLinePattern(src, pat, true);
+      const source = pat.blankComments ? sources.blanked : sources.raw;
+      if (!fileGuardOk(pat, source.text)) continue;
+      const { count, line } = countLinePattern(source, pat, true);
       if (meetsThreshold(pat, count)) {
         suppressed.push({
           type: "code-pattern", name: pat.name, count, line,
@@ -645,12 +650,12 @@ export function scanContent(content, filePath, opts = {}) {
   }
 
   // ── Design + code patterns (per-line or per-file, with suppress + escape hatch) ──
-  const lines = content.split("\n");
-  const src = ruleSource(content, ext, lines);
+  const sources = ruleSources(content, ext);
+  const codeSource = (pat) => (pat.blankComments ? sources.blanked : sources.raw);
   if (isStyle) {
     for (const pat of DESIGN_PATTERNS) {
-      if (!fileGuardOk(pat, content)) continue;
-      const { count, line, lines: hitLines, evidence } = countLinePattern(src, pat);
+      if (!fileGuardOk(pat, sources.blanked.text)) continue;
+      const { count, line, lines: hitLines, evidence } = countLinePattern(sources.blanked, pat);
       if (meetsThreshold(pat, count)) {
         violations.push({
           type: "design-tell",
@@ -670,8 +675,8 @@ export function scanContent(content, filePath, opts = {}) {
   }
   if (isNative) {
     for (const pat of NATIVE_PATTERNS) {
-      if (!fileGuardOk(pat, content)) continue;
-      const { count, line, lines: hitLines, evidence } = countLinePattern(src, pat);
+      if (!fileGuardOk(pat, sources.blanked.text)) continue;
+      const { count, line, lines: hitLines, evidence } = countLinePattern(sources.blanked, pat);
       if (meetsThreshold(pat, count)) {
         violations.push({
           type: "native-tell",
@@ -692,8 +697,8 @@ export function scanContent(content, filePath, opts = {}) {
   if (isCode) {
     for (const pat of CODE_PATTERNS) {
       if (isTestFile && pat.skipInTests) continue;
-      if (!fileGuardOk(pat, content)) continue;
-      const { count, line } = countLinePattern(src, pat);
+      if (!fileGuardOk(pat, codeSource(pat).text)) continue;
+      const { count, line } = countLinePattern(codeSource(pat), pat);
       // Same gate as the design table: every code rule shipped before 2.1.0 declares no
       // mode and behaves exactly as the old `count > 0`, while `banner-comment` -- a Taste
       // note whose whole claim is "this file is divided by ASCII art" -- needs two.
@@ -714,7 +719,7 @@ export function scanContent(content, filePath, opts = {}) {
 
   if (opts.collectSuppressed) {
     violations.push(...collectSuppressedViolations({
-      content, src, isProse, isCode, isStyle, isTestFile, proseScan, allowedWords, contentLower,
+      sources, isProse, isCode, isStyle, isTestFile, proseScan, allowedWords, contentLower, content,
     }));
   }
 

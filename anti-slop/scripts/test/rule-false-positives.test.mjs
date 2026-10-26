@@ -350,3 +350,40 @@ test("assistant-boilerplate: the assistant's own refusals, cutoff lines and disc
     assert.ok(fires("assistant-boilerplate", line, "notes.md"), line);
   }
 });
+
+// ── Comments are not the page (2.5.0) ────────────────────────────────────────
+// Design, native and markup-defect rules read comment-blanked text; the escape hatch is
+// still read from the raw line, where its marker lives.
+
+test("design rules never match inside a CSS comment", () => {
+  const commented = "/* old radii, kept for reference:\n   border-radius: 8px;\n   border-radius: 8px;\n   border-radius: 8px; */\n.a { color: red; }";
+  assert.ok(!scanContent(commented, "commented.css").some((v) => v.name === "uniform-literal-radius"));
+  const live = ".a { border-radius: 8px; }\n.b { border-radius: 8px; }\n.c { border-radius: 8px; }";
+  assert.ok(scanContent(live, "live.css").some((v) => v.name === "uniform-literal-radius"), "the same radii uncommented");
+});
+
+test("markup-defect rules never match inside an HTML comment", () => {
+  const html = '<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>\n<!-- TODO: swap in <img src="hero.png"> once the asset lands -->\n<p>Hi</p>\n</body></html>';
+  const got = scanContent(html, "commented.html").map((v) => v.name || v.type);
+  assert.ok(!got.includes("missing-alt") && !got.includes("img-no-dimensions"), JSON.stringify(got));
+  const live = '<!doctype html><html><body>\n<img src="hero.png">\n</body></html>';
+  const twin = scanContent(live, "live.html").map((v) => v.name || v.type);
+  assert.ok(twin.includes("missing-alt") && twin.includes("img-no-dimensions"), JSON.stringify(twin));
+});
+
+test("a file guard reads blanked text: tokens named only in a comment are not a scale", () => {
+  const tsx = "// --space-1: 4px; --space-2: 8px;\nexport const A = () => <div style={{ padding: '13px', margin: '13px' }} />;\n";
+  assert.ok(!scanContent(tsx, "A.tsx").some((v) => v.name === "token-drift-spacing"));
+});
+
+test("native rules never match inside a Swift comment", () => {
+  assert.ok(!scanContent("// let w = UIScreen.main.bounds.width\nlet x = 1\n", "View.swift").some((v) => v.name === "uiscreen-bounds"));
+  assert.ok(scanContent("let w = UIScreen.main.bounds.width\n", "View.swift").some((v) => v.name === "uiscreen-bounds"));
+});
+
+test("the escape hatch inside a comment still reaches the tell on its line", () => {
+  const html = '<h1 class="bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-cyan-500"><!-- anti-slop-allow: registered wordmark -->Halcyon</h1>';
+  assert.deepEqual(scanContent(html, "a.html").filter((v) => v.name === "gradient-text"), []);
+  const suppressed = scanContent(html, "a.html", { collectSuppressed: true }).filter((v) => v.suppressed);
+  assert.deepEqual(suppressed.map((v) => v.name), ["gradient-text"]);
+});
