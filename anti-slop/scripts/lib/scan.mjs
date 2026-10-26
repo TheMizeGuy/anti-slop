@@ -46,8 +46,8 @@ function meetsThreshold(pat, count) {
 }
 
 // ── Prose noise-stripping: keep only the author's own prose. Blanks fenced code,
-// inline code, double-quoted spans, blockquotes, YAML frontmatter, and any line
-// carrying the escape-hatch marker. Line count is preserved so line numbers hold. ──
+// inline code, double-quoted spans (straight or typographic), blockquotes, YAML frontmatter,
+// and any line carrying the escape-hatch marker. Line count is preserved so line numbers hold. ──
 function stripProseNoise(content) {
   const lines = content.split("\n");
   const out = [];
@@ -61,7 +61,7 @@ function stripProseNoise(content) {
     if (inFence) { out.push(""); continue; }
     if (/^\s*>/.test(line)) { out.push(""); continue; }
     if (ESCAPE_HATCH.test(line)) { out.push(""); continue; }
-    line = line.replace(/`[^`]*`/g, " ").replace(/"[^"\n]*"/g, " ");
+    line = line.replace(/`[^`]*`/g, " ").replace(/"[^"\n]*"/g, " ").replace(/\u201C[^\u201D\n]*\u201D/g, " ");
     out.push(line);
   }
   return out.join("\n");
@@ -271,7 +271,7 @@ function extractEscapeHatchedProse(content) {
     if (inFence) { out.push(""); continue; }
     if (/^\s*>/.test(line)) { out.push(""); continue; }
     if (!ESCAPE_HATCH.test(line)) { out.push(""); continue; }
-    line = line.replace(/`[^`]*`/g, " ").replace(/"[^"\n]*"/g, " ");
+    line = line.replace(/`[^`]*`/g, " ").replace(/"[^"\n]*"/g, " ").replace(/\u201C[^\u201D\n]*\u201D/g, " ");
     out.push(line);
   }
   return out.join("\n");

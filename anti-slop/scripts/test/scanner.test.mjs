@@ -539,3 +539,11 @@ test("emoji: data and config files are not a surface, a component is", () => {
   const tsx = scanContent(`export const badge = ${obj};`, "a.tsx").find((v) => v.type === "emoji");
   assert.equal(tsx && tsx.severity, "low");
 });
+
+// A banned word inside typographic quotes is a quoted example, the same as inside straight ones.
+test("noise-stripping: a word quoted in curly double quotes is not flagged", () => {
+  const words = (text) => scanContent(text, "post.md").filter((v) => v.type === "banned-word").map((v) => v.word);
+  assert.deepEqual(words("Avoid words like \u201Cdelve\u201D in release notes."), []);
+  assert.deepEqual(words("We delve into release notes."), ["delve"]);
+  assert.deepEqual(words("Avoid \u201Cdelve\nacross lines\u201D here."), ["delve"], "a span never crosses a line");
+});
