@@ -1,0 +1,1371 @@
+// ── Shared design detection ──
+// The one implementation of the parsing, colour maths and detectors the anti-slop scanner
+// and ui-craft's scan_tells share. ui-craft vendors this file byte for byte behind a
+// one-line header; edit it here and nowhere else. Node >= 18 standard library only.
+//
+// Third-party notice. Several detection rules re-express rules from impeccable
+// (https://github.com/pbakaus/impeccable), Copyright 2025 Paul Bakaus, licensed under the
+// Apache License, Version 2.0, as of commit 3671d50f0: low-contrast, side-tab, tiny-text,
+// undersized-ui-text, tight-leading, wide-tracking, justified-text,
+// extreme-negative-tracking, bounce-easing, pulsing-dot, dark-glow and
+// gpt-thin-border-wide-shadow, with impeccable's lessons on comment blanking, class-set
+// scope, unknown values and rule-scoped waivers. Thresholds and exemptions are restated in
+// this module's own code; no impeccable source is included.
+
+// ── Extension families ──
+const MARKUP_EXT = new Set([".html", ".htm", ".vue", ".svelte", ".astro"]);
+const SCRIPT_EXT = new Set([".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".mts", ".cts"]);
+const STYLE_EXT = new Set([".css", ".scss", ".less"]);
+const SLASH_STYLE_EXT = new Set([".scss", ".less"]);
+const C_LIKE_EXT = new Set([".swift", ".m", ".mm"]);
+const DOC_EXT = new Set([".md", ".mdx"]);
+
+function normExt(ext) {
+  const e = String(ext || "").toLowerCase();
+  return e.startsWith(".") || e === "" ? e : `.${e}`;
+}
+
+// ── Low-level scanning ──
+function blank(chars, start, end) {
+  for (let i = start; i < end; i++) if (chars[i] !== "\n") chars[i] = " ";
+}
+
+// A quoted string ends at its closing quote or, unterminated, at the end of the line: an
+// apostrophe in JSX text must cost one line, never the rest of the file.
+function skipQuoted(src, i, end) {
+  const q = src[i];
+  let j = i + 1;
+  while (j < end) {
+    const c = src[j];
+    if (c === "\\") { j += 2; continue; }
+    if (c === q) return j + 1;
+    if (c === "\n") return j;
+    j++;
+  }
+  return end;
+}
+
+function skipRegexLiteral(src, i, end) {
+  let j = i + 1;
+  let inClass = false;
+  while (j < end) {
+    const c = src[j];
+    if (c === "\\") { j += 2; continue; }
+    if (c === "\n") return -1;
+    if (c === "[") inClass = true;
+    else if (c === "]") inClass = false;
+    else if (c === "/" && !inClass) {
+      j++;
+      while (j < end && /[a-z]/i.test(src[j])) j++;
+      return j;
+    }
+    j++;
+  }
+  return -1;
+}
+
+function lineEnd(src, i, end) {
+  const k = src.indexOf("\n", i);
+  return k === -1 || k > end ? end : k;
+}
+
+function blockCommentEnd(src, i, end) {
+  const k = src.indexOf("*/", i + 2);
+  return k === -1 || k + 2 > end ? end : k + 2;
+}
+
+const REGEX_PREFIX = /[(,=:[!&|?{};+\-*%~^]/;
+const REGEX_KEYWORD = /(?:^|[^\w$])(?:return|typeof|case|do|else|in|of|void|yield|await|delete|throw|new)$/;
+
+// Template literal: CSS comments inside it (styled-components, css``) are blanked, `//` is
+// not (it is usually a URL), and each `${...}` interpolation is scanned as code.
+function scanTemplate(src, chars, i, end) {
+  let j = i + 1;
+  while (j < end) {
+    const c = src[j];
+    if (c === "\\") { j += 2; continue; }
+    if (c === "`") return j + 1;
+    if (c === "$" && src[j + 1] === "{") { j = scanScript(src, chars, j + 2, end, true, true); continue; }
+    if (c === "/" && src[j + 1] === "*") { const k = blockCommentEnd(src, j, end); if (chars) blank(chars, j, k); j = k; continue; }
+    j++;
+  }
+  return end;
+}
+
+// JS-family comments, with strings, templates and regex literals skipped. `stopAtBrace`
+// returns at the `}` that closes a template interpolation. `regexOk` is false for C-like
+// languages, which have no regex literal.
+function scanScript(src, chars, start, end, regexOk, stopAtBrace = false) {
+  let i = start;
+  let prev = "";
+  let depth = 0;
+  while (i < end) {
+    const c = src[i];
+    if (c === " " || c === "\t" || c === "\n" || c === "\r") { i++; continue; }
+    if (c === '"' || c === "'") { i = skipQuoted(src, i, end); prev = "a"; continue; }
+    if (c === "`") { i = scanTemplate(src, chars, i, end); prev = "a"; continue; }
+    if (c === "/") {
+      const n = src[i + 1];
+      if (n === "/") {
+        if (src[i - 1] === ":") { i += 2; prev = "/"; continue; }
+        const k = lineEnd(src, i, end);
+        if (chars) blank(chars, i, k);
+        i = k;
+        continue;
+      }
+      if (n === "*") { const k = blockCommentEnd(src, i, end); if (chars) blank(chars, i, k); i = k; continue; }
+      if (regexOk && (prev === "" || REGEX_PREFIX.test(prev) || REGEX_KEYWORD.test(src.slice(Math.max(start, i - 10), i).trimEnd()))) {
+        const k = skipRegexLiteral(src, i, end);
+        if (k !== -1) { i = k; prev = "a"; continue; }
+      }
+      i++;
+      prev = "/";
+      continue;
+    }
+    if (stopAtBrace) {
+      if (c === "{") depth++;
+      else if (c === "}") { if (depth === 0) return i + 1; depth--; }
+    }
+    prev = c;
+    i++;
+  }
+  return end;
+}
+
+function scanStyle(src, chars, start, end, slashComments) {
+  let i = start;
+  while (i < end) {
+    const c = src[i];
+    if (c === '"' || c === "'") { i = skipQuoted(src, i, end); continue; }
+    if ((c === "u" || c === "U") && /^url\(/i.test(src.slice(i, i + 4)) && !/[\w-]/.test(src[i - 1] || "")) {
+      const k = src.indexOf(")", i);
+      i = k === -1 || k > end ? end : k + 1;
+      continue;
+    }
+    if (c === "/" && src[i + 1] === "*") { const k = blockCommentEnd(src, i, end); blank(chars, i, k); i = k; continue; }
+    if (slashComments && c === "/" && src[i + 1] === "/" && src[i - 1] !== ":") {
+      const k = lineEnd(src, i, end);
+      blank(chars, i, k);
+      i = k;
+      continue;
+    }
+    i++;
+  }
+}
+
+// <script> and <style> bodies of a markup file: [start, end, tag, attrs].
+function markupRegions(src) {
+  const lower = src.toLowerCase();
+  const regions = [];
+  const re = /<(script|style)\b([^>]*)>/gi;
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    const tag = m[1].toLowerCase();
+    const bodyStart = m.index + m[0].length;
+    const close = lower.indexOf(`</${tag}`, bodyStart);
+    const bodyEnd = close === -1 ? src.length : close;
+    regions.push([bodyStart, bodyEnd, tag, m[2]]);
+    re.lastIndex = bodyEnd;
+  }
+  return regions;
+}
+
+function insideRegion(regions, i) {
+  return regions.some(([s, e]) => i >= s && i < e);
+}
+
+function prepareMarkup(src, chars, ext) {
+  const regions = markupRegions(src);
+  if (ext === ".astro") {
+    const fm = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---/.exec(src);
+    if (fm) regions.push([4, 4 + fm[1].length, "script", ""]);
+  }
+  for (let i = src.indexOf("<!--"); i !== -1; i = src.indexOf("<!--", i + 4)) {
+    if (insideRegion(regions, i)) continue;
+    const k = src.indexOf("-->", i + 4);
+    const end = k === -1 ? src.length : k + 3;
+    blank(chars, i, end);
+    i = end - 4;
+  }
+  for (const [s, e, tag, attrs] of regions) {
+    if (tag === "style") scanStyle(src, chars, s, e, /\blang\s*=\s*["']?(?:scss|less)\b/i.test(attrs));
+    else scanScript(src, chars, s, e, true);
+  }
+  // CSS or markup quoted as text inside <code> or <pre> is an example, not the page.
+  const lower = src.toLowerCase();
+  const re = /<(pre|code)\b[^>]*>/gi;
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    if (insideRegion(regions, m.index)) continue;
+    const bodyStart = m.index + m[0].length;
+    const close = lower.indexOf(`</${m[1].toLowerCase()}`, bodyStart);
+    const bodyEnd = close === -1 ? src.length : close;
+    blank(chars, bodyStart, bodyEnd);
+    re.lastIndex = bodyEnd;
+  }
+}
+
+const FENCE_CSS = /^(?:css|scss|less)$/i;
+const FENCE_JS = /^(?:js|jsx|ts|tsx|mjs|cjs|javascript|typescript)$/i;
+
+// Markdown: `<!-- -->` anywhere, and `/* */` or `//` only inside a fenced block of a
+// language that has them. A glob like `aesthetic/*` in prose is never a comment opener.
+function prepareDoc(src, chars) {
+  for (let i = src.indexOf("<!--"); i !== -1; i = src.indexOf("<!--", i + 4)) {
+    const k = src.indexOf("-->", i + 4);
+    const end = k === -1 ? src.length : k + 3;
+    blank(chars, i, end);
+    i = end - 4;
+  }
+  for (const f of fencedBlocks(src)) {
+    if (FENCE_CSS.test(f.lang)) scanStyle(src, chars, f.start, f.end, /^(?:scss|less)$/i.test(f.lang));
+    else if (FENCE_JS.test(f.lang)) scanScript(src, chars, f.start, f.end, true);
+  }
+}
+
+function fencedBlocks(src) {
+  const out = [];
+  const re = /^([ \t]*)(`{3,}|~{3,})[ \t]*([\w+-]*)[^\n]*\n/gm;
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    const fence = m[2];
+    const start = m.index + m[0].length;
+    const closeRe = new RegExp(`^[ \\t]*${fence[0] === "`" ? "`" : "~"}{${fence.length},}[ \\t]*$`, "gm");
+    closeRe.lastIndex = start;
+    const c = closeRe.exec(src);
+    const end = c ? c.index : src.length;
+    out.push({ lang: m[3] || "", start, end });
+    re.lastIndex = c ? c.index + c[0].length : src.length;
+  }
+  return out;
+}
+
+// prepareSource(content, ext) -> { text, rawLines }. `text` has every comment blanked to
+// spaces with newlines kept, so a line number in `text` is a line number in the file;
+// markup files also blank the contents of <code> and <pre>. `rawLines` is the untouched
+// content: escape hatches and waivers live in comments and are always read from it.
+export function prepareSource(content, ext) {
+  const e = normExt(ext);
+  const rawLines = content.split("\n");
+  let chars = null;
+  if (STYLE_EXT.has(e)) { chars = content.split(""); scanStyle(content, chars, 0, content.length, SLASH_STYLE_EXT.has(e)); }
+  else if (SCRIPT_EXT.has(e)) { chars = content.split(""); scanScript(content, chars, 0, content.length, true); }
+  else if (C_LIKE_EXT.has(e)) { chars = content.split(""); scanScript(content, chars, 0, content.length, false); }
+  else if (MARKUP_EXT.has(e)) { chars = content.split(""); prepareMarkup(content, chars, e); }
+  else if (DOC_EXT.has(e)) { chars = content.split(""); prepareDoc(content, chars); }
+  return { text: chars ? chars.join("") : content, rawLines };
+}
+
+export function lineIndex(text) {
+  const starts = [0];
+  for (let i = 0; i < text.length; i++) if (text.charCodeAt(i) === 10) starts.push(i + 1);
+  return (offset) => {
+    let lo = 0;
+    let hi = starts.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (starts[mid] <= offset) lo = mid;
+      else hi = mid - 1;
+    }
+    return lo + 1;
+  };
+}
+
+// ── Bracket matching over code (strings and templates skipped) ──
+const PAIRS = { "(": ")", "[": "]", "{": "}" };
+
+function skipTemplatePlain(src, i, end = src.length) {
+  return scanTemplate(src, null, i, end);
+}
+
+export function matchClose(src, open, end = src.length) {
+  const want = PAIRS[src[open]];
+  if (!want) return -1;
+  const stack = [want];
+  let i = open + 1;
+  while (i < end) {
+    const c = src[i];
+    if (c === '"' || c === "'") { i = skipQuoted(src, i, end); continue; }
+    if (c === "`") { i = skipTemplatePlain(src, i, end); continue; }
+    if (PAIRS[c]) stack.push(PAIRS[c]);
+    else if (c === ")" || c === "]" || c === "}") {
+      if (stack[stack.length - 1] !== c) return -1;
+      stack.pop();
+      if (stack.length === 0) return i;
+    }
+    i++;
+  }
+  return -1;
+}
+
+// A copy of `expr` in which everything inside strings, templates and nested brackets is
+// masked, so separators can be found at depth 0 with plain string searches.
+function topMask(expr) {
+  const out = new Array(expr.length);
+  let depth = 0;
+  for (let i = 0; i < expr.length; i++) {
+    const c = expr[i];
+    if (c === '"' || c === "'" || c === "`") {
+      const j = c === "`" ? skipTemplatePlain(expr, i) : skipQuoted(expr, i, expr.length);
+      for (let k = i; k < j; k++) out[k] = "_";
+      i = j - 1;
+      continue;
+    }
+    if (c === "(" || c === "[" || c === "{") { depth++; out[i] = "_"; continue; }
+    if (c === ")" || c === "]" || c === "}") { depth--; out[i] = "_"; continue; }
+    out[i] = depth === 0 ? c : "_";
+  }
+  return out.join("");
+}
+
+function splitTop(expr, sep) {
+  const mask = topMask(expr);
+  const parts = [];
+  let last = 0;
+  for (let i = mask.indexOf(sep); i !== -1; i = mask.indexOf(sep, i + sep.length)) {
+    parts.push(expr.slice(last, i));
+    last = i + sep.length;
+  }
+  parts.push(expr.slice(last));
+  return parts;
+}
+
+// Splits on a separator outside quotes and outside (), [] (CSS values, selectors, tokens).
+function splitOutside(value, sep) {
+  const parts = [];
+  let depth = 0;
+  let quote = null;
+  let last = 0;
+  for (let i = 0; i < value.length; i++) {
+    const c = value[i];
+    if (quote) { if (c === "\\") i++; else if (c === quote) quote = null; continue; }
+    if (c === '"' || c === "'") { quote = c; continue; }
+    if (c === "(" || c === "[") depth++;
+    else if (c === ")" || c === "]") depth--;
+    else if (depth === 0 && (sep === " " ? /\s/.test(c) : c === sep)) {
+      parts.push(value.slice(last, i));
+      last = i + 1;
+    }
+  }
+  parts.push(value.slice(last));
+  return parts.map((p) => p.trim()).filter((p) => p !== "");
+}
+
+function indexOutside(value, ch) {
+  let depth = 0;
+  let quote = null;
+  for (let i = 0; i < value.length; i++) {
+    const c = value[i];
+    if (quote) { if (c === "\\") i++; else if (c === quote) quote = null; continue; }
+    if (c === '"' || c === "'") { quote = c; continue; }
+    if (c === "(" || c === "[") depth++;
+    else if (c === ")" || c === "]") depth--;
+    else if (depth === 0 && c === ch) return i;
+  }
+  return -1;
+}
+
+// ── Class token sets ──
+const CLASS_HELPERS = "cn|clsx|twMerge|twJoin|classNames|classnames|cx|cva|tv";
+const CLASS_ATTR = /(?<![\w$.-])(v-bind:class|:class|className|class)\s*=\s*/g;
+const CLASS_CALL = new RegExp(`(?<![\\w$.])(${CLASS_HELPERS})\\s*\\(`, "g");
+const WHOLE_CALL = new RegExp(`^(${CLASS_HELPERS})\\s*\\(`);
+const QUOTED = /^(["'])([\s\S]*)\1$/;
+
+function plainTokens(value) {
+  return value.replace(/\$\{[^}]*\}/g, " ").replace(/\{[^}]*\}/g, " ").split(/\s+/).filter(Boolean);
+}
+
+function templateTokens(body, out) {
+  let staticText = "";
+  let i = 0;
+  while (i < body.length) {
+    if (body[i] === "\\") { staticText += body.slice(i, i + 2); i += 2; continue; }
+    if (body[i] === "$" && body[i + 1] === "{") {
+      const close = matchClose(body, i + 1);
+      if (close === -1) break;
+      collectArg(body.slice(i + 2, close), out);
+      staticText += " ";
+      i = close + 1;
+      continue;
+    }
+    staticText += body[i];
+    i++;
+  }
+  out.base.push(...plainTokens(staticText));
+}
+
+function stripParens(expr) {
+  let e = expr.trim();
+  while (e.startsWith("(") && matchClose(e, 0) === e.length - 1) e = e.slice(1, -1).trim();
+  return e;
+}
+
+// Finds a top-level `cond ? a : b` and returns [consequent, alternate], or null.
+function ternaryParts(expr) {
+  const mask = topMask(expr);
+  let q = -1;
+  for (let i = 0; i < mask.length; i++) {
+    if (mask[i] !== "?") continue;
+    if (mask[i + 1] === "." || mask[i + 1] === "?" || mask[i - 1] === "?") continue;
+    q = i;
+    break;
+  }
+  if (q === -1) return null;
+  let need = 1;
+  for (let i = q + 1; i < mask.length; i++) {
+    const c = mask[i];
+    if (c === "?" && mask[i + 1] !== "." && mask[i + 1] !== "?" && mask[i - 1] !== "?") need++;
+    else if (c === ":" && --need === 0) return [expr.slice(q + 1, i), expr.slice(i + 1)];
+  }
+  return null;
+}
+
+function armsOf(expr, arms) {
+  const t = ternaryParts(stripParens(expr));
+  if (t) { armsOf(t[0], arms); armsOf(t[1], arms); return; }
+  const sub = { base: [], arms: [] };
+  collectArg(expr, sub);
+  arms.push([...sub.base, ...sub.arms.flat()]);
+}
+
+// Collects class tokens from one expression: unconditional strings join `base`, each arm of
+// a ternary becomes its own entry in `arms` (exclusive arms never pair), and a condition's
+// own strings (`v === "primary" && ...`) are dropped.
+function collectArg(raw, out) {
+  const expr = stripParens(raw);
+  if (!expr) return;
+  if (ternaryParts(expr)) { armsOf(expr, out.arms); return; }
+  const mask = topMask(expr);
+  if (mask.includes("&&")) { const parts = splitTop(expr, "&&"); collectArg(parts[parts.length - 1], out); return; }
+  for (const op of ["||", "??"]) {
+    if (mask.includes(op)) { for (const p of splitTop(expr, op)) collectArg(p, out); return; }
+  }
+  if (mask.includes("+")) { for (const p of splitTop(expr, "+")) collectArg(p, out); return; }
+  const call = WHOLE_CALL.exec(expr);
+  if (call && matchClose(expr, call[0].length - 1) === expr.length - 1) {
+    const inner = expr.slice(call[0].length, -1);
+    if (call[1] === "cva" || call[1] === "tv") collectCva(inner, out);
+    else collectArgs(inner, out);
+    return;
+  }
+  const q = QUOTED.exec(expr);
+  if (q && skipQuoted(expr, 0, expr.length) === expr.length) { out.base.push(...plainTokens(q[2])); return; }
+  if (expr.startsWith("`") && skipTemplatePlain(expr, 0) === expr.length) { templateTokens(expr.slice(1, -1), out); return; }
+  if (expr.startsWith("[") && matchClose(expr, 0) === expr.length - 1) { collectArgs(expr.slice(1, -1), out); return; }
+  if (expr.startsWith("{") && matchClose(expr, 0) === expr.length - 1) {
+    for (const entry of splitTop(expr.slice(1, -1), ",")) {
+      const key = /^\s*(["'])([^"'\n]*)\1\s*:/.exec(entry);
+      if (key) out.base.push(...plainTokens(key[2]));
+    }
+  }
+}
+
+function collectArgs(argsText, out) {
+  for (const arg of splitTop(argsText, ",")) collectArg(arg, out);
+}
+
+// cva/tv: the first argument is the base; every string in the config is its own exclusive
+// arm (one variant value never pairs with another).
+function collectCva(argsText, out) {
+  const args = splitTop(argsText, ",");
+  const first = stripParens(args[0] || "");
+  const rest = first.startsWith("{") ? args : args.slice(1);
+  if (!first.startsWith("{")) collectArg(first, out);
+  for (const a of rest) {
+    for (const m of a.matchAll(/"([^"\n]*)"|'([^'\n]*)'|`([^`]*)`/g)) {
+      const tokens = plainTokens(m[1] ?? m[2] ?? m[3] ?? "");
+      if (tokens.length) out.arms.push(tokens);
+    }
+  }
+}
+
+// The element name of the tag an attribute at `idx` belongs to, or null.
+function tagAt(text, idx) {
+  const lt = text.lastIndexOf("<", idx);
+  if (lt === -1) return null;
+  const m = /^<([A-Za-z][\w.:-]*)/.exec(text.slice(lt, lt + 80));
+  if (!m) return null;
+  let depth = 0;
+  for (let i = lt + m[0].length; i < idx; i++) {
+    const c = text[i];
+    if (depth === 0 && (c === '"' || c === "'")) {
+      const j = text.indexOf(c, i + 1);
+      if (j === -1 || j >= idx) return null;
+      i = j;
+      continue;
+    }
+    if (c === "{") depth++;
+    else if (c === "}") depth--;
+    else if (c === ">" && depth === 0 && text[i - 1] !== "=") return null;
+  }
+  return m[1].toLowerCase();
+}
+
+function uniq(list) {
+  return [...new Set(list)];
+}
+
+// classTokenSets(text) -> [{ tokens, line, tag, arm, group, start, end }]. Every class
+// source (class=, className=, :class=, and cn/clsx/twMerge/classNames/cva calls) is matched
+// over the whole text, so a multi-line attribute is one source. A source's unconditional
+// tokens form one set (arm null); each ternary arm or cva variant is a further set with an
+// integer arm id. `${...}` interpolations are dropped from the tokens; `tag` is the
+// containing element (null for a bare helper call). Run it on prepareSource().text.
+export function classTokenSets(text, lineOf = lineIndex(text)) {
+  const groups = [];
+  const consumed = [];
+  const attr = new RegExp(CLASS_ATTR.source, "g");
+  let m;
+  while ((m = attr.exec(text)) !== null) {
+    const kind = m[1];
+    const vStart = m.index + m[0].length;
+    const q = text[vStart];
+    let end;
+    let collected;
+    if (q === '"' || q === "'") {
+      end = text.indexOf(q, vStart + 1);
+      if (end === -1) continue;
+      const value = text.slice(vStart + 1, end);
+      collected = { base: [], arms: [] };
+      if (kind.includes(":")) collectArg(value, collected);
+      else collected.base.push(...plainTokens(value));
+      end += 1;
+    } else if (q === "{") {
+      const close = matchClose(text, vStart);
+      if (close === -1) continue;
+      collected = { base: [], arms: [] };
+      collectArg(text.slice(vStart + 1, close), collected);
+      end = close + 1;
+    } else {
+      const u = /^[^\s>"'=`]+/.exec(text.slice(vStart, vStart + 300));
+      if (!u) continue;
+      end = vStart + u[0].length;
+      collected = { base: plainTokens(u[0]), arms: [] };
+    }
+    consumed.push([m.index, end]);
+    groups.push({ start: m.index, end, line: lineOf(m.index), tag: tagAt(text, m.index), ...collected });
+    attr.lastIndex = end;
+  }
+  const call = new RegExp(CLASS_CALL.source, "g");
+  while ((m = call.exec(text)) !== null) {
+    const at = m.index;
+    if (consumed.some(([s, e]) => at >= s && at < e)) continue;
+    const open = at + m[0].length - 1;
+    const close = matchClose(text, open);
+    if (close === -1) continue;
+    const collected = { base: [], arms: [] };
+    if (m[1] === "cva" || m[1] === "tv") collectCva(text.slice(open + 1, close), collected);
+    else collectArgs(text.slice(open + 1, close), collected);
+    groups.push({ start: at, end: close + 1, line: lineOf(at), tag: null, ...collected });
+    call.lastIndex = close + 1;
+  }
+  groups.sort((a, b) => a.start - b.start);
+  const sets = [];
+  groups.forEach((g, group) => {
+    const shared = { line: g.line, tag: g.tag, group, start: g.start, end: g.end };
+    const base = uniq(g.base);
+    if (base.length) sets.push({ tokens: base, arm: null, ...shared });
+    g.arms.forEach((a, k) => { const tokens = uniq(a); if (tokens.length) sets.push({ tokens, arm: k, ...shared }); });
+  });
+  return sets;
+}
+
+// effectiveClassSets(sets) -> the token sets an element can actually carry at once: a
+// source with no arms is its base set; a source with arms yields base + one arm per arm.
+export function effectiveClassSets(sets) {
+  const byGroup = new Map();
+  for (const s of sets) {
+    if (!byGroup.has(s.group)) byGroup.set(s.group, { base: null, arms: [] });
+    const g = byGroup.get(s.group);
+    if (s.arm === null) g.base = s;
+    else g.arms.push(s);
+  }
+  const out = [];
+  for (const g of byGroup.values()) {
+    if (g.arms.length === 0) { if (g.base) out.push(g.base); continue; }
+    for (const a of g.arms) out.push({ ...a, tokens: uniq([...(g.base ? g.base.tokens : []), ...a.tokens]) });
+  }
+  return out;
+}
+
+// tailwindToken("md:hover:bg-indigo-500/10") -> { variants: ["md","hover"],
+// base: "bg-indigo-500", opacity: "10", important: false }. A `/` suffix is reported as
+// opacity on every token; only colour utilities should read it as one (`w-1/2`).
+export function tailwindToken(token) {
+  let t = String(token);
+  let important = false;
+  if (t.endsWith("!")) { important = true; t = t.slice(0, -1); }
+  const parts = [];
+  let depth = 0;
+  let last = 0;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (c === "[" || c === "(") depth++;
+    else if (c === "]" || c === ")") depth--;
+    else if (c === ":" && depth === 0) { parts.push(t.slice(last, i)); last = i + 1; }
+  }
+  let base = t.slice(last);
+  if (base.startsWith("!")) { important = true; base = base.slice(1); }
+  let opacity = null;
+  const slash = indexOutside(base, "/");
+  if (slash > 0) { opacity = base.slice(slash + 1); base = base.slice(0, slash); }
+  return { variants: parts, base, opacity, important };
+}
+
+const STATE_VARIANTS = new Set([
+  "hover", "focus", "focus-visible", "focus-within", "active", "visited", "disabled", "enabled",
+  "checked", "indeterminate", "open", "invalid", "valid", "user-invalid", "user-valid",
+  "placeholder", "placeholder-shown", "required", "optional", "target", "read-only", "autofill",
+]);
+
+// A state variant paints only while the element is in that state. Breakpoints (sm..2xl,
+// min-*, max-*), dark:, print:, motion-*:, rtl:, ltr: and pseudo-elements are not states.
+export function isStateVariant(variant) {
+  const v = String(variant);
+  if (STATE_VARIANTS.has(v)) return true;
+  if (/^(?:group|peer|aria|data|has)-/.test(v)) return true;
+  return /^\[.*:(?:hover|focus|focus-visible|focus-within|active|checked|disabled)\b/.test(v);
+}
+
+// ── CSS blocks ──
+const PASSTHROUGH_AT = new Set(["media", "supports", "container", "layer", "document", "scope", "starting-style", "include", "if", "else", "each", "for", "while", "at-root"]);
+
+function leadingSpace(src, i) {
+  let k = i;
+  while (k < src.length && /\s/.test(src[k])) k++;
+  return k;
+}
+
+function splitSelectorList(head) {
+  return splitOutside(head, ",");
+}
+
+function joinSelectors(parents, own) {
+  const out = [];
+  for (const p of parents) for (const o of own) out.push(o.includes("&") ? o.replace(/&/g, p) : `${p} ${o}`);
+  return out;
+}
+
+function parseOffsets(head) {
+  return splitOutside(head, ",").map((h) => {
+    const t = h.trim().toLowerCase();
+    if (t === "from") return 0;
+    if (t === "to") return 1;
+    const n = parseFloat(t);
+    return Number.isFinite(n) ? n / 100 : null;
+  }).filter((n) => n !== null);
+}
+
+function parseDeclaration(seg, segPos, lineAt) {
+  const lead = leadingSpace(seg, 0);
+  const t = seg.slice(lead).trimEnd();
+  if (!t) return null;
+  const line = lineAt(segPos + lead);
+  if (/^@apply\b/i.test(t)) return { prop: "@apply", value: t.slice(6).trim(), important: false, line };
+  const colon = indexOutside(t, ":");
+  if (colon <= 0) return null;
+  let prop = t.slice(0, colon).trim();
+  if (!/^(?:--[\w-]+|-?[A-Za-z][\w-]*)$/.test(prop)) return null;
+  if (!prop.startsWith("--")) prop = prop.toLowerCase();
+  let value = t.slice(colon + 1).trim();
+  let important = false;
+  const imp = /\s*!\s*important\s*$/i.exec(value);
+  if (imp) { important = true; value = value.slice(0, imp.index).trim(); }
+  return { prop, value, important, line };
+}
+
+// One CSS text (a stylesheet, a <style> body, a template body): blocks with selectors joined
+// to their nesting parents, and @keyframes collected separately.
+function parseCssText(css, lineAt, out, opts = {}) {
+  const stack = [];
+  const rootAt = opts.atRules || [];
+  const atRules = () => [...rootAt, ...stack.filter((f) => f.type === "at" || f.at).map((f) => f.at || f.head)];
+  const selectorsInScope = () => {
+    for (let k = stack.length - 1; k >= 0; k--) if (stack[k].type === "rule" && !stack[k].atBlock) return stack[k].selectors;
+    return null;
+  };
+  const makeRule = (selectors, pos, extra = {}) => {
+    const block = { selector: selectors.join(", "), decls: [], line: lineAt(pos), atRules: atRules(), inline: false, tag: null, ...extra.block };
+    out.blocks.push(block);
+    return { type: "rule", selectors, block, ...extra.frame };
+  };
+  if (opts.rootSelector) stack.push(makeRule([opts.rootSelector], 0));
+  if (opts.keyframesName) stack.push({ type: "kf", name: opts.keyframesName, steps: [], line: lineAt(0), atRules: atRules() });
+  const addDecl = (frame, seg, segPos) => {
+    if (!frame) return;
+    if (frame.type !== "rule" && frame.type !== "kfstep") return;
+    const d = parseDeclaration(seg, segPos, lineAt);
+    if (!d) return;
+    if (frame.type === "kfstep") frame.decls.push(d);
+    else frame.block.decls.push(d);
+  };
+  const finish = (f) => {
+    if (!f) return;
+    if (f.type === "kfstep") f.kf.steps.push({ offsets: f.offsets, decls: f.decls, line: f.line });
+    else if (f.type === "kf") out.keyframes.push({ name: f.name, steps: f.steps, line: f.line, atRules: f.atRules });
+  };
+  let seg = 0;
+  for (let i = 0; i < css.length; i++) {
+    const c = css[i];
+    if (c === '"' || c === "'") { i = skipQuoted(css, i, css.length) - 1; continue; }
+    if (c === "(") { const j = matchClose(css, i); if (j !== -1) i = j; continue; }
+    if (c === "{") {
+      const headPos = leadingSpace(css, seg);
+      const head = css.slice(seg, i).trim();
+      const parent = stack[stack.length - 1];
+      let frame;
+      if (parent && parent.type === "kf") frame = { type: "kfstep", offsets: parseOffsets(head), decls: [], line: lineAt(headPos), kf: parent };
+      else if (parent && (parent.type === "kfstep" || parent.type === "skip")) frame = { type: "skip" };
+      else if (head.startsWith("@")) {
+        const name = (/^@([\w-]+)/.exec(head) || [, ""])[1].toLowerCase();
+        if (name.endsWith("keyframes")) frame = { type: "kf", name: head.replace(/^@[\w-]+\s*/, "").replace(/^["']|["']$/g, "").trim(), steps: [], line: lineAt(headPos), atRules: atRules() };
+        else if (PASSTHROUGH_AT.has(name)) {
+          const scope = selectorsInScope();
+          frame = scope ? makeRule(scope, headPos, { frame: { at: head } }) : { type: "at", head };
+          if (scope) frame.block.atRules = [...frame.block.atRules, head];
+        } else frame = makeRule([head], headPos, { frame: { atBlock: true } });
+      } else {
+        const own = splitSelectorList(head);
+        const scope = selectorsInScope();
+        const selectors = scope ? joinSelectors(scope, own) : own.map((s) => s.replace(/^&\s*/, "").trim() || s);
+        frame = makeRule(selectors.length ? selectors : [head], headPos);
+      }
+      stack.push(frame);
+      seg = i + 1;
+      continue;
+    }
+    if (c === ";") { addDecl(stack[stack.length - 1], css.slice(seg, i), seg); seg = i + 1; continue; }
+    if (c === "}") {
+      addDecl(stack[stack.length - 1], css.slice(seg, i), seg);
+      finish(stack.pop());
+      seg = i + 1;
+    }
+  }
+  addDecl(stack[stack.length - 1], css.slice(seg), seg);
+  while (stack.length) finish(stack.pop());
+}
+
+function camelToKebab(key) {
+  const k = key.replace(/^(Webkit|Moz|ms|O)(?=[A-Z])/, (p) => `-${p.toLowerCase()}`);
+  return k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+}
+
+const UNITLESS = new Set(["line-height", "font-weight", "opacity", "z-index", "flex", "flex-grow", "flex-shrink", "order", "zoom", "animation-iteration-count", "aspect-ratio", "scale"]);
+
+function parseStyleObject(body, bodyPos, lineAt) {
+  const decls = [];
+  let cursor = 0;
+  for (const entry of splitTop(body, ",")) {
+    const entryPos = body.indexOf(entry, cursor);
+    cursor = entryPos + entry.length;
+    const m = /^\s*(?:(["'])([^"']+)\1|([A-Za-z_$][\w$]*))\s*:\s*([\s\S]*?)\s*$/.exec(entry);
+    if (!m) continue;
+    const key = m[2] ?? m[3];
+    const prop = key.startsWith("--") ? key : camelToKebab(key);
+    let raw = m[4];
+    let value;
+    const q = /^(["'])([\s\S]*)\1$/.exec(raw);
+    if (q) value = q[2];
+    else if (/^`[^`$]*`$/.test(raw)) value = raw.slice(1, -1);
+    else if (/^-?\d*\.?\d+$/.test(raw)) value = UNITLESS.has(prop) || Number(raw) === 0 ? raw : `${raw}px`;
+    else value = "var(--js)";
+    decls.push({ prop, value, important: false, line: lineAt(bodyPos + Math.max(0, entryPos) + leadingSpace(entry, 0)) });
+  }
+  return decls;
+}
+
+function classSelectorOfTag(text, tagStart, limit) {
+  const tagText = text.slice(tagStart, limit);
+  const c = /\bclass(?:Name)?\s*=\s*["']([^"']*)["']/.exec(tagText);
+  return c ? c[1].trim().split(/\s+/).filter(Boolean).map((t) => `.${t}`).join("") : "";
+}
+
+// Replaces each `${...}` in a template body: a bare identifier stays as itself (a
+// keyframes name), anything else becomes var(--js), an unknown value. Newlines are kept.
+function neutraliseInterpolations(body) {
+  let out = "";
+  let i = 0;
+  while (i < body.length) {
+    if (body[i] === "$" && body[i + 1] === "{") {
+      const close = matchClose(body, i + 1);
+      if (close === -1) { out += body.slice(i); break; }
+      const inner = body.slice(i + 2, close);
+      const id = /^\s*([A-Za-z_$][\w$]*)\s*$/.exec(inner);
+      out += (id ? id[1] : "var(--js)") + "\n".repeat((inner.match(/\n/g) || []).length);
+      i = close + 1;
+      continue;
+    }
+    out += body[i];
+    i++;
+  }
+  return out;
+}
+
+const TEMPLATE_START = /(?<![\w$.])(?:(styled(?:\s*\.\s*[A-Za-z_$][\w$]*|\s*\([^()]*\))(?:\s*\.\s*(?:attrs|withConfig)\s*\((?:[^()]|\([^()]*\))*\))*(?:\s*<[^`<>]*>)?)|(css|createGlobalStyle|injectGlobal)|(keyframes))\s*`/g;
+
+// cssBlocks(text, ext) -> { blocks, keyframes }. blocks: [{ selector, decls: [{ prop,
+// value, important, line }], line, atRules, inline, tag }]; keyframes: Map name ->
+// { steps: [{ offsets, decls, line }], line, atRules }. Sources: a whole stylesheet,
+// <style> bodies, fenced css blocks in markdown, style="" attributes (selector
+// `tag.classes[style]`, inline true), JSX style={{ }} objects (keys kebab-cased, bare
+// numbers given px), and styled/css/createGlobalStyle/keyframes templates (root selector
+// `&`). Run it on prepareSource().text.
+export function cssBlocks(text, ext, lineOf = lineIndex(text)) {
+  const e = normExt(ext);
+  const out = { blocks: [], keyframes: [] };
+  const region = (start, end, opts) => parseCssText(text.slice(start, end), (p) => lineOf(start + p), out, opts);
+  if (STYLE_EXT.has(e)) region(0, text.length);
+  if (MARKUP_EXT.has(e)) for (const [s, en, tag] of markupRegions(text)) if (tag === "style") region(s, en);
+  if (DOC_EXT.has(e)) for (const f of fencedBlocks(text)) if (FENCE_CSS.test(f.lang)) region(f.start, f.end);
+  if (SCRIPT_EXT.has(e) || MARKUP_EXT.has(e) || DOC_EXT.has(e)) {
+    const re = new RegExp(TEMPLATE_START.source, "g");
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const tick = m.index + m[0].length - 1;
+      const end = skipTemplatePlain(text, tick);
+      const body = neutraliseInterpolations(text.slice(tick + 1, Math.max(tick + 1, end - 1)));
+      const startLine = lineOf(tick + 1);
+      const nl = lineIndex(body);
+      const lineAt = (p) => startLine + nl(p) - 1;
+      if (m[3]) {
+        const name = (/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*$/.exec(text.slice(Math.max(0, m.index - 80), m.index)) || [])[1] || "";
+        parseCssText(body, lineAt, out, { keyframesName: name });
+      } else if (m[1]) parseCssText(body, lineAt, out, { rootSelector: "&" });
+      else parseCssText(body, lineAt, out);
+      re.lastIndex = end;
+    }
+  }
+  if (!STYLE_EXT.has(e)) {
+    const attr = /(?<![\w:.-])style\s*=\s*(?:"([^"]*)"|'([^']*)'|\{\{)/g;
+    let m;
+    while ((m = attr.exec(text)) !== null) {
+      const tag = tagAt(text, m.index);
+      const object = m[0].endsWith("{{");
+      if (!tag && !object) continue;
+      const tagStart = tag ? text.lastIndexOf("<", m.index) : m.index;
+      if (object) {
+        const open = m.index + m[0].length - 1;
+        const close = matchClose(text, open);
+        if (close === -1) continue;
+        const decls = parseStyleObject(text.slice(open + 1, close), open + 1, lineOf);
+        const cls = tag ? classSelectorOfTag(text, tagStart, m.index) : "";
+        if (decls.length) out.blocks.push({ selector: `${tag || "*"}${cls}[style]`, decls, line: lineOf(m.index), atRules: [], inline: true, tag });
+        attr.lastIndex = close + 1;
+        continue;
+      }
+      const value = m[1] ?? m[2] ?? "";
+      const valueStart = m.index + m[0].search(/["']/) + 1;
+      const decls = [];
+      let cursor = 0;
+      for (const seg of value.split(";")) {
+        const d = parseDeclaration(seg, valueStart + cursor, lineOf);
+        cursor += seg.length + 1;
+        if (d) decls.push(d);
+      }
+      const cls = classSelectorOfTag(text, tagStart, m.index);
+      if (decls.length) out.blocks.push({ selector: `${tag}${cls}[style]`, decls, line: lineOf(m.index), atRules: [], inline: true, tag });
+    }
+  }
+  const keyframes = new Map();
+  for (const k of out.keyframes) {
+    if (!k.name) continue;
+    if (k.atRules.some((a) => /prefers-reduced-motion\s*:\s*reduce/i.test(a)) && keyframes.has(k.name)) continue;
+    keyframes.set(k.name, { steps: k.steps, line: k.line, atRules: k.atRules });
+  }
+  return { blocks: out.blocks.filter((b) => b.decls.length > 0), keyframes };
+}
+
+// ── Custom properties ──
+const ROOT_SELECTOR = /^(?::root|html|body|\*|:host)$/i;
+
+export function isRootSelector(selector) {
+  const list = splitSelectorList(selector);
+  return list.length > 0 && list.every((s) => ROOT_SELECTOR.test(s.trim()));
+}
+
+// customProperties(blocks) -> Map name -> value. A root-level definition (:root, html,
+// body, *, :host, outside any at-rule) wins over a scoped or media-query override, so a
+// dark-mode block does not repaint the light page the rest of the file is measured on;
+// among equals the last declaration wins.
+export function customProperties(blocks) {
+  const all = new Map();
+  const root = new Map();
+  for (const b of blocks) {
+    for (const d of b.decls) {
+      if (!d.prop.startsWith("--")) continue;
+      all.set(d.prop, d.value);
+      if (!b.atRules.length && isRootSelector(b.selector)) root.set(d.prop, d.value);
+    }
+  }
+  for (const [k, v] of root) all.set(k, v);
+  return all;
+}
+
+// resolveVars(value, props): var(--x[, fallback]) replaced recursively to depth 5. An
+// unresolved var() stays in the string, and every caller reads such a value as unknown,
+// never as a number: silence over a wrong number.
+export function resolveVars(value, props, depth = 0) {
+  if (typeof value !== "string" || !value.includes("var(") || depth > 5) return value;
+  let out = "";
+  let i = 0;
+  while (i < value.length) {
+    const k = value.indexOf("var(", i);
+    if (k === -1) { out += value.slice(i); break; }
+    if (k > 0 && /[\w-]/.test(value[k - 1])) { out += value.slice(i, k + 4); i = k + 4; continue; }
+    const close = matchClose(value, k + 3);
+    if (close === -1) { out += value.slice(i); break; }
+    out += value.slice(i, k);
+    const inner = value.slice(k + 4, close);
+    const comma = indexOutside(inner, ",");
+    const name = (comma === -1 ? inner : inner.slice(0, comma)).trim();
+    const fallback = comma === -1 ? undefined : inner.slice(comma + 1).trim();
+    const v = props ? props.get(name) : undefined;
+    if (v !== undefined && v !== "") out += resolveVars(v, props, depth + 1);
+    else if (fallback !== undefined) out += resolveVars(fallback, props, depth + 1);
+    else out += value.slice(k, close + 1);
+    i = close + 1;
+  }
+  return out;
+}
+
+export function isUnresolved(value) {
+  return typeof value !== "string" || value.includes("var(");
+}
+
+// ── Colour ──
+const NAMED_SOURCE =
+  "aliceblue:f0f8ff,antiquewhite:faebd7,aqua:00ffff,aquamarine:7fffd4,azure:f0ffff,beige:f5f5dc,bisque:ffe4c4," +
+  "black:000000,blanchedalmond:ffebcd,blue:0000ff,blueviolet:8a2be2,brown:a52a2a,burlywood:deb887," +
+  "cadetblue:5f9ea0,chartreuse:7fff00,chocolate:d2691e,coral:ff7f50,cornflowerblue:6495ed,cornsilk:fff8dc," +
+  "crimson:dc143c,cyan:00ffff,darkblue:00008b,darkcyan:008b8b,darkgoldenrod:b8860b,darkgray:a9a9a9," +
+  "darkgreen:006400,darkgrey:a9a9a9,darkkhaki:bdb76b,darkmagenta:8b008b,darkolivegreen:556b2f," +
+  "darkorange:ff8c00,darkorchid:9932cc,darkred:8b0000,darksalmon:e9967a,darkseagreen:8fbc8f," +
+  "darkslateblue:483d8b,darkslategray:2f4f4f,darkslategrey:2f4f4f,darkturquoise:00ced1,darkviolet:9400d3," +
+  "deeppink:ff1493,deepskyblue:00bfff,dimgray:696969,dimgrey:696969,dodgerblue:1e90ff,firebrick:b22222," +
+  "floralwhite:fffaf0,forestgreen:228b22,fuchsia:ff00ff,gainsboro:dcdcdc,ghostwhite:f8f8ff,gold:ffd700," +
+  "goldenrod:daa520,gray:808080,green:008000,greenyellow:adff2f,grey:808080,honeydew:f0fff0,hotpink:ff69b4," +
+  "indianred:cd5c5c,indigo:4b0082,ivory:fffff0,khaki:f0e68c,lavender:e6e6fa,lavenderblush:fff0f5," +
+  "lawngreen:7cfc00,lemonchiffon:fffacd,lightblue:add8e6,lightcoral:f08080,lightcyan:e0ffff," +
+  "lightgoldenrodyellow:fafad2,lightgray:d3d3d3,lightgreen:90ee90,lightgrey:d3d3d3,lightpink:ffb6c1," +
+  "lightsalmon:ffa07a,lightseagreen:20b2aa,lightskyblue:87cefa,lightslategray:778899,lightslategrey:778899," +
+  "lightsteelblue:b0c4de,lightyellow:ffffe0,lime:00ff00,limegreen:32cd32,linen:faf0e6,magenta:ff00ff," +
+  "maroon:800000,mediumaquamarine:66cdaa,mediumblue:0000cd,mediumorchid:ba55d3,mediumpurple:9370db," +
+  "mediumseagreen:3cb371,mediumslateblue:7b68ee,mediumspringgreen:00fa9a,mediumturquoise:48d1cc," +
+  "mediumvioletred:c71585,midnightblue:191970,mintcream:f5fffa,mistyrose:ffe4e1,moccasin:ffe4b5," +
+  "navajowhite:ffdead,navy:000080,oldlace:fdf5e6,olive:808000,olivedrab:6b8e23,orange:ffa500," +
+  "orangered:ff4500,orchid:da70d6,palegoldenrod:eee8aa,palegreen:98fb98,paleturquoise:afeeee," +
+  "palevioletred:db7093,papayawhip:ffefd5,peachpuff:ffdab9,peru:cd853f,pink:ffc0cb,plum:dda0dd," +
+  "powderblue:b0e0e6,purple:800080,rebeccapurple:663399,red:ff0000,rosybrown:bc8f8f,royalblue:4169e1," +
+  "saddlebrown:8b4513,salmon:fa8072,sandybrown:f4a460,seagreen:2e8b57,seashell:fff5ee,sienna:a0522d," +
+  "silver:c0c0c0,skyblue:87ceeb,slateblue:6a5acd,slategray:708090,slategrey:708090,snow:fffafa," +
+  "springgreen:00ff7f,steelblue:4682b4,tan:d2b48c,teal:008080,thistle:d8bfd8,tomato:ff6347," +
+  "turquoise:40e0d0,violet:ee82ee,wheat:f5deb3,white:ffffff,whitesmoke:f5f5f5,yellow:ffff00,yellowgreen:9acd32";
+
+export const NAMED_COLORS = new Map(NAMED_SOURCE.split(",").map((pair) => {
+  const [name, hex] = pair.split(":");
+  return [name, { r: parseInt(hex.slice(0, 2), 16), g: parseInt(hex.slice(2, 4), 16), b: parseInt(hex.slice(4, 6), 16) }];
+}));
+
+function clamp(v, lo, hi) {
+  return Math.min(hi, Math.max(lo, v));
+}
+
+function component(tok, percentScale) {
+  const t = tok.trim().toLowerCase();
+  if (t === "none") return 0;
+  const n = parseFloat(t);
+  if (!Number.isFinite(n) || !/^[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?%?$/.test(t)) return NaN;
+  return t.endsWith("%") ? (n / 100) * percentScale : n;
+}
+
+function hueDegrees(tok) {
+  const t = tok.trim().toLowerCase();
+  if (t === "none") return 0;
+  const n = parseFloat(t);
+  if (!Number.isFinite(n)) return NaN;
+  if (t.endsWith("turn")) return n * 360;
+  if (t.endsWith("grad")) return n * 0.9;
+  if (t.endsWith("rad")) return (n * 180) / Math.PI;
+  return n;
+}
+
+function encode(v) {
+  const c = clamp(v, 0, 1);
+  return 255 * (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055);
+}
+
+function decode(v) {
+  const c = v / 255;
+  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+}
+
+function fromOklab(L, A, B, alpha) {
+  const l = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3;
+  const m = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3;
+  const s = (L - 0.0894841775 * A - 1.291485548 * B) ** 3;
+  return {
+    r: encode(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
+    g: encode(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+    b: encode(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s),
+    a: alpha,
+  };
+}
+
+function hslToRgb(h, s, l, a) {
+  const k = (n) => (n + h / 30) % 12;
+  const amp = s * Math.min(l, 1 - l);
+  const f = (n) => l - amp * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+  return { r: 255 * f(0), g: 255 * f(8), b: 255 * f(4), a };
+}
+
+function functionArgs(body) {
+  if (body.includes(",")) {
+    const parts = body.split(",").map((p) => p.trim());
+    return { parts: parts.slice(0, 3), alpha: parts[3] };
+  }
+  const [main, alpha] = body.split("/");
+  return { parts: main.trim().split(/\s+/), alpha: alpha === undefined ? undefined : alpha.trim() };
+}
+
+// parseColor(value) -> { r, g, b, a } (channels 0-255, unrounded) or null. Reads hex,
+// rgb()/rgba(), hsl()/hsla(), oklch(), oklab(), transparent and the 148 named colours.
+// color-mix(), relative colour syntax, currentColor, system colours and any value still
+// holding a var() return null: an unknown colour is never guessed.
+export function parseColor(value) {
+  if (typeof value !== "string") return null;
+  const s = value.trim().toLowerCase();
+  if (!s || s.includes("var(") || s.includes("calc(") || /\bfrom\b/.test(s)) return null;
+  if (s === "transparent") return { r: 0, g: 0, b: 0, a: 0 };
+  let m = /^#([0-9a-f]{3,8})$/.exec(s);
+  if (m) {
+    let h = m[1];
+    if (h.length === 3 || h.length === 4) h = [...h].map((c) => c + c).join("");
+    if (h.length !== 6 && h.length !== 8) return null;
+    return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16), a: h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1 };
+  }
+  m = /^(rgba?|hsla?|oklch|oklab)\(\s*([^()]*)\)$/.exec(s);
+  if (m) {
+    const { parts, alpha } = functionArgs(m[2]);
+    if (parts.length < 3) return null;
+    const a = alpha === undefined ? 1 : clamp(component(alpha, 1), 0, 1);
+    if (Number.isNaN(a)) return null;
+    let rgb;
+    if (m[1].startsWith("rgb")) {
+      const [r, g, b] = parts.map((p) => component(p, 255));
+      rgb = { r, g, b, a };
+    } else if (m[1].startsWith("hsl")) {
+      const h = hueDegrees(parts[0]);
+      const sat = parseFloat(parts[1]) / 100;
+      const lig = parseFloat(parts[2]) / 100;
+      rgb = hslToRgb(((h % 360) + 360) % 360, clamp(sat, 0, 1), clamp(lig, 0, 1), a);
+    } else if (m[1] === "oklch") {
+      const L = parts[0].trim().endsWith("%") ? parseFloat(parts[0]) / 100 : component(parts[0], 1);
+      const C = component(parts[1], 0.4);
+      const H = (hueDegrees(parts[2]) * Math.PI) / 180;
+      rgb = fromOklab(L, C * Math.cos(H), C * Math.sin(H), a);
+    } else {
+      const L = parts[0].trim().endsWith("%") ? parseFloat(parts[0]) / 100 : component(parts[0], 1);
+      rgb = fromOklab(L, component(parts[1], 0.4), component(parts[2], 0.4), a);
+    }
+    if ([rgb.r, rgb.g, rgb.b].some((v) => !Number.isFinite(v))) return null;
+    return { r: clamp(rgb.r, 0, 255), g: clamp(rgb.g, 0, 255), b: clamp(rgb.b, 0, 255), a: rgb.a };
+  }
+  const named = NAMED_COLORS.get(s);
+  return named ? { ...named, a: 1 } : null;
+}
+
+// toOklch({ r, g, b }) -> { L, C, H } (L 0-1, H in degrees 0-360).
+export function toOklch({ r, g, b }) {
+  const R = decode(r);
+  const G = decode(g);
+  const B = decode(b);
+  const l = Math.cbrt(0.4122214708 * R + 0.5363325363 * G + 0.0514459929 * B);
+  const m = Math.cbrt(0.2119034982 * R + 0.6806995451 * G + 0.1073969566 * B);
+  const s = Math.cbrt(0.0883024619 * R + 0.2817188376 * G + 0.6299787005 * B);
+  const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+  const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+  const Bb = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+  let H = (Math.atan2(Bb, A) * 180) / Math.PI;
+  if (H < 0) H += 360;
+  return { L, C: Math.sqrt(A * A + Bb * Bb), H };
+}
+
+export function toHex({ r, g, b }) {
+  return `#${[r, g, b].map((v) => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, "0")).join("")}`;
+}
+
+export function rgbSpread({ r, g, b }) {
+  return Math.max(r, g, b) - Math.min(r, g, b);
+}
+
+// WCAG 2.x relative luminance and contrast ratio.
+export function relativeLuminance({ r, g, b }) {
+  return 0.2126 * decode(r) + 0.7152 * decode(g) + 0.0722 * decode(b);
+}
+
+export function contrastRatio(a, b) {
+  const x = relativeLuminance(a);
+  const y = relativeLuminance(b);
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+
+// composite(fg, bg): fg's alpha laid over an opaque bg.
+export function composite(fg, bg) {
+  const a = fg.a === undefined ? 1 : fg.a;
+  return { r: fg.r * a + bg.r * (1 - a), g: fg.g * a + bg.g * (1 - a), b: fg.b * a + bg.b * (1 - a), a: 1 };
+}
+
+// ratioLabel(ratio, threshold): one decimal; two when one would round a failing ratio up to
+// the bar; truncated when two would still reach it. A failing ratio never prints as the bar.
+export function ratioLabel(ratio, threshold) {
+  const one = ratio.toFixed(1);
+  if (!(ratio < threshold) || Number(one) < threshold) return one;
+  const two = ratio.toFixed(2);
+  if (Number(two) < threshold) return two;
+  return (Math.floor(ratio * 100) / 100).toFixed(2);
+}
+
+// ── Font stacks ──
+const GENERIC_FAMILIES = new Set(["serif", "sans-serif", "monospace", "cursive", "fantasy", "math", "emoji", "fangsong", "inherit", "initial", "unset", "revert", "revert-layer", "default"]);
+const CSS_WIDE = new Set(["inherit", "initial", "unset", "revert", "revert-layer", "default"]);
+const SYSTEM_FAMILIES = new Set(["system-ui", "ui-sans-serif", "ui-serif", "ui-rounded", "ui-monospace", "-apple-system", "apple-system", "blinkmacsystemfont", "sf mono", "new york", "system"]);
+const SYSTEM_FONT_KEYWORDS = /^(?:caption|icon|menu|message-box|small-caption|status-bar|-apple-system[\w-]*)$/i;
+const FONT_SIZE_TOKEN = /^(?:[+-]?(?:\d+\.?\d*|\.\d+)(?:px|rem|em|%|pt|pc|vw|vh|vmin|vmax|ch|ex|q|mm|cm|in|cqw|cqi)|xx-small|x-small|small|medium|large|x-large|xx-large|xxx-large|larger|smaller|(?:calc|clamp|min|max|var)\(.*\))$/i;
+
+export function isSystemFamily(name) {
+  const n = String(name).toLowerCase().trim();
+  return SYSTEM_FAMILIES.has(n) || /^(?:sf pro|sf compact|segoe ui)\b/.test(n);
+}
+
+function splitFamilies(list) {
+  return splitOutside(list, ",").map((f) => f.replace(/^["']|["']$/g, "").trim()).filter(Boolean);
+}
+
+// The font shorthand: [style] [variant] [weight] [stretch] size[/line-height] family-list.
+export function fontShorthandParts(value) {
+  const tokens = splitOutside(value, " ");
+  if (tokens.length === 1 && SYSTEM_FONT_KEYWORDS.test(tokens[0])) return { size: null, lineHeight: null, families: ["system-ui"] };
+  for (let i = 0; i < tokens.length; i++) {
+    const [size, lh] = tokens[i].split("/");
+    if (!FONT_SIZE_TOKEN.test(size)) continue;
+    let lineHeight = lh || null;
+    let rest = i + 1;
+    if (!lineHeight && tokens[rest] === "/") { lineHeight = tokens[rest + 1] || null; rest += 2; }
+    else if (!lineHeight && tokens[rest] && tokens[rest].startsWith("/")) { lineHeight = tokens[rest].slice(1) || tokens[rest + 1]; rest += tokens[rest] === "/" ? 2 : 1; }
+    return { size, lineHeight, families: splitFamilies(tokens.slice(rest).join(" ")) };
+  }
+  return { size: null, lineHeight: null, families: [] };
+}
+
+// fontStack(block, props) -> [families] from the last font-family or font declaration.
+export function fontStack(block, props) {
+  let value = null;
+  for (const d of block.decls) {
+    if (d.prop === "font-family") value = { kind: "family", v: d.value };
+    else if (d.prop === "font") value = { kind: "font", v: d.value };
+  }
+  if (!value) return [];
+  const resolved = resolveVars(value.v, props);
+  if (value.kind === "family") return splitFamilies(resolved);
+  return fontShorthandParts(resolved).families;
+}
+
+// primaryFamily(stack) -> { kind: "system"|"face"|"none", name }. CSS generic keywords are
+// skipped; a first remaining family that is a platform face makes the stack a system stack;
+// an unresolved var() first makes it unknown ("none"); a stack of generics alone is the
+// platform default ("system"). `name` is lower-cased.
+export function primaryFamily(stack) {
+  if (!stack || stack.length === 0) return { kind: "none", name: null };
+  let generic = null;
+  for (const f of stack) {
+    const n = f.toLowerCase().trim();
+    if (GENERIC_FAMILIES.has(n)) { if (!generic && !CSS_WIDE.has(n)) generic = n; continue; }
+    if (n.includes("var(")) return { kind: "none", name: null };
+    if (isSystemFamily(n)) return { kind: "system", name: n };
+    return { kind: "face", name: n };
+  }
+  return generic ? { kind: "system", name: generic } : { kind: "none", name: null };
+}
+
+// ── Waivers ──
+const WAIVER_MARKER = /(?:anti-slop-allow|unslop-ignore)\b/i;
+
+// parseWaiver(rawLine, knownIds) -> null (no marker) | { all: true } (line-wide) |
+// { rules: Set, unknown: [] } (scoped). The scoped form is syntactic:
+// `anti-slop-allow: <id>[, <id>] -- <reason>`. A marker without ` -- ` is free text and
+// line-wide, as it always was. With ` -- `, every token before it must be a known id; if any
+// is not, the waiver suppresses nothing and `unknown` names the ids, so a waiver that cannot
+// match never silently widens.
+export function parseWaiver(rawLine, knownIds) {
+  const m = WAIVER_MARKER.exec(String(rawLine));
+  if (!m) return null;
+  const rest = rawLine.slice(m.index + m[0].length).replace(/^\s*:/, "");
+  const sep = /\s--(?=\s|$)/.exec(rest);
+  if (!sep) return { all: true };
+  const ids = rest.slice(0, sep.index).split(/[\s,]+/).filter(Boolean);
+  if (ids.length === 0) return { all: true };
+  const known = knownIds instanceof Set ? knownIds : new Set(knownIds || []);
+  const unknown = ids.filter((id) => !known.has(id));
+  if (unknown.length) return { rules: new Set(), unknown };
+  return { rules: new Set(ids), unknown: [] };
+}
+
+export function waiverCovers(waiver, ruleId) {
+  return Boolean(waiver && (waiver.all || waiver.rules.has(ruleId)));
+}
+
+// ── Block helpers ──
+export function declEntry(block, prop) {
+  let found;
+  for (const d of block.decls) if (d.prop === prop) found = d;
+  return found;
+}
+
+export function decl(block, prop) {
+  const d = declEntry(block, prop);
+  return d ? d.value : undefined;
+}
+
+// A length in px: px, rem and em at 16px, 0; anything else (%, vw, calc(), var()) is not
+// a number this module will guess.
+export function lengthPx(value, props) {
+  if (value === undefined || value === null) return undefined;
+  const v = resolveVars(String(value), props).trim().toLowerCase();
+  if (v === "0") return 0;
+  const m = /^([+-]?(?:\d+\.?\d*|\.\d+))(px|rem)$/.exec(v);
+  if (!m) return undefined;
+  return m[2] === "px" ? Number(m[1]) : Number(m[1]) * 16;
+}
+
+export function fontSizePx(block, props) {
+  let size;
+  for (const d of block.decls) {
+    if (d.prop === "font-size") size = d.value;
+    else if (d.prop === "font") { const p = fontShorthandParts(resolveVars(d.value, props)); if (p.size) size = p.size; }
+  }
+  return lengthPx(size, props);
+}
+
+export function fontWeight(block, props) {
+  let w;
+  for (const d of block.decls) {
+    if (d.prop === "font-weight") w = resolveVars(d.value, props);
+    else if (d.prop === "font") { const m = /(?:^|\s)(bold|bolder|[1-9]00)(?=\s)/i.exec(resolveVars(d.value, props)); if (m) w = m[1]; }
+  }
+  if (w === undefined) return 400;
+  if (/^(?:bold|bolder)$/i.test(String(w).trim())) return 700;
+  const n = parseFloat(w);
+  return Number.isFinite(n) ? n : 400;
+}
+
+export function lineHeightValue(block, props) {
+  let lh;
+  for (const d of block.decls) {
+    if (d.prop === "line-height") lh = d.value;
+    else if (d.prop === "font") { const p = fontShorthandParts(resolveVars(d.value, props)); if (p.lineHeight) lh = p.lineHeight; }
+  }
+  return lh === undefined ? undefined : resolveVars(lh, props).trim();
+}
+
+// Selector structure: compounds split on combinators, the last compound is the subject.
+export function compoundsOf(selector) {
+  return String(selector).trim().split(/\s*[>+~]\s*|\s+(?![^[(]*[\])])/).filter(Boolean);
+}
+
+export function subjectOf(selector) {
+  const c = compoundsOf(selector);
+  return c[c.length - 1] || "";
+}
+
+export function tagOfCompound(compound) {
+  const m = /^([a-zA-Z][\w-]*)/.exec(compound);
+  return m ? m[1].toLowerCase() : null;
+}
+
+export function classWordsOf(compound) {
+  const words = [];
+  for (const m of String(compound).matchAll(/[.#]([\w-]+)/g)) words.push(m[1].toLowerCase(), ...m[1].toLowerCase().split(/[-_]+/));
+  return words;
+}
+
+export function inAtRule(block, re) {
+  return block.atRules.some((a) => re.test(a));
+}
+
+export const REDUCED_MOTION = /prefers-reduced-motion\s*:\s*reduce/i;
+
+// ── Per-file context ──
+function lazy(obj, key, fn) {
+  Object.defineProperty(obj, key, {
+    configurable: true,
+    enumerable: true,
+    get() {
+      const value = fn();
+      Object.defineProperty(obj, key, { value, enumerable: true, configurable: true });
+      return value;
+    },
+  });
+}
+
+// makeContext(content, ext) -> { ext, content, text, rawLines, lines, lineOf, classSets,
+// effectiveSets, css, props, pageGround, memo }. Every field after rawLines is computed on
+// first read and once per file; detectors take the context and share it.
+export function makeContext(content, ext) {
+  const e = normExt(ext);
+  const { text, rawLines } = prepareSource(content, e);
+  const ctx = { ext: e, content, text, rawLines, memo: new Map() };
+  lazy(ctx, "lineOf", () => lineIndex(text));
+  lazy(ctx, "lines", () => text.split("\n"));
+  lazy(ctx, "classSets", () => classTokenSets(text, ctx.lineOf));
+  lazy(ctx, "effectiveSets", () => effectiveClassSets(ctx.classSets));
+  lazy(ctx, "css", () => cssBlocks(text, e, ctx.lineOf));
+  lazy(ctx, "props", () => customProperties(ctx.css.blocks));
+  lazy(ctx, "pageGround", () => pageGroundOf(ctx));
+  return ctx;
+}
+
+export function memo(ctx, key, fn) {
+  if (!ctx.memo.has(key)) ctx.memo.set(key, fn(ctx));
+  return ctx.memo.get(key);
+}
+
+// backgroundOf(block, props) -> undefined (none declared) | { kind: "colour", colour } |
+// { kind: "none" } (transparent) | { kind: "image" } | { kind: "unknown" }, with `entry`.
+export function backgroundOf(block, props) {
+  let entry;
+  let image = false;
+  for (const d of block.decls) {
+    if (d.prop === "background" || d.prop === "background-color") entry = d;
+    if (d.prop === "background-image" && !/^\s*none\s*$/i.test(d.value)) image = true;
+  }
+  if (image) return { kind: "image", entry };
+  if (!entry) return undefined;
+  const v = resolveVars(entry.value, props).trim();
+  if (/url\(|gradient\(|image\(|image-set\(|element\(/i.test(v)) return { kind: "image", entry };
+  if (/^(?:none|transparent|initial|unset|inherit|revert)$/i.test(v)) return { kind: "none", entry };
+  if (v.includes("var(")) return { kind: "unknown", entry };
+  const tokens = splitOutside(v, " ");
+  const colours = [];
+  for (const t of tokens) {
+    const c = parseColor(t);
+    if (c) colours.push(c);
+    else if (!/^(?:no-repeat|repeat|repeat-x|repeat-y|space|round|center|top|bottom|left|right|fixed|scroll|local|border-box|padding-box|content-box|cover|contain|auto|\/|[+-]?(?:\d+\.?\d*|\.\d+)(?:px|rem|em|%)?)$/i.test(t)) return { kind: "unknown", entry };
+  }
+  if (colours.length === 1) return colours[0].a <= 0.001 ? { kind: "none", entry } : { kind: "colour", colour: colours[0], entry };
+  return colours.length === 0 ? { kind: "none", entry } : { kind: "unknown", entry };
+}
+
+// The page ground: the opaque colour background of the last html/body/:root block outside
+// any at-rule, or null when there is none (an undeclared ground is unknown, not white).
+function pageGroundOf(ctx) {
+  let ground = null;
+  for (const b of ctx.css.blocks) {
+    if (b.inline || b.atRules.length) continue;
+    if (!splitSelectorList(b.selector).some((s) => /^(?::root|html|body)$/i.test(s.trim()))) continue;
+    const bg = backgroundOf(b, ctx.props);
+    if (!bg) continue;
+    ground = bg.kind === "colour" && bg.colour.a >= 0.99 ? bg.colour : null;
+  }
+  return ground;
+}

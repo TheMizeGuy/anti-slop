@@ -303,14 +303,16 @@ test("A3: an unreadable file aborts before anything is recorded", () => {
 
 // `fix` and `line` joined every shape in 2.4.0: a finding that names only the offence is
 // incomplete under the remediation floor, and a consumer of --format json now gets the
-// remediation and the location without re-deriving either.
+// remediation and the location without re-deriving either. The UI tells gained `evidence`
+// (the first hit's matched text) and `lines` (every contributing line) in 2.5.0; code
+// patterns carry no evidence, because the matched text of a credential rule is the secret.
 const VIOLATION_KEYS = {
   "banned-word": ["confidence", "count", "desc", "fix", "line", "severity", "type", "word"],
   "banned-phrase": ["confidence", "count", "desc", "fix", "line", "phrase", "severity", "type"],
   "text-construct": ["confidence", "count", "desc", "fix", "line", "name", "severity", "type"],
   "emoji": ["confidence", "count", "desc", "fix", "line", "severity", "type"],
-  "design-tell": ["confidence", "count", "desc", "fix", "line", "mode", "name", "severity", "type"],
-  "native-tell": ["confidence", "count", "desc", "fix", "line", "mode", "name", "severity", "type"],
+  "design-tell": ["confidence", "count", "desc", "evidence", "fix", "line", "lines", "mode", "name", "severity", "type"],
+  "native-tell": ["confidence", "count", "desc", "evidence", "fix", "line", "lines", "mode", "name", "severity", "type"],
   "code-pattern": ["confidence", "count", "desc", "fix", "line", "name", "severity", "type"],
 };
 
